@@ -33,4 +33,6 @@ Canvas {
     }
 
     Timer { id: alarma; onTriggered: lienzo.despierto = true }
+
+    function parpadear() { Motor.parpadear(Date.now(), 1); despierto = true }
 }

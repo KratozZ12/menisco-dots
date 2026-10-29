@@ -11,6 +11,10 @@ import Quickshell.Wayland
 PanelWindow {
     id: dock
 
+    // Se llama "shell" y no "raiz": con "raiz: raiz" en shell.qml la propiedad se enlazaba
+    // consigo misma (null) en vez de con la raiz del shell, y el boton no hacia nada.
+    property var shell: null   // para abrir el lanzador y decirle de donde brotar
+
     readonly property int icono: 46
     readonly property int relleno: 9
     readonly property var curvaIos: [0.32, 0.72, 0, 1, 1, 1]
@@ -205,12 +209,20 @@ PanelWindow {
             }
 
             // Menu de apps (lo mismo que Super+D): no se agranda; se aclara al pasar
-            // el cursor y se hunde con rebote al pulsar.
+            // el cursor y se hunde con rebote al pulsar. El lanzador brota de aqui.
             Rectangle {
+                id: botonLanzador
+                Binding {
+                    target: dock.shell
+                    property: "origenLanzadorX"
+                    // mapToItem no avisa si el dock cambia de ancho; leer los anchos fuerza a recalcular.
+                    value: { fila.width; fondo.width; return botonLanzador.mapToItem(fondo, botonLanzador.width / 2, 0).x - fondo.width / 2; }
+                    when: dock.shell !== null
+                }
                 width: dock.icono
                 height: dock.icono
                 radius: 12
-                color: Qt.rgba(1, 1, 1, zonaMenu.pressed ? 0.36 : zonaMenu.containsMouse ? 0.28 : 0.16)
+                color: Qt.rgba(1, 1, 1, zonaMenu.pressed || (dock.shell && dock.shell.lanzadorAbierto) ? 0.36 : zonaMenu.containsMouse ? 0.28 : 0.16)
                 Behavior on color { ColorAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 scale: zonaMenu.pressed ? 0.88 : 1
                 Behavior on scale { NumberAnimation { duration: zonaMenu.pressed ? 90 : 460; easing.type: zonaMenu.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: 2.6 } }
@@ -223,7 +235,7 @@ PanelWindow {
                     font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
                     renderType: Text.NativeRendering
                 }
-                MouseArea { id: zonaMenu; anchors.fill: parent; hoverEnabled: true; onClicked: Quickshell.execDetached(["fuzzel"]) }
+                MouseArea { id: zonaMenu; anchors.fill: parent; hoverEnabled: true; onClicked: if (dock.shell) dock.shell.lanzadorAbierto = !dock.shell.lanzadorAbierto }
             }
         }
     }

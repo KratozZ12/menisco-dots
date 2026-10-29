@@ -2,7 +2,7 @@
 
 > El *menisco* es la curva que forma un líquido en el borde de su recipiente: lo mismo que dibuja el liquid glass en el borde del vidrio.
 
-Un escritorio para **niri** hecho a mano con **Quickshell**: una isla con reloj, un asistente animado y un visualizador de audio; un dock de vidrio; una ventana de ajustes; y un aviso de volumen de líquido. Todo en grises, blanco y vidrio, con tipografía SF Pro y animaciones con rebote suave.
+Un escritorio para **niri** hecho a mano con **Quickshell**: una isla con reloj, un asistente animado y un visualizador de audio; un dock de vidrio; un lanzador que brota del dock; una ventana de ajustes; y un aviso de volumen de líquido. Todo en grises, blanco y vidrio, con tipografía SF Pro y animaciones con rebote suave.
 
 Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que agrega *liquid glass*, es decir, refracción real en los bordes del vidrio.
 
@@ -34,7 +34,21 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*.
 - Lupa al pasar el cursor, con rebote, y un punto debajo de las apps abiertas.
 - Las apps abiertas que no están ancladas aparecen solas y el dock crece con animación.
 - **Clic derecho:** Anclar al dock / Quitar del dock / Abrir / Cerrar. Las ancladas se guardan en `~/.config/quickshell/isla/dock.json`.
-- Botón para abrir el menú de apps (fuzzel).
+- Botón de cuadrícula que abre el lanzador (se aclara al pasar el cursor; no usa la lupa).
+
+### Lanzador (`Super+D` o el botón del dock)
+Brota del botón de cuadrícula del dock con un rebote y regresa a él al cerrar. Al abrirlo, el asistente es "succionado" de la isla y reaparece en la barra de búsqueda, que está abajo, cerca del dock.
+
+- **Sin escribir:** lo que está sonando (con controles), apps frecuentes (aprende de las que abre), ventanas abiertas y archivos recientes.
+- **Al escribir:**
+  - **Apps:** por nombre, y también por descripción y palabras clave (`minecraft` encuentra Prism Launcher).
+  - **Calculadora:** `12*8+4`; `Enter` copia el resultado.
+  - **Acciones:** apagar y reiniciar (piden un segundo `Enter`), bloquear, cerrar sesión, captura, Bluetooth y No molestar con interruptor, y los ajustes de Menisco.
+  - **Archivos** de la carpeta personal (con `plocate`).
+  - **Emojis**, en español o en inglés y sin importar acentos (`fuego`, `fire`). Con `:` delante se muestran solo emojis.
+  - **Web:** buscar en el navegador.
+- El asistente reacciona a la búsqueda: piensa con varios resultados, se alegra con uno, se confunde si no hay nada.
+- Flechas para moverse, `Enter` para abrir, `Escape` para cerrar.
 
 ### Ajustes (`Super+.`)
 Ventana flotante centrada. La página **Inicio** tiene:
@@ -57,7 +71,7 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 | [awww](https://codeberg.org/LGFae/awww) | el fondo de pantalla |
 | [Hokum](https://hokum.app) | las notificaciones |
 | [cava](https://github.com/karlstav/cava) | el visualizador de audio |
-| [fuzzel](https://codeberg.org/dnkl/fuzzel) | el menú de apps |
+| `plocate`, `wl-clipboard`, `python3` | archivos, copiar resultados y emojis, archivos recientes |
 | PipeWire, BlueZ | volumen y Bluetooth |
 | Tipografía **SF Pro** | textos (ver la nota de abajo) |
 | [Material Symbols Rounded](https://github.com/google/material-design-icons) (fuente variable) | iconos |
@@ -98,7 +112,7 @@ Compila niri 26.04 con los archivos de [TattvaOrg/Lniri](https://github.com/Tatt
 | Atajo | Qué hace |
 |---|---|
 | `Super+.` | abrir/cerrar los ajustes |
-| `Super+D` | menú de apps |
+| `Super+D` | lanzador |
 | `Super+T` | terminal |
 | `Super+Q` | cerrar ventana |
 | `Super+O` | vista general |
@@ -126,7 +140,7 @@ El resto son los atajos de fábrica de niri.
 
 - [niri](https://github.com/niri-wm/niri) y [Lniri](https://github.com/TattvaOrg/Lniri) por el compositor y el *liquid glass*.
 - [Quickshell](https://quickshell.org).
-- [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [fuzzel](https://codeberg.org/dnkl/fuzzel).
+- [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww).
 - Iconos: Material Symbols (Google) y WhiteSur.
 
 ---

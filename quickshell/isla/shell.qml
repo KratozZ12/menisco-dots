@@ -11,6 +11,17 @@ ShellRoot {
     id: raiz
     property bool islaVisible: true
     property string emocion: "normal"   // normal, feliz, escucha, pensar, emocion, confuso
+    property bool lanzadorAbierto: false
+    property real origenLanzadorX: 0      // del boton de cuadricula del dock al centro de la pantalla
+
+    function abrirAjustes() { lanzadorAbierto = false; if (!ajustes.abierta) monitorActivo.running = true; }
+
+    // Super+D y el boton del dock llaman a esto.
+    IpcHandler {
+        target: "lanzador"
+        function toggle(): void { raiz.lanzadorAbierto = !raiz.lanzadorAbierto }
+    }
+    Lanzador { raiz: raiz }
 
     // Para probar: qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz
     IpcHandler {
@@ -45,7 +56,7 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        Dock { required property var modelData; screen: modelData }
+        Dock { required property var modelData; screen: modelData; shell: raiz }
     }
 
     // Uno solo: sin pantalla fija, niri lo muestra en el monitor que se esta usando.
@@ -105,13 +116,52 @@ ShellRoot {
             }
 
             // Asistente a la izquierda, donde antes estaba el reloj.
+            // Al abrir el lanzador, el asistente es "succionado": se estira hacia abajo, se encoge
+            // hasta desaparecer y reaparece en la barra de busqueda. Al cerrar, vuelve a brotar aqui.
             Asistente {
+                id: asistenteIsla
                 width: 40
                 height: 40
                 anchors.left: parent.left
                 anchors.leftMargin: win.hombro + 6
                 anchors.verticalCenter: parent.verticalCenter
                 emocion: raiz.emocion
+                transform: [
+                    Scale { id: succion; origin.x: 20; origin.y: 28 },
+                    Translate { id: caida }
+                ]
+
+                Connections {
+                    target: raiz
+                    function onLanzadorAbiertoChanged() {
+                        if (raiz.lanzadorAbierto) { volver.stop(); irse.restart(); }
+                        else { irse.stop(); volver.restart(); }
+                    }
+                }
+                SequentialAnimation {
+                    id: irse
+                    ParallelAnimation {
+                        NumberAnimation { target: succion; property: "xScale"; to: 0.85; duration: 90; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: succion; property: "yScale"; to: 1.35; duration: 90; easing.type: Easing.OutCubic }
+                        NumberAnimation { target: caida; property: "y"; to: 3; duration: 90; easing.type: Easing.OutCubic }
+                    }
+                    ParallelAnimation {
+                        NumberAnimation { target: succion; properties: "xScale,yScale"; to: 0; duration: 170; easing.type: Easing.InCubic }
+                        NumberAnimation { target: caida; property: "y"; to: 9; duration: 170; easing.type: Easing.InCubic }
+                    }
+                }
+                SequentialAnimation {
+                    id: volver
+                    PropertyAction { target: caida; property: "y"; value: 0 }
+                    PauseAnimation { duration: 180 }
+                    ParallelAnimation {
+                        NumberAnimation { target: succion; property: "xScale"; to: 1; duration: 460; easing.type: Easing.OutBack; easing.overshoot: 2 }
+                        SequentialAnimation {
+                            NumberAnimation { target: succion; property: "yScale"; to: 1.2; duration: 200; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: succion; property: "yScale"; to: 1; duration: 360; easing.type: Easing.OutBack; easing.overshoot: 2.5 }
+                        }
+                    }
+                }
             }
 
             // Visualizador de audio a la derecha, a la misma distancia del borde que el asistente.

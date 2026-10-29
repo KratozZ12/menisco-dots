@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Copia los dots a ~/.config. Si ya hay una config de niri, lniri, hokum o la carpeta
-# quickshell/isla, la mueve a <nombre>.antes-de-vino-dots y avisa.
+# quickshell/isla, la mueve a <nombre>.antes-de-menisco y avisa.
 set -euo pipefail
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 poner() {   # poner <origen> <destino>
     if [ -e "$2" ]; then
-        mv "$2" "$2.antes-de-vino-dots"
-        echo "Respaldo: $2 -> $2.antes-de-vino-dots"
+        mv "$2" "$2.antes-de-menisco"
+        echo "Respaldo: $2 -> $2.antes-de-menisco"
     fi
     mkdir -p "$(dirname "$2")"
     cp -r "$1" "$2"

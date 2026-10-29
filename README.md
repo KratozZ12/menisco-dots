@@ -1,6 +1,6 @@
-# Vino Dots
+# Menisco
 
-> El nombre es provisional.
+> El *menisco* es la curva que forma un líquido en el borde de su recipiente: lo mismo que dibuja el liquid glass en el borde del vidrio.
 
 Un escritorio para **niri** hecho a mano con **Quickshell**: una isla con reloj, un asistente animado y un visualizador de audio; un dock de vidrio; una ventana de ajustes; y un aviso de volumen de líquido. Todo en grises, blanco y vidrio, con tipografía SF Pro y animaciones con rebote suave.
 
@@ -70,12 +70,12 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 ## Instalación
 
 ```bash
-git clone https://github.com/KratozZ12/Vino-Dots
-cd Vino-Dots
+git clone https://github.com/KratozZ12/menisco-dots
+cd menisco-dots
 ./instalar.sh
 ```
 
-`instalar.sh` copia todo a `~/.config`. Si ya tenía una configuración de niri, Hokum o `quickshell/isla`, la renombra a `*.antes-de-vino-dots` y se lo dice.
+`instalar.sh` copia todo a `~/.config`. Si ya tenía una configuración de niri, Hokum o `quickshell/isla`, la renombra a `*.antes-de-menisco` y se lo dice.
 
 Después, revise en `~/.config/niri/config.kdl`:
 - los bloques `output` (nombres y posición de **sus** monitores);

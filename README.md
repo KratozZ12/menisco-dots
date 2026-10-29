@@ -128,3 +128,9 @@ El resto son los atajos de fábrica de niri.
 - [Quickshell](https://quickshell.org).
 - [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [fuzzel](https://codeberg.org/dnkl/fuzzel).
 - Iconos: Material Symbols (Google) y WhiteSur.
+
+---
+
+## Licencia
+
+[MIT](LICENSE). Lniri (que `lniri/compilar.sh` descarga y compila) tiene su propia licencia, GPL-3.0.

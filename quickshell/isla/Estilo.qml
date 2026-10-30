@@ -33,7 +33,7 @@ Singleton {
         botSub: "Pregúntame", reaccionNotif: true,
         botLuz: true, botChispas: true, botEnPaginas: true, succion: true,
         noMolestar: false,
-        vidrio: { refraccion: 70, aberracion: 95, desenfoque: 20, brillo: 35, dock: true, ventanas: true, notificaciones: false },
+        vidrio: { refraccion: 70, aberracion: 95, desenfoque: 20, brillo: 35, dock: true, ventanas: true },
         barra: { lado: "derecha", altura: "centro", ancho: 340, boton: true, borde: false, clicFuera: true,
                  secciones: [{ id: "rapidos", ver: true }, { id: "sonido", ver: true }, { id: "musica", ver: true },
                              { id: "calendario", ver: true }, { id: "energia", ver: true }],

@@ -25,14 +25,16 @@ PanelWindow {
     property var usos: ({})            // { idDesktop: veces abierta } para "Frecuentes"
     property var recientes: []         // [{ nombre, ruta, carpeta }]
     property var encontrados: []       // archivos que coinciden con la busqueda
-    property bool noMolestar: false
+    readonly property bool noMolestar: Estilo.valor("noMolestar")
     property string confirmar: ""      // accion que espera un segundo Enter (apagar, reiniciar)
 
     visible: abierta || panel.escala > 0.01
     anchors.bottom: true
-    margins.bottom: 100                 // encima del dock, con aire
-    implicitWidth: 500
-    implicitHeight: 560
+    // Ventana con holgura alrededor del panel: el rebote del brote no choca con sus bordes.
+    readonly property int holgura: 24
+    margins.bottom: 100 - holgura       // el panel queda donde estaba, encima del dock
+    implicitWidth: 500 + holgura * 2
+    implicitHeight: 560 + holgura
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -40,7 +42,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: abierta ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // Mascara con numeros, no con "item": el panel se anima con una transformacion de escala,
     // y con "item" la mascara se calculaba con el panel a escala 0 y los clics lo atravesaban.
-    mask: Region { x: 0; y: panel.y; width: panel.width; height: panel.height }
+    mask: Region { x: panel.x; y: panel.y; width: panel.width; height: panel.height }
 
     onAbiertaChanged: {
         if (abierta) {
@@ -122,11 +124,6 @@ PanelWindow {
         }
     }
 
-    Process {
-        running: true
-        command: ["hokum", "dnd", "--watch"]
-        stdout: SplitParser { onRead: data => lanz.noMolestar = data.trim() === "on" }
-    }
 
     readonly property var reproductor: Mpris.players.values.find(p => p.isPlaying) ?? Mpris.players.values[0] ?? null
     Timer {   // la posicion de MPRIS no avisa sola: se refresca mientras se ve
@@ -182,8 +179,8 @@ PanelWindow {
         { titulo: "Reiniciar", icono: "restart_alt", peligro: true, fn: () => ejecutar(["systemctl", "reboot"]) },
         { titulo: "Bloquear pantalla", icono: "lock", fn: () => ejecutar(["swaylock"]) },
         { titulo: "Cerrar sesión", icono: "logout", fn: () => ejecutar(["niri", "msg", "action", "quit"]) },
-        { titulo: "Bluetooth", icono: "bluetooth", interruptor: "bt", fn: () => { const a = Bluetooth.defaultAdapter; if (a) a.enabled = !a.enabled; } },
-        { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => ejecutar(["hokum", "dnd", "toggle"]) },
+        { titulo: "Bluetooth", icono: "bluetooth", interruptor: "bt", fn: () => { const a = Bluetooth.defaultAdapter; Estilo.bluetooth(a, !(a && a.enabled)); } },
+        { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => Estilo.poner("noMolestar", !lanz.noMolestar) },
         { titulo: "Captura de pantalla", icono: "screenshot_region", fn: () => ejecutar(["sh", "-c", "sleep 0.4; niri msg action screenshot"]) },
         { titulo: "Ajustes de Menisco", icono: "tune", fn: () => raiz.abrirAjustes() }
     ]
@@ -194,6 +191,15 @@ PanelWindow {
             for (const e of buscarEmojis(sinAcentos(tl.slice(1)), 40)) r.push({ seccion: "Emojis", tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
             return marcarSecciones(r);
         }
+        // "temporizador 5 min", "timer 30 s", "temporizador 1 h"
+        const tm = tl.match(/^(?:temporizador|timer|alarma)\s+(\d+(?:[.,]\d+)?)\s*(s|seg|segundos?|m|min|minutos?|h|horas?)?$/);
+        if (tm) {
+            const n = parseFloat(tm[1].replace(",", ".")), u = (tm[2] || "min")[0];
+            const seg = Math.round(n * (u === "s" ? 1 : u === "h" ? 3600 : 60));
+            r.push({ seccion: "Temporizador", tipo: "timer", titulo: "Iniciar temporizador de " + tm[1] + " " + ({ s: "s", m: "min", h: "h" })[u], sub: "Cuenta regresiva en la isla", segundos: seg });
+        }
+        if (raiz.temporizadorRestante > 0 && /^(cancelar|parar|detener|temporizador|timer)/.test(tl))
+            r.push({ seccion: "Temporizador", tipo: "timerFin", titulo: "Cancelar temporizador", sub: "Quedan " + Math.ceil(raiz.temporizadorRestante / 60) + " min" });
         const c = calcular(t);
         if (c !== null) r.push({ seccion: "Calculadora", tipo: "calc", titulo: c.toLocaleString(Qt.locale("es_MX"), "f", Number.isInteger(c) ? 0 : Math.min(6, String(c).split(".")[1].length)), sub: t + " =", valor: String(c) });
         for (const x of buscarApps(sinAcentos(t)).slice(0, 5))
@@ -227,6 +233,8 @@ PanelWindow {
         switch (x.tipo) {
         case "app": abrirApp(x.entrada); return;
         case "calc": ejecutar(["wl-copy", x.valor]); cerrar(); return;
+        case "timer": raiz.iniciarTemporizador(x.segundos); cerrar(); return;
+        case "timerFin": raiz.cancelarTemporizador(); cerrar(); return;
         case "emoji": ejecutar(["wl-copy", x.titulo]); cerrar(); return;
         case "archivo": ejecutar(["xdg-open", x.ruta]); cerrar(); return;
         case "web": ejecutar(["xdg-open", "https://duckduckgo.com/?q=" + encodeURIComponent(consulta.trim())]); cerrar(); return;
@@ -243,15 +251,15 @@ PanelWindow {
         id: panel
         // Escala 0..1 del brote; el origen esta en el boton del dock, debajo del panel.
         property real escala: 0
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-        height: Math.min(lanz.height, contenido.implicitHeight + barra.height + 34)
-        Behavior on height { enabled: lanz.abierta && panel.escala > 0.99; NumberAnimation { duration: 320; easing.type: Easing.BezierSpline; easing.bezierCurve: lanz.curvaIos } }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: lanz.holgura }
+        height: Math.min(lanz.height - lanz.holgura * 2, contenido.implicitHeight + barra.height + 34)
+        Behavior on height { enabled: lanz.abierta && panel.escala > 0.99; NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: lanz.curvaIos } }
         radius: 22
-        color: "#242424"
+        color: Estilo.fondo
         border.color: "#3a3a3a"
         border.width: 1
         clip: true
-        opacity: Math.min(1, escala * 3)
+        opacity: lanz.abierta ? Math.min(1, escala * 3) : escala
         transform: Scale {
             origin.x: panel.width / 2 + raiz.origenLanzadorX
             origin.y: panel.height + 40
@@ -262,8 +270,8 @@ PanelWindow {
         states: State { name: "abierto"; when: lanz.abierta; PropertyChanges { target: panel; escala: 1 } }
         transitions: [
             // Rebote corto (~4 %): con el rebote general de Menisco el panel se pasaba de largo y se veia brusco.
-            Transition { to: "abierto"; NumberAnimation { property: "escala"; duration: 520; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 1.18, 0.4, 1, 1, 1] } },
-            Transition { from: "abierto"; NumberAnimation { property: "escala"; duration: 240; easing.type: Easing.InCubic } }
+            Transition { to: "abierto"; NumberAnimation { property: "escala"; duration: Estilo.t(520); easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 1.18, 0.4, 1, 1, 1] } },
+            Transition { from: "abierto"; NumberAnimation { property: "escala"; duration: Estilo.t(280); easing.type: Easing.OutCubic } }
         ]
 
         Keys.onEscapePressed: lanz.cerrar()
@@ -301,7 +309,7 @@ PanelWindow {
                             Rectangle {
                                 height: 3; radius: 2; color: "#fff"
                                 width: lanz.reproductor && lanz.reproductor.length > 0 ? parent.width * Math.min(1, lanz.reproductor.position / lanz.reproductor.length) : 0
-                                Behavior on width { NumberAnimation { duration: 900 } }
+                                Behavior on width { NumberAnimation { duration: Estilo.t(900) } }
                             }
                         }
                     }
@@ -331,7 +339,7 @@ PanelWindow {
                                     width: 42; height: 42; sourceSize: Qt.size(48, 48)
                                     source: Quickshell.iconPath(modelData.icon, "application-x-executable")
                                     scale: zonaF.pressed ? 0.88 : (zonaF.containsMouse ? 1.08 : 1)
-                                    Behavior on scale { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                                    Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
                                 }
                                 Texto { anchors.horizontalCenter: parent.horizontalCenter; width: inicio.width / 6 - 6; horizontalAlignment: Text.AlignHCenter; text: modelData.name; font.pixelSize: 11; color: "#ddd"; elide: Text.ElideRight }
                             }
@@ -363,7 +371,7 @@ PanelWindow {
                             required property var modelData
                             width: Math.min(inicio.width, chip.implicitWidth + 36); height: 26; radius: 9
                             color: zonaR.containsMouse ? "#383838" : "#2e2e2e"
-                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                             Simbolo { x: 8; anchors.verticalCenter: parent.verticalCenter; text: "description"; font.pixelSize: 14; color: "#aaa" }
                             Texto { id: chip; x: 28; width: parent.width - 36; anchors.verticalCenter: parent.verticalCenter; text: modelData.nombre; font.pixelSize: 11; color: "#ddd"; elide: Text.ElideMiddle }
                             MouseArea { id: zonaR; anchors.fill: parent; hoverEnabled: true; onClicked: { lanz.ejecutar(["xdg-open", modelData.ruta]); lanz.cerrar(); } }
@@ -396,7 +404,7 @@ PanelWindow {
                     grande: modelData.tipo === "calc"
                     emoji: modelData.tipo === "emoji"
                     iconoApp: modelData.tipo === "app" ? modelData.entrada.icon : ""
-                    simbolo: ({ accion: modelData.accion ? modelData.accion.icono : "", archivo: "description", web: "travel_explore", calc: "calculate" })[modelData.tipo] || ""
+                    simbolo: ({ accion: modelData.accion ? modelData.accion.icono : "", archivo: "description", web: "travel_explore", calc: "calculate", timer: "timer", timerFin: "timer_off" })[modelData.tipo] || ""
                     rojo: modelData.tipo === "accion" && !!modelData.accion.rojo
                     titulo: lanz.confirmar === modelData.titulo ? modelData.titulo + ": pulse Enter otra vez" : modelData.titulo
                     sub: modelData.sub
@@ -431,17 +439,17 @@ PanelWindow {
             SequentialAnimation {
                 id: llegada
                 PropertyAction { target: llegadaEsc; properties: "xScale,yScale"; value: 0 }
-                PauseAnimation { duration: 300 }
+                PauseAnimation { duration: Estilo.t(300) }
                 ParallelAnimation {
-                    NumberAnimation { target: llegadaEsc; property: "xScale"; to: 1; duration: 520; easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+                    NumberAnimation { target: llegadaEsc; property: "xScale"; to: 1; duration: Estilo.t(520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.2) }
                     SequentialAnimation {
-                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1.25; duration: 220; easing.type: Easing.OutCubic }
-                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 2.5 }
+                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1.25; duration: Estilo.t(220); easing.type: Easing.OutCubic }
+                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1; duration: Estilo.t(380); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.5) }
                     }
                 }
                 ScriptAction { script: asistente.parpadear() }
             }
-            NumberAnimation { id: salida; target: llegadaEsc; properties: "xScale,yScale"; to: 0; duration: 200; easing.type: Easing.InBack; easing.overshoot: 1.6 }
+            NumberAnimation { id: salida; target: llegadaEsc; properties: "xScale,yScale"; to: 0; duration: Estilo.t(200); easing.type: Easing.InBack; easing.overshoot: Estilo.o(1.6) }
             Connections {
                 target: lanz
                 function onAbiertaChanged() { if (lanz.abierta) { salida.stop(); llegada.restart(); } else { llegada.stop(); salida.restart(); } }
@@ -452,7 +460,7 @@ PanelWindow {
                 anchors { left: parent.left; leftMargin: 46; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 color: "#ffffff"
                 selectionColor: "#555"
-                font { family: "SF Pro Text"; pixelSize: 13; letterSpacing: -0.08 }
+                font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
                 clip: true
                 onTextChanged: { lanz.consulta = text; lanz.confirmar = ""; lanz.elegido = 0; esperaArchivos.restart(); }
                 Keys.onEscapePressed: lanz.cerrar()
@@ -474,7 +482,7 @@ PanelWindow {
     // ---- Piezas ----
     component Texto: Text {
         color: "#eee"
-        font { family: "SF Pro Text"; pixelSize: 13; letterSpacing: -0.08 }
+        font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
     }
     component Titulo: Texto {
         color: "#888"
@@ -492,10 +500,10 @@ PanelWindow {
         property bool lleno: false
         signal pulsado()
         width: 30; height: 30; radius: 15
-        color: lleno ? "#fff" : (zonaB.containsMouse ? "#333" : "transparent")
-        Behavior on color { ColorAnimation { duration: 120 } }
+        color: lleno ? "#fff" : (zonaB.containsMouse ? "#333" : "#00333333")
+        Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
         scale: zonaB.pressed ? 0.88 : 1
-        Behavior on scale { NumberAnimation { duration: zonaB.pressed ? 80 : 380; easing.type: zonaB.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: 2.4 } }
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zonaB.pressed ? 80 : 380); easing.type: zonaB.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
         Simbolo { anchors.centerIn: parent; text: boton.icono; color: boton.lleno ? "#111" : "#ddd"; font.pixelSize: 20 }
         MouseArea { id: zonaB; anchors.fill: parent; hoverEnabled: true; onClicked: boton.pulsado() }
     }
@@ -516,8 +524,8 @@ PanelWindow {
 
         height: grande ? 74 : (sub ? 44 : 36)
         radius: 10
-        color: marcada || zonaFila.containsMouse ? "#333" : "transparent"
-        Behavior on color { ColorAnimation { duration: 110 } }
+        color: marcada || zonaFila.containsMouse ? "#333" : "#00333333"
+        Behavior on color { ColorAnimation { duration: Estilo.t(110) } }
 
         Item {
             id: icono
@@ -556,11 +564,11 @@ PanelWindow {
             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
             width: 34; height: 20; radius: 10
             color: fila.interruptor ? "#fff" : "#444"
-            Behavior on color { ColorAnimation { duration: 200 } }
+            Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
             Rectangle {
-                width: 16; height: 16; radius: 8; color: "#242424"; y: 2
+                width: 16; height: 16; radius: 8; color: Estilo.fondo; y: 2
                 x: fila.interruptor ? 16 : 2
-                Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
+                Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
             }
         }
         MouseArea { id: zonaFila; anchors.fill: parent; hoverEnabled: true; onClicked: fila.pulsada(); onEntered: fila.encima() }

@@ -1,8 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.Mpris
+import Quickshell.Services.Notifications
 
 // Isla dinamica de adorno, pegada al borde de arriba como una muesca del monitor.
 // Abajo esquinas redondeadas; arriba, curvas hacia afuera que la funden con el borde.
@@ -12,9 +15,112 @@ ShellRoot {
     property bool islaVisible: true
     property string emocion: "normal"   // normal, feliz, escucha, pensar, emocion, confuso
     property bool lanzadorAbierto: false
+    property bool barraAbierta: false
+    // Para piezas creadas dentro de Variants: ahi "raiz: raiz" se enlaza consigo misma.
+    readonly property var raizShell: raiz
+    // ---- Notificaciones: las recibe Menisco y las muestra la isla (reemplaza a Hokum) ----
+    signal notificacion(var n)
+    NotificationServer {
+        keepOnReload: false
+        bodySupported: true
+        imageSupported: true
+        actionsSupported: true
+        onNotification: n => {
+            n.tracked = true;
+            // La captura ya tiene su propio aviso en la isla (con miniatura): el de niri sobra.
+            if (n.appName === "niri" && /screenshot/i.test(n.summary)) { n.dismiss(); return; }
+            // No molestar: solo pasan las criticas.
+            if (Estilo.valor("noMolestar") && n.urgency !== NotificationUrgency.Critical) { n.dismiss(); return; }
+            const accion = n.actions.find(a => a.identifier === "default") ?? n.actions[0] ?? null;
+            raiz.notificacion({
+                tipo: "notificacion", app: n.appName || "Aviso", resumen: n.summary, cuerpo: n.body,
+                imagen: n.image || (n.appIcon ? Quickshell.iconPath(n.appIcon, true) : ""),
+                ms: n.urgency === NotificationUrgency.Critical ? 9000 : 5000,
+                abrir: () => { if (accion) accion.invoke(); n.dismiss(); }
+            });
+            caducar.createObject(raiz, { n: n });
+        }
+    }
+    // Las notificaciones se descartan solas a los 6 s (o cuando la app diga).
+    Component { id: caducar; Timer { property var n; interval: n && n.expireTimeout > 0 ? n.expireTimeout : 6000; running: true; onTriggered: { if (n) n.expire(); destroy(); } } }
+
+    // ---- Modo juego: rendimiento maximo, No molestar, sin dock y sin suspender ----
+    // Al apagarlo, todo vuelve a como estaba antes de encenderlo.
+    property bool modoJuego: false
+    property var antesDeJugar: null
+    function alternarModoJuego() {
+        if (!modoJuego) {
+            antesDeJugar = { perfil: perfilActual, dnd: Estilo.valor("noMolestar"), cafe: ajustes.cafe };
+            Quickshell.execDetached(["powerprofilesctl", "set", "performance"]);
+            Estilo.poner("noMolestar", true);
+            ajustes.cafe = true;
+            modoJuego = true;
+        } else {
+            const a = antesDeJugar || { perfil: "balanced", dnd: false, cafe: false };
+            Quickshell.execDetached(["powerprofilesctl", "set", a.perfil]);
+            Estilo.poner("noMolestar", a.dnd);
+            ajustes.cafe = a.cafe;
+            modoJuego = false;
+        }
+    }
+    property string perfilActual: "balanced"
+    Process { running: true; command: ["powerprofilesctl", "get"]; stdout: StdioCollector { onStreamFinished: raiz.perfilActual = text.trim() } }
+
+    // ---- Temporizador (se inicia desde el lanzador: "temporizador 5 min") ----
+    signal temporizadorTerminado()
+    property real temporizadorFin: 0
+    property int temporizadorRestante: 0
+    function iniciarTemporizador(segundos) { temporizadorFin = Date.now() + segundos * 1000; temporizadorRestante = segundos; }
+    function cancelarTemporizador() { temporizadorFin = 0; temporizadorRestante = 0; }
+    Timer {
+        interval: 250; repeat: true; running: raiz.temporizadorFin > 0
+        onTriggered: {
+            raiz.temporizadorRestante = Math.max(0, Math.ceil((raiz.temporizadorFin - Date.now()) / 1000));
+            if (raiz.temporizadorRestante === 0) {
+                raiz.temporizadorFin = 0;
+                raiz.temporizadorTerminado();
+                Quickshell.execDetached(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"]);
+            }
+        }
+    }
+
+    property bool grabando: false
+    property int segundosGrabando: 0
+    property string archivoGrabacion: ""
+
+    // Grabar pantalla con wf-recorder, con sonido. Con dos monitores hay que decirle cual
+    // (si no, se queda esperando): se graba el que tiene el foco.
+    function alternarGrabacion() {
+        if (grabando) { grabador.signal(2); return; }   // SIGINT: wf-recorder cierra el archivo bien
+        monitorGrabar.running = true;
+    }
+    Process {
+        id: monitorGrabar
+        command: ["niri", "msg", "-j", "focused-output"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let salida = "";
+                try { salida = JSON.parse(text)?.name ?? ""; } catch (e) {}
+                const ahora = new Date();
+                raiz.archivoGrabacion = Quickshell.env("HOME") + "/Vídeos/Grabación " + Qt.formatDateTime(ahora, "yyyy-MM-dd HH-mm-ss") + ".mp4";
+                grabador.command = ["wf-recorder", "-a"].concat(salida ? ["-o", salida] : []).concat(["-f", raiz.archivoGrabacion]);
+                raiz.segundosGrabando = 0;
+                grabador.running = true;
+            }
+        }
+    }
+    Process {
+        id: grabador
+        onRunningChanged: {
+            raiz.grabando = running;
+            if (!running && raiz.archivoGrabacion)
+                Quickshell.execDetached(["notify-send", "-a", "Menisco", "Grabación guardada", raiz.archivoGrabacion]);
+        }
+    }
+    Timer { interval: 1000; repeat: true; running: raiz.grabando; onTriggered: raiz.segundosGrabando++ }
     property real origenLanzadorX: 0      // del boton de cuadricula del dock al centro de la pantalla
 
-    function abrirAjustes() { lanzadorAbierto = false; if (!ajustes.abierta) monitorActivo.running = true; }
+    function abrirAjustes() { lanzadorAbierto = false; barraAbierta = false; if (!ajustes.abierta) monitorActivo.running = true; }
 
     // Super+D y el boton del dock llaman a esto.
     IpcHandler {
@@ -22,6 +128,15 @@ ShellRoot {
         function toggle(): void { raiz.lanzadorAbierto = !raiz.lanzadorAbierto }
     }
     Lanzador { raiz: raiz }
+
+    // Super+A abre y cierra la barra lateral (centro de control).
+    IpcHandler {
+        target: "barra"
+        function toggle(): void { raiz.barraAbierta = !raiz.barraAbierta }
+    }
+    Barra { raiz: raiz; ajustes: ajustes }
+    BotonBarra { raiz: raiz }
+    BordeBarra { raiz: raiz }
 
     // Para probar: qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz
     IpcHandler {
@@ -54,9 +169,42 @@ ShellRoot {
 
     Ajustes { id: ajustes; raiz: raiz }
 
+    // Sombra detras de los ajustes: grande y suave, sin desenfoque, para que la ventana se
+    // despegue de lo de atras. Sigue la misma entrada que el panel (crece y sube con rebote).
+    // La capa cubre cada monitor: un clic fuera de la ventana la cierra.
     Variants {
         model: Quickshell.screens
-        Dock { required property var modelData; screen: modelData; shell: raiz }
+        PanelWindow {
+            id: capaSombra
+            required property var modelData
+            screen: modelData
+            anchors { top: true; bottom: true; left: true; right: true }
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.namespace: "ajustes-sombra"
+            visible: ajustes.visible
+            color: "transparent"
+            RectangularShadow {
+                visible: capaSombra.modelData === ajustes.screen
+                anchors.centerIn: parent
+                width: 760; height: 556                 // el panel de Ajustes.qml
+                radius: 16
+                offset.y: 20
+                blur: 70; spread: 20
+                color: "#cc000000"
+                opacity: ajustes.abierta ? 1 : 0
+                scale: ajustes.abierta ? 1 : 0.9
+                transform: Translate { y: ajustes.abierta ? 0 : 20; Behavior on y { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 560 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } } }
+                Behavior on opacity { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 260 : 160); easing.type: ajustes.abierta ? Easing.OutCubic : Easing.InCubic } }
+                Behavior on scale { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 580 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } }
+            }
+            MouseArea { anchors.fill: parent; onClicked: ajustes.cerrar() }
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        Dock { required property var modelData; screen: modelData; shell: raiz; visible: !raiz.modoJuego }
     }
 
     // Uno solo: sin pantalla fija, niri lo muestra en el monitor que se esta usando.
@@ -64,124 +212,6 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-
-        PanelWindow {
-            id: win
-            required property var modelData
-            screen: modelData
-            visible: raiz.islaVisible
-
-            readonly property real ancho: 360
-            readonly property real alto: 42
-            readonly property real esquina: 20               // radio de las esquinas de abajo
-            readonly property real hombro: esquina * 0.9      // curva que la funde con el borde de arriba
-
-            anchors.top: true
-            implicitWidth: ancho + hombro * 2
-            implicitHeight: alto
-            color: "transparent"
-            WlrLayershell.namespace: "isla"
-
-            // Forma "squircle": curvas continuas (Bezier) en vez de arcos de circulo,
-            // como las esquinas del hardware de Apple. k = 0.62 da la tension de la curva.
-            Shape {
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    id: p
-                    readonly property real r: win.esquina
-                    readonly property real x0: win.hombro
-                    readonly property real x1: win.hombro + win.ancho
-                    readonly property real h: win.alto
-                    readonly property real k: 0.62
-
-                    fillColor: "#242424"   // mismo gris que las tarjetas de Hokum (tema capsule)
-                    strokeWidth: -1
-                    startX: 0; startY: 0
-
-                    PathCubic { control1X: p.x0 - p.r * 0.25; control1Y: 0; control2X: p.x0; control2Y: p.r * 0.15; x: p.x0; y: p.r * 0.9 }
-                    PathLine { x: p.x0; y: p.h - p.r }
-                    PathCubic { control1X: p.x0; control1Y: p.h - p.r * (1 - p.k); control2X: p.x0 + p.r * (1 - p.k); control2Y: p.h; x: p.x0 + p.r; y: p.h }
-                    PathLine { x: p.x1 - p.r; y: p.h }
-                    PathCubic { control1X: p.x1 - p.r * (1 - p.k); control1Y: p.h; control2X: p.x1; control2Y: p.h - p.r * (1 - p.k); x: p.x1; y: p.h - p.r }
-                    PathLine { x: p.x1; y: p.r * 0.9 }
-                    PathCubic { control1X: p.x1; control1Y: p.r * 0.15; control2X: p.x1 + p.r * 0.25; control2Y: 0; x: p.x1 + win.hombro; y: 0 }
-                }
-            }
-            // Reloj en SF Pro Text Semibold, como el de la barra de estado del iPhone.
-            SystemClock {
-                id: reloj
-                precision: SystemClock.Minutes
-            }
-
-            // Asistente a la izquierda, donde antes estaba el reloj.
-            // Al abrir el lanzador, el asistente es "succionado": se estira hacia abajo, se encoge
-            // hasta desaparecer y reaparece en la barra de busqueda. Al cerrar, vuelve a brotar aqui.
-            Asistente {
-                id: asistenteIsla
-                width: 40
-                height: 40
-                anchors.left: parent.left
-                anchors.leftMargin: win.hombro + 6
-                anchors.verticalCenter: parent.verticalCenter
-                emocion: raiz.emocion
-                transform: [
-                    Scale { id: succion; origin.x: 20; origin.y: 28 },
-                    Translate { id: caida }
-                ]
-
-                Connections {
-                    target: raiz
-                    function onLanzadorAbiertoChanged() {
-                        if (raiz.lanzadorAbierto) { volver.stop(); irse.restart(); }
-                        else { irse.stop(); volver.restart(); }
-                    }
-                }
-                SequentialAnimation {
-                    id: irse
-                    ParallelAnimation {
-                        NumberAnimation { target: succion; property: "xScale"; to: 0.85; duration: 90; easing.type: Easing.OutCubic }
-                        NumberAnimation { target: succion; property: "yScale"; to: 1.35; duration: 90; easing.type: Easing.OutCubic }
-                        NumberAnimation { target: caida; property: "y"; to: 3; duration: 90; easing.type: Easing.OutCubic }
-                    }
-                    ParallelAnimation {
-                        NumberAnimation { target: succion; properties: "xScale,yScale"; to: 0; duration: 170; easing.type: Easing.InCubic }
-                        NumberAnimation { target: caida; property: "y"; to: 9; duration: 170; easing.type: Easing.InCubic }
-                    }
-                }
-                SequentialAnimation {
-                    id: volver
-                    PropertyAction { target: caida; property: "y"; value: 0 }
-                    PauseAnimation { duration: 180 }
-                    ParallelAnimation {
-                        NumberAnimation { target: succion; property: "xScale"; to: 1; duration: 460; easing.type: Easing.OutBack; easing.overshoot: 2 }
-                        SequentialAnimation {
-                            NumberAnimation { target: succion; property: "yScale"; to: 1.2; duration: 200; easing.type: Easing.OutCubic }
-                            NumberAnimation { target: succion; property: "yScale"; to: 1; duration: 360; easing.type: Easing.OutBack; easing.overshoot: 2.5 }
-                        }
-                    }
-                }
-            }
-
-            // Visualizador de audio a la derecha, a la misma distancia del borde que el asistente.
-            Visualizador {
-                anchors.right: parent.right
-                anchors.rightMargin: win.hombro + 18
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Text {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 1
-                text: Qt.formatTime(reloj.date, "h:mm")
-                color: "#ffffff"
-                font.family: "SF Pro Text"
-                font.weight: Font.DemiBold
-                font.pixelSize: 19
-                font.letterSpacing: -0.45
-                font.features: { "tnum": 1 }   // cifras de ancho fijo: no baila al cambiar
-            }
-        }
+        Isla { required property var modelData; screen: modelData; raiz: raizShell }
     }
 }

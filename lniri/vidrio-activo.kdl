@@ -1,21 +1,20 @@
-// ============================================================================
-// Liquid glass (solo Lniri; el niri normal no entiende este bloque).
-// Se ve unicamente detras de lo que sea transparente: terminales con
-// opacidad, notificaciones, piezas de Quickshell. Una ventana opaca lo tapa.
-// ============================================================================
+// Generado por los ajustes de Menisco (menisco-niri.py vidrio). Se reescribe al cambiarlos.
+
 window-rule {
     background-effect {
         blur true
         xray true
         liquid-glass {
             mode "kwin-glass"
-            refraction-strength 4.0
-            power-factor 3.0
-            refraction-bevel-intensity 10.0
-            refraction-offset-strength 8.0
-            edge-thickness 0.18
-            fringing 0.45
-            glow-weight 0.20
+            refraction-strength 4.2
+            power-factor 2.4
+            refraction-bevel-intensity 16.6
+            refraction-offset-strength 11.8
+            edge-thickness 0.3
+            fringing 0.95
+            glow-weight 0.28
+            edge-lighting 0.52
+            saturation 1.3
         }
     }
 }
@@ -24,19 +23,18 @@ layer-rule {
     match namespace="^dock$"
     geometry-corner-radius 22
     background-effect {
-        blur true          // poco: la fuerza del desenfoque la pone el bloque blur de niri
+        blur true
         xray true
         liquid-glass {
             mode "kwin-glass"
-            // Mas curva y mas refraccion en el borde, con separacion de colores marcada.
-            refraction-strength 6.0
+            refraction-strength 4.2
             power-factor 2.4
-            refraction-bevel-intensity 22.0
-            refraction-offset-strength 16.0
-            edge-thickness 0.34
+            refraction-bevel-intensity 16.6
+            refraction-offset-strength 11.8
+            edge-thickness 0.3
             fringing 0.95
-            glow-weight 0.35
-            edge-lighting 1.0
+            glow-weight 0.28
+            edge-lighting 0.52
             saturation 1.3
         }
     }

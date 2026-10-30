@@ -100,7 +100,7 @@ PanelWindow {
         anchors.fill: parent
         radius: 22
         color: Qt.rgba(1, 1, 1, sobre.hovered ? 0.06 : 0.03)   // casi nada: que se vea la refraccion
-        Behavior on color { ColorAnimation { duration: 260 } }
+        Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
         border.color: Qt.rgba(1, 1, 1, 0.18)
         border.width: 1
 
@@ -110,8 +110,8 @@ PanelWindow {
         Component.onCompleted: aparecer.start()
         ParallelAnimation {
             id: aparecer
-            NumberAnimation { target: fondo; property: "opacity"; to: 1; duration: 420; easing.type: Easing.OutCubic }
-            NumberAnimation { target: subida; property: "y"; to: 0; duration: 820; easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaRebote }
+            NumberAnimation { target: fondo; property: "opacity"; to: 1; duration: Estilo.t(420); easing.type: Easing.OutCubic }
+            NumberAnimation { target: subida; property: "y"; to: 0; duration: Estilo.t(820); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote }
         }
 
         HoverHandler { id: sobre }
@@ -130,19 +130,19 @@ PanelWindow {
                 height: dock.icono
                 // El ancho se anima: la capa (y su vidrio) crece o se encoge con suavidad.
                 width: Math.max(0, contentWidth)
-                Behavior on width { NumberAnimation { duration: 460; easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaIos } }
+                Behavior on width { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaIos } }
                 model: modelo
 
                 add: Transition {
-                    NumberAnimation { property: "scale"; from: 0; to: 1; duration: 560; easing.type: Easing.OutBack; easing.overshoot: 1.8 }
-                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 260 }
+                    NumberAnimation { property: "scale"; from: 0; to: 1; duration: Estilo.t(560); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.8) }
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Estilo.t(260) }
                 }
                 remove: Transition {
-                    NumberAnimation { property: "scale"; to: 0; duration: 260; easing.type: Easing.InCubic }
-                    NumberAnimation { property: "opacity"; to: 0; duration: 220 }
+                    NumberAnimation { property: "scale"; to: 0; duration: Estilo.t(260); easing.type: Easing.InCubic }
+                    NumberAnimation { property: "opacity"; to: 0; duration: Estilo.t(220) }
                 }
                 displaced: Transition {
-                    NumberAnimation { property: "x"; duration: 460; easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaIos }
+                    NumberAnimation { property: "x"; duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaIos }
                 }
 
                 delegate: Item {
@@ -170,9 +170,9 @@ PanelWindow {
 
                         property real lupa: 1 + dock.lupaMax * app.f
                         // Rebote suave al crecer y al volver. (SpringAnimation aqui dejaba la lupa congelada.)
-                        Behavior on lupa { NumberAnimation { duration: sobre.hovered ? 260 : 520; easing.type: Easing.OutBack; easing.overshoot: sobre.hovered ? 1.4 : 1.8 } }
+                        Behavior on lupa { NumberAnimation { duration: Estilo.t(sobre.hovered ? 260 : 520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(sobre.hovered ? 1.4 : 1.8) } }
                         property real hundir: zona.pressed ? 0.88 : 1
-                        Behavior on hundir { NumberAnimation { duration: zona.pressed ? 90 : 460; easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: 2.6 } }
+                        Behavior on hundir { NumberAnimation { duration: Estilo.t(zona.pressed ? 90 : 460); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
                         scale: lupa * hundir
                     }
 
@@ -183,8 +183,8 @@ PanelWindow {
                         anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 3 }
                         opacity: app.ventanas.length > 0 ? 0.9 : 0
                         scale: app.ventanas.length > 0 ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
-                        Behavior on scale { NumberAnimation { duration: 420; easing.type: Easing.OutBack; easing.overshoot: 3 } }
+                        Behavior on opacity { NumberAnimation { duration: Estilo.t(300) } }
+                        Behavior on scale { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(3) } }
                     }
 
                     MouseArea {
@@ -223,9 +223,9 @@ PanelWindow {
                 height: dock.icono
                 radius: 12
                 color: Qt.rgba(1, 1, 1, zonaMenu.pressed || (dock.shell && dock.shell.lanzadorAbierto) ? 0.36 : zonaMenu.containsMouse ? 0.28 : 0.16)
-                Behavior on color { ColorAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: Estilo.t(200); easing.type: Easing.OutCubic } }
                 scale: zonaMenu.pressed ? 0.88 : 1
-                Behavior on scale { NumberAnimation { duration: zonaMenu.pressed ? 90 : 460; easing.type: zonaMenu.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: 2.6 } }
+                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaMenu.pressed ? 90 : 460); easing.type: zonaMenu.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
 
                 Text {
                     anchors.centerIn: parent
@@ -279,7 +279,7 @@ PanelWindow {
             id: caja
             anchors.fill: parent
             radius: 14
-            color: "#242424"
+            color: Estilo.fondo
             border.color: "#3a3a3a"
             border.width: 1
             transformOrigin: Item.Bottom
@@ -287,8 +287,8 @@ PanelWindow {
             // Brota desde el icono: crece desde 0.85 con rebote suave y fundido.
             ParallelAnimation {
                 id: entrada
-                NumberAnimation { target: caja; property: "scale"; from: 0.85; to: 1; duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: dock.curvaRebote }
-                NumberAnimation { target: caja; property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                NumberAnimation { target: caja; property: "scale"; from: 0.85; to: 1; duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote }
+                NumberAnimation { target: caja; property: "opacity"; from: 0; to: 1; duration: Estilo.t(200); easing.type: Easing.OutCubic }
             }
 
             Column {
@@ -302,7 +302,7 @@ PanelWindow {
                     text: menu.app && menu.app.entrada ? menu.app.entrada.name : (menu.app ? menu.app.clave : "")
                     color: "#888"
                     elide: Text.ElideRight
-                    font { family: "SF Pro Text"; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
+                    font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
                 }
 
                 Repeater {
@@ -312,10 +312,10 @@ PanelWindow {
                         width: columna.width
                         height: 32
                         radius: 9
-                        color: opcion.containsMouse ? "#333" : "transparent"
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        color: opcion.containsMouse ? "#333" : "#00333333"
+                        Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                         scale: opcion.pressed ? 0.96 : 1
-                        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: Estilo.t(140); easing.type: Easing.OutCubic } }
 
                         Text {
                             id: iconoOpcion
@@ -330,7 +330,7 @@ PanelWindow {
                             anchors { left: iconoOpcion.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
                             text: modelData.texto
                             color: modelData.id === "cerrar" ? "#ff6b6b" : "#eee"
-                            font { family: "SF Pro Text"; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
+                            font { family: Estilo.letra; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
                         }
                         MouseArea { id: opcion; anchors.fill: parent; hoverEnabled: true; onClicked: menu.elegir(modelData.id) }
                     }

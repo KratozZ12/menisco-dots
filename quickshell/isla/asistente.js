@@ -2,54 +2,11 @@
 // ojos proyectados sobre una esfera en 3D, mirada con saltos rapidos y parpadeos sueltos.
 // Sin ".pragma library": cada isla (una por monitor) tiene su propio estado.
 
-var N = 160;
+.import "formas.js" as Formas
 
+var N = Formas.N;
 function len(x, y) { return Math.sqrt(x * x + y * y); }
-function smin(a, b, k) { var h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; }
-function circ(x, y, cx, cy, r) { return len(x - cx, y - cy) - r; }
 function rotp(x, y, a) { return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]; }
-function seg(x, y, ax, ay, bx, by, r) {
-    var px = x - ax, py = y - ay, dx = bx - ax, dy = by - ay;
-    var h = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy)));
-    return len(px - dx * h, py - dy * h) - r;
-}
-function tri(x, y) {
-    var v = [[0, 0.78], [-0.78, -0.6], [0.78, -0.6]], d = 1e9, s = 1;
-    for (var i = 0, j = 2; i < 3; j = i, i++) {
-        var ex = v[j][0] - v[i][0], ey = v[j][1] - v[i][1], wx = x - v[i][0], wy = y - v[i][1];
-        var h = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey)));
-        d = Math.min(d, len(wx - ex * h, wy - ey * h));
-        var c1 = y >= v[i][1], c2 = y < v[j][1], c3 = ex * wy > ey * wx;
-        if ((c1 && c2 && c3) || (!c1 && !c2 && !c3)) s = -s;
-    }
-    return s * d - 0.24;
-}
-function union(x, y, cs, r, k) {
-    var d = 1e9;
-    for (var i = 0; i < cs.length; i++) d = smin(d, circ(x, y, cs[i][0], cs[i][1], r !== undefined ? r : cs[i][2]), k);
-    return d;
-}
-
-// Formas como funciones de distancia: el borde es donde valen 0.
-var SDF = {
-    esfera: function (x, y) { return circ(x, y, 0, 0, 0.95); },
-    capsula: function (x, y) { var q = rotp(x, y, 0.03); return seg(q[0], q[1], -0.42, 0, 0.42, 0, 0.66); },
-    triangulo: function (x, y) { return tri(x, y + 0.05); },
-    gota: function (x, y) { return smin(circ(x, y, -0.03, -0.12, 0.82), circ(x, y, 0.26, 0.78, 0.12), 0.9); },
-    nube: function (x, y) { return union(x, y, [[-0.6, 0.02, 0.44], [-0.15, 0.42, 0.48], [0.42, 0.3, 0.4], [0.55, -0.25, 0.44], [0.0, -0.45, 0.46], [-0.45, -0.38, 0.38]], undefined, 0.18); },
-    trebol: function (x, y) { var q = rotp(x, y, 0.35); return union(q[0], q[1], [[0.42, 0.42], [-0.42, 0.42], [0.42, -0.42], [-0.42, -0.42]], 0.5, 0.2); }
-};
-
-// El contorno se guarda como un radio por angulo; asi dos formas se mezclan punto a punto.
-function radios(f) {
-    var r = [];
-    for (var i = 0; i < N; i++) {
-        var t = i / N * Math.PI * 2, cx = Math.cos(t), cy = Math.sin(t), lo = 0, hi = 2;
-        for (var j = 0; j < 30; j++) { var m = (lo + hi) / 2; if (f(cx * m, cy * m) < 0) lo = m; else hi = m; }
-        r.push(lo);
-    }
-    return r;
-}
 
 var EM = {
     normal:  { forma: "esfera",    color: [11, 11, 12],   ojo: { a: .105, b: .235, sep: .27, lat: .13,  tiltIzq: 0,    tiltDer: 0 } },
@@ -59,7 +16,9 @@ var EM = {
     emocion: { forma: "nube",      color: [255, 106, 0],  ojo: { a: .07,  b: .2,   sep: .24, lat: .26,  tiltIzq: 1.2,  tiltDer: 1.2 } },
     confuso: { forma: "trebol",    color: [148, 101, 58], ojo: { a: .07,  b: .18,  sep: .21, lat: .05,  tiltIzq: .5,   tiltDer: -.3 } }
 };
-for (var id in EM) EM[id].r = radios(SDF[EM[id].forma]);
+for (var id in EM) EM[id].r = Formas.radios(EM[id].forma);
+var BASE = {};
+for (var id2 in EM) BASE[id2] = { forma: EM[id2].forma, color: EM[id2].color };
 
 var de = EM.normal, a_ = EM.normal, p = 1, vp = 0, actual = "normal";
 var S = { yaw: 0, pitch: 0, vy: 0, vp: 0, ty: 0, tp: 0, parp: 1, rot: 0, vrot: 0, rapido: false };
@@ -78,6 +37,22 @@ function poner(nuevo) {
     parpadear(Date.now(), 1);
 }
 
+// Personalidad: multiplica las pausas entre gestos (tranquilo 1.8, normal 1, inquieto 0.5).
+var ritmo = 1;
+function ponerRitmo(r) { ritmo = r; proximoPlan = Math.min(proximoPlan, Date.now() + 2000 * r); }
+// Gota elegida en Ajustes: su forma y color son los de reposo ("normal"). Si cambia con las
+// emociones, las demas conservan su forma y color propios; si no, solo cambian los ojos.
+function personalizar(forma, color, cambia) {
+    de = { r: mezR(p), color: mezC(p), ojo: mezO(p) };
+    for (var id in EM) {
+        var propio = id === "normal" || !cambia;
+        EM[id].forma = propio ? forma : BASE[id].forma;
+        EM[id].color = propio ? color : BASE[id].color;
+        EM[id].r = Formas.radios(EM[id].forma);
+    }
+    a_ = EM[actual]; p = 0; vp = 0;
+}
+
 function azar(a, b) { return a + Math.random() * (b - a); }
 
 // Que hace la mirada a continuacion. Tranquilo casi siempre; los arranques vivos son ocasionales.
@@ -93,19 +68,19 @@ function planear(t) {
             var n = Math.floor(azar(1, 3));
             for (var i = 0; i < n; i++) { cola.push({ t: tt, y: base.y + azar(-0.12, 0.12), p: base.p + azar(-0.07, 0.07) }); tt += azar(160, 320); }
         }
-        return tt + azar(2500, 5500);
+        return tt + azar(2500, 5500) * ritmo;
     } else if (r < 0.6) {                // vistazo de reojo y regresa
         var lado = Math.random() < 0.5 ? -1 : 1;
         cola.push({ t: t, y: lado * azar(0.55, 0.75), p: base.p + azar(-0.1, 0.1) });
         cola.push({ t: t + azar(280, 400), y: base.y, p: base.p });
-        return t + azar(3000, 6000);
+        return t + azar(3000, 6000) * ritmo;
     } else if (r < 0.72) {               // rafaga corta de micro movimientos
         var t2 = t;
         for (var j = 0; j < 3; j++) { cola.push({ t: t2, y: base.y + azar(-0.1, 0.1), p: base.p + azar(-0.06, 0.06) }); t2 += azar(120, 200); }
-        return t2 + azar(2500, 5000);
+        return t2 + azar(2500, 5000) * ritmo;
     }
     parpadear(t, Math.random() < 0.3 ? 2 : 1);   // solo parpadea
-    return t + azar(2500, 6000);
+    return t + azar(2500, 6000) * ritmo;
 }
 
 // Resorte independiente de los Hz: dt = cuadros de 60 Hz transcurridos (0.42 a 144 Hz).

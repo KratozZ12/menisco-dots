@@ -50,8 +50,8 @@ PanelWindow {
         opacity: osd.mostrar ? 1 : 0
         scale: osd.mostrar ? 1 : 0.92
         // Entra y sale despacio: fundido largo y escala con la curva de iOS en ambos sentidos.
-        Behavior on opacity { NumberAnimation { duration: osd.mostrar ? 380 : 480; easing.type: osd.mostrar ? Easing.OutCubic : Easing.InOutCubic } }
-        Behavior on scale { NumberAnimation { duration: osd.mostrar ? 650 : 480; easing.type: Easing.BezierSpline; easing.bezierCurve: osd.curvaIos } }
+        Behavior on opacity { NumberAnimation { duration: Estilo.t(osd.mostrar ? 380 : 480); easing.type: osd.mostrar ? Easing.OutCubic : Easing.InOutCubic } }
+        Behavior on scale { NumberAnimation { duration: Estilo.t(osd.mostrar ? 650 : 480); easing.type: Easing.BezierSpline; easing.bezierCurve: osd.curvaIos } }
 
         Canvas {
             id: lienzo
@@ -66,7 +66,7 @@ PanelWindow {
                 // Vidrio de fondo
                 c.beginPath();
                 c.roundedRect(0, 0, w, h, r, r);
-                c.fillStyle = "rgba(36,36,36,0.92)";
+                c.fillStyle = Estilo.valor("fondoNegro") ? "rgba(0,0,0,0.92)" : "rgba(36,36,36,0.92)";
                 c.fill();
                 c.save();
                 c.clip();
@@ -93,7 +93,7 @@ PanelWindow {
             anchors { left: parent.left; leftMargin: 13; verticalCenter: parent.verticalCenter }
             text: osd.mudo || osd.visto < 0.005 ? "volume_off" : osd.visto < 0.5 ? "volume_down" : "volume_up"
             color: osd.visto * capsula.width > x + width * 0.7 ? "#1c1c1c" : "#ffffff"
-            Behavior on color { ColorAnimation { duration: 320; easing.type: Easing.InOutCubic } }
+            Behavior on color { ColorAnimation { duration: Estilo.t(320); easing.type: Easing.InOutCubic } }
             font { family: "Material Symbols Rounded"; pixelSize: 18 }
             font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
             renderType: Text.NativeRendering
@@ -102,8 +102,8 @@ PanelWindow {
             anchors { right: parent.right; rightMargin: 15; verticalCenter: parent.verticalCenter; verticalCenterOffset: 1 }
             text: osd.mudo ? "" : Math.round(osd.visto * 100)
             color: osd.visto * capsula.width > x + width * 0.5 ? "#1c1c1c" : "#ffffff"
-            Behavior on color { ColorAnimation { duration: 320; easing.type: Easing.InOutCubic } }
-            font { family: "SF Pro Text"; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
+            Behavior on color { ColorAnimation { duration: Estilo.t(320); easing.type: Easing.InOutCubic } }
+            font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
             font.features: { "tnum": 1 }
         }
     }

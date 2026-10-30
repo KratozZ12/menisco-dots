@@ -1,0 +1,7 @@
+// Hokum's configuration. The settings window edits this file too, keeping your comments.
+// Reference: https://github.com/anomalyco/hokum/blob/dev/docs/theming.md
+theme "capsule"
+
+behaviour {
+    show-at-most 8
+}

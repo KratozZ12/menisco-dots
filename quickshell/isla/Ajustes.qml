@@ -26,8 +26,8 @@ PanelWindow {
     property string fondoActual: ""
     property string resolucion: ""      // "5120 × 2596"; la lee "file" sin cargar la imagen entera
     property bool vidrio: false
-    // No molestar lo lleva Menisco (las notificaciones las recibe la isla).
-    readonly property bool noMolestar: Estilo.valor("noMolestar")
+    // No molestar lo guarda Hokum (Estilo.noMolestar lo sigue).
+    readonly property bool noMolestar: Estilo.noMolestar
     property bool cafe: false
     property int esquinas: 12
     property string seccion: "inicio"
@@ -524,7 +524,6 @@ PanelWindow {
                         Interruptor { titulo: "Canción nueva"; sub: "Carátula y título unos segundos"; encendido: Estilo.valor("avisoMusica"); onCambiar: v => Estilo.poner("avisoMusica", v) }
                         Interruptor { titulo: "Audífonos y bocinas"; encendido: Estilo.valor("avisoBt"); onCambiar: v => Estilo.poner("avisoBt", v) }
                         Interruptor { titulo: "Capturas de pantalla"; encendido: Estilo.valor("avisoCaptura"); onCambiar: v => Estilo.poner("avisoCaptura", v) }
-                        Interruptor { titulo: "Notificaciones"; sub: "Con No molestar solo salen las urgentes"; encendido: Estilo.valor("avisoNotif"); onCambiar: v => Estilo.poner("avisoNotif", v) }
                         Interruptor { titulo: "Temperatura alta"; encendido: Estilo.valor("avisoTemp"); onCambiar: v => Estilo.poner("avisoTemp", v) }
                         Deslizador { titulo: "Avisar desde"; desde: 60; hasta: 95; unidad: " °C"; valor: Estilo.valor("avisoGrados"); onSoltado: v => Estilo.poner("avisoGrados", v) }
                         Segmentos { titulo: "Duración de los avisos"; opciones: ["Corta", "Normal", "Larga"]; claves: ["corta", "normal", "larga"]; elegida: Estilo.valor("avisoDuracion"); onElegir: c => Estilo.poner("avisoDuracion", c) }
@@ -635,7 +634,6 @@ PanelWindow {
                             elegida: Estilo.valor("personalidad"); onElegir: c => Estilo.poner("personalidad", c)
                         }
                         Interruptor { titulo: "Reaccionar a la música"; sub: "Se pone feliz cuando suena algo"; encendido: Estilo.valor("reaccionMusica"); onCambiar: v => Estilo.poner("reaccionMusica", v) }
-                        Interruptor { titulo: "Reaccionar a las notificaciones"; sub: "Se asoma a escuchar cuando llega una"; encendido: Estilo.valor("reaccionNotif"); onCambiar: v => Estilo.poner("reaccionNotif", v) }
                     }
                     Encabezado { text: "Botón de la isla" }
                     Grupo {
@@ -758,6 +756,7 @@ PanelWindow {
                     Grupo {
                         Interruptor { titulo: "Dock"; encendido: ventana.vidrioV.dock; onCambiar: v => ventana.ponerVidrio("dock", v) }
                         Interruptor { titulo: "Ventanas transparentes"; sub: "Terminales con transparencia"; encendido: ventana.vidrioV.ventanas; onCambiar: v => ventana.ponerVidrio("ventanas", v) }
+                        Interruptor { titulo: "Notificaciones"; sub: "Hokum reserva una franja alta: el vidrio la cubre entera"; encendido: ventana.vidrioV.notificaciones; onCambiar: v => ventana.ponerVidrio("notificaciones", v) }
                     }
                 }
             }
@@ -984,7 +983,7 @@ PanelWindow {
                             icono: "dark_mode"; titulo: "No molestar"
                             activa: ventana.noMolestar
                             detalle: activa ? "Activado" : "Apagado"
-                            onPulsada: Estilo.poner("noMolestar", !ventana.noMolestar)
+                            onPulsada: Estilo.ponerNoMolestar(!ventana.noMolestar)
                         }
                         Tarjeta {
                             icono: "pill"; titulo: "Isla"

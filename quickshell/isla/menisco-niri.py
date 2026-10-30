@@ -158,6 +158,8 @@ def vidrio(js):
         reglas.append(f"window-rule {{\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}")
     if v.get("dock"):
         reglas.append(f'layer-rule {{\n    match namespace="^dock$"\n    geometry-corner-radius 22\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}')
+    if v.get("notificaciones"):
+        reglas.append(f'layer-rule {{\n    match namespace="^hokum$"\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}')
     texto = "// Generado por los ajustes de Menisco (menisco-niri.py vidrio). Se reescribe al cambiarlos.\n\n" + "\n\n".join(reglas) + "\n"
     activo = os.path.join(LNIRI, "vidrio-activo.kdl")
     with open(activo, "w", encoding="utf-8") as fh:

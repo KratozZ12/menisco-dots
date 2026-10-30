@@ -312,7 +312,7 @@ PanelWindow {
         case "bt": return { icono: "bluetooth", titulo: "Bluetooth", flecha: true, activa: btOn,
                             detalle: !btOn ? "Apagado" : conectado ? conectado.name : "Encendido", fn: () => ir("bt") };
         case "dnd": return { icono: "dark_mode", titulo: "No molestar", activa: ajustes.noMolestar,
-                             detalle: ajustes.noMolestar ? "Activado" : "Apagado", fn: () => Estilo.poner("noMolestar", !ajustes.noMolestar) };
+                             detalle: ajustes.noMolestar ? "Activado" : "Apagado", fn: () => Estilo.ponerNoMolestar(!ajustes.noMolestar) };
         case "cafe": return { icono: "coffee", titulo: "Modo café", activa: ajustes.cafe,
                               detalle: ajustes.cafe ? "Sin suspender" : "Apagado", fn: () => ajustes.cafe = !ajustes.cafe };
         case "captura": return { icono: "screenshot_region", titulo: "Captura", activa: false, detalle: "Elegir zona",

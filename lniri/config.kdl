@@ -1,4 +1,4 @@
-// Lniri usa todo lo de niri (rice, KWallet, isla, atajos) y le suma el
+// Lniri usa todo lo de niri (rice, KWallet, Hokum, isla, atajos) y le suma el
 // liquid glass. Cambios del rice: en ~/.config/niri/config.kdl, no aqui.
 include "../niri/config.kdl"
 

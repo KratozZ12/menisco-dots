@@ -25,7 +25,7 @@ PanelWindow {
     property var usos: ({})            // { idDesktop: veces abierta } para "Frecuentes"
     property var recientes: []         // [{ nombre, ruta, carpeta }]
     property var encontrados: []       // archivos que coinciden con la busqueda
-    readonly property bool noMolestar: Estilo.valor("noMolestar")
+    readonly property bool noMolestar: Estilo.noMolestar
     property string confirmar: ""      // accion que espera un segundo Enter (apagar, reiniciar)
 
     visible: abierta || panel.escala > 0.01
@@ -180,7 +180,7 @@ PanelWindow {
         { titulo: "Bloquear pantalla", icono: "lock", fn: () => ejecutar(["swaylock"]) },
         { titulo: "Cerrar sesión", icono: "logout", fn: () => ejecutar(["niri", "msg", "action", "quit"]) },
         { titulo: "Bluetooth", icono: "bluetooth", interruptor: "bt", fn: () => { const a = Bluetooth.defaultAdapter; Estilo.bluetooth(a, !(a && a.enabled)); } },
-        { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => Estilo.poner("noMolestar", !lanz.noMolestar) },
+        { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => Estilo.ponerNoMolestar(!lanz.noMolestar) },
         { titulo: "Captura de pantalla", icono: "screenshot_region", fn: () => ejecutar(["sh", "-c", "sleep 0.4; niri msg action screenshot"]) },
         { titulo: "Ajustes de Menisco", icono: "tune", fn: () => raiz.abrirAjustes() }
     ]

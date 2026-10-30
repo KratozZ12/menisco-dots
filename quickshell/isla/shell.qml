@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
-import Quickshell.Services.Notifications
 
 // Isla dinamica de adorno, pegada al borde de arriba como una muesca del monitor.
 // Abajo esquinas redondeadas; arriba, curvas hacia afuera que la funden con el borde.
@@ -18,31 +17,8 @@ ShellRoot {
     property bool barraAbierta: false
     // Para piezas creadas dentro de Variants: ahi "raiz: raiz" se enlaza consigo misma.
     readonly property var raizShell: raiz
-    // ---- Notificaciones: las recibe Menisco y las muestra la isla (reemplaza a Hokum) ----
-    signal notificacion(var n)
-    NotificationServer {
-        keepOnReload: false
-        bodySupported: true
-        imageSupported: true
-        actionsSupported: true
-        onNotification: n => {
-            n.tracked = true;
-            // La captura ya tiene su propio aviso en la isla (con miniatura): el de niri sobra.
-            if (n.appName === "niri" && /screenshot/i.test(n.summary)) { n.dismiss(); return; }
-            // No molestar: solo pasan las criticas.
-            if (Estilo.valor("noMolestar") && n.urgency !== NotificationUrgency.Critical) { n.dismiss(); return; }
-            const accion = n.actions.find(a => a.identifier === "default") ?? n.actions[0] ?? null;
-            raiz.notificacion({
-                tipo: "notificacion", app: n.appName || "Aviso", resumen: n.summary, cuerpo: n.body,
-                imagen: n.image || (n.appIcon ? Quickshell.iconPath(n.appIcon, true) : ""),
-                ms: n.urgency === NotificationUrgency.Critical ? 9000 : 5000,
-                abrir: () => { if (accion) accion.invoke(); n.dismiss(); }
-            });
-            caducar.createObject(raiz, { n: n });
-        }
-    }
-    // Las notificaciones se descartan solas a los 6 s (o cuando la app diga).
-    Component { id: caducar; Timer { property var n; interval: n && n.expireTimeout > 0 ? n.expireTimeout : 6000; running: true; onTriggered: { if (n) n.expire(); destroy(); } } }
+    // ---- Notificaciones: las recibe Hokum (niri lo arranca). La isla solo muestra sus propios
+    // avisos (cancion, audifonos, capturas, temperatura, temporizador, color). ----
 
     // ---- Modo juego: rendimiento maximo, No molestar, sin dock y sin suspender ----
     // Al apagarlo, todo vuelve a como estaba antes de encenderlo.
@@ -50,15 +26,15 @@ ShellRoot {
     property var antesDeJugar: null
     function alternarModoJuego() {
         if (!modoJuego) {
-            antesDeJugar = { perfil: perfilActual, dnd: Estilo.valor("noMolestar"), cafe: ajustes.cafe };
+            antesDeJugar = { perfil: perfilActual, dnd: Estilo.noMolestar, cafe: ajustes.cafe };
             Quickshell.execDetached(["powerprofilesctl", "set", "performance"]);
-            Estilo.poner("noMolestar", true);
+            Estilo.ponerNoMolestar(true);
             ajustes.cafe = true;
             modoJuego = true;
         } else {
             const a = antesDeJugar || { perfil: "balanced", dnd: false, cafe: false };
             Quickshell.execDetached(["powerprofilesctl", "set", a.perfil]);
-            Estilo.poner("noMolestar", a.dnd);
+            Estilo.ponerNoMolestar(a.dnd);
             ajustes.cafe = a.cafe;
             modoJuego = false;
         }

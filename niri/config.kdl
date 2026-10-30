@@ -275,8 +275,10 @@ layout {
 // permisos de administrador funcionen igual que en Plasma.
 spawn-at-startup "/usr/libexec/kf6/polkit-kde-authentication-agent-1"
 spawn-at-startup "systemctl" "--user" "start" "plasma-kwallet-pam.service"
-// Las notificaciones las recibe Menisco (la isla de Quickshell). Si Quickshell no
-// corre, nadie las recibe y apps como Claude se congelan esperando respuesta.
+// Notificaciones: Hokum. Sin esto nadie las recibe y apps como Claude se congelan
+// esperando respuesta. Se lanza directo: el servicio de systemd esta enmascarado
+// para que Hokum no le robe las notificaciones a Plasma.
+spawn-at-startup "hokum" "service"
 // QSG_RENDER_LOOP=threaded: sin esto Qt anima a 60 fps aunque el monitor vaya a 144.
 spawn-sh-at-startup "QSG_RENDER_LOOP=threaded qs -p $HOME/.config/quickshell/isla"
 // Desenfoque del vidrio (dock y liquid glass): suave, para que se luzca la refraccion.

@@ -23,17 +23,16 @@ Singleton {
         reaccionMusica: true,
         // Isla: como se abre y que avisos muestra
         islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
-        avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoNotif: true, avisoTemp: true,
+        avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
         avisoGrados: 80, avisoDuracion: "normal",                          // corta | normal | larga
         // Pestana Musica de la isla
         musicaLetra: true, letraNetease: true, musicaTinte: true, musicaAudio: true, ocultarVisualizador: true,
         // Asistente
         // Gotas guardadas (forma y color de reposo); la activa es la que vive en la isla.
         gotas: [{ nombre: "Gota", forma: "esfera", color: "#0b0b0c", cambia: true }], gotaActiva: 0,
-        botSub: "Pregúntame", reaccionNotif: true,
+        botSub: "Pregúntame",
         botLuz: true, botChispas: true, botEnPaginas: true, succion: true,
-        noMolestar: false,
-        vidrio: { refraccion: 70, aberracion: 95, desenfoque: 20, brillo: 35, dock: true, ventanas: true },
+        vidrio: { refraccion: 70, aberracion: 95, desenfoque: 20, brillo: 35, dock: true, ventanas: true, notificaciones: false },
         barra: { lado: "derecha", altura: "centro", ancho: 340, boton: true, borde: false, clicFuera: true,
                  secciones: [{ id: "rapidos", ver: true }, { id: "sonido", ver: true }, { id: "musica", ver: true },
                              { id: "calendario", ver: true }, { id: "energia", ver: true }],
@@ -94,6 +93,16 @@ Singleton {
     function bluetooth(adaptador, encender) {
         if (encender) Quickshell.execDetached(["sh", "-c", "rfkill unblock bluetooth; sleep 0.5; bluetoothctl power on"]);
         else if (adaptador) adaptador.enabled = false;
+    }
+
+    // ---- No molestar: lo guarda Hokum (que recibe las notificaciones) ----
+    // --watch avisa cada vez que cambia, venga de donde venga (Hokum, la barra, el lanzador...).
+    property bool noMolestar: false
+    function ponerNoMolestar(v) { Quickshell.execDetached(["hokum", "dnd", v ? "on" : "off"]); }
+    Process {
+        running: true
+        command: ["hokum", "dnd", "--watch"]
+        stdout: SplitParser { onRead: data => estilo.noMolestar = data.trim() === "on" }
     }
 
     function niri(args) { Quickshell.execDetached(["python3", carpeta + "/menisco-niri.py"].concat(args)); }

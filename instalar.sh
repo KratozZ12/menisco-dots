@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copia los dots a ~/.config. Si ya hay una config de niri, lniri o la carpeta
+# Copia los dots a ~/.config. Si ya hay una config de niri, lniri, hokum o la carpeta
 # quickshell/isla, la mueve a <nombre>.antes-de-menisco y avisa.
 set -euo pipefail
 AQUI="$(cd "$(dirname "$0")" && pwd)"
@@ -16,6 +16,7 @@ poner() {   # poner <origen> <destino>
 
 poner "$AQUI/niri/config.kdl"     "$CFG/niri/config.kdl"
 poner "$AQUI/quickshell/isla"     "$CFG/quickshell/isla"
+poner "$AQUI/hokum/config.kdl"    "$CFG/hokum/config.kdl"
 mkdir -p "$CFG/lniri"
 cp "$AQUI/lniri/config.kdl" "$AQUI/lniri/vidrio-activo.kdl" "$CFG/lniri/"
 cp "$AQUI/lniri/vidrio-activo.kdl" "$CFG/lniri/vidrio.kdl"     # liquid glass encendido

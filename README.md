@@ -11,7 +11,7 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 ## Qué trae
 
 ### La isla
-Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. También recibe las notificaciones del sistema (no hace falta otro programa).
+Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*.
 
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).
@@ -21,11 +21,10 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. También
 - empieza una canción nueva (carátula y título);
 - se conectan audífonos o bocinas Bluetooth (con su batería);
 - se guarda una captura (miniatura, con botones Abrir y Carpeta);
-- llega una notificación (un clic la abre);
 - la CPU o la GPU pasan de cierta temperatura;
 - termina el temporizador o se copia un color.
 
-Si la isla está abierta, los avisos esperan en fila y salen al cerrarla.
+Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Las notificaciones de las apps no pasan por la isla: las muestra [Hokum](https://hokum.app).
 
 **Vista expandida.** Al pasar el cursor (o fija con un clic) crece hacia abajo con tres pestañas:
 - **Música:** carátula grande (un clic lleva a la app), la isla teñida con el color del disco, barra de progreso que se arrastra, pastillas para elegir reproductor si suena más de uno, volumen de esa app, salida de audio (audífonos, bocinas, HDMI) y **letra sincronizada** abajo, que sube línea por línea con una ola, al estilo de Apple Music. La letra se busca en [LRCLIB](https://lrclib.net) y, si no está, en NetEase (`letra.sh`).
@@ -95,6 +94,7 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 | [niri](https://github.com/niri-wm/niri) 26.04 o más nuevo | el compositor |
 | [Quickshell](https://quickshell.org) 0.3 | la isla, el dock, los ajustes y el aviso de volumen |
 | [awww](https://codeberg.org/LGFae/awww) | el fondo de pantalla |
+| [Hokum](https://hokum.app) | las notificaciones (y su No molestar) |
 | [cava](https://github.com/karlstav/cava) | el visualizador de audio |
 | `plocate`, `wl-clipboard`, `python3` | archivos, copiar resultados y emojis, archivos recientes |
 | `curl`, `jq` | letras de canciones |
@@ -117,7 +117,7 @@ cd menisco-dots
 ./instalar.sh
 ```
 
-`instalar.sh` copia todo a `~/.config`. Si ya tenía una configuración de niri o `quickshell/isla`, la renombra a `*.antes-de-menisco` y se lo dice.
+`instalar.sh` copia todo a `~/.config`. Si ya tenía una configuración de niri, Hokum o `quickshell/isla`, la renombra a `*.antes-de-menisco` y se lo dice.
 
 Después, revise en `~/.config/niri/config.kdl`:
 - los bloques `output` (nombres y posición de **sus** monitores);
@@ -154,7 +154,13 @@ El resto son los atajos de fábrica de niri.
 
 ## Cosas que conviene saber
 
-- **Las notificaciones las recibe Menisco.** Si Quickshell no está corriendo, nadie las recibe y algunas apps (como la de escritorio de Claude) se congelan esperando respuesta. Si tiene mako, dunst u otro programa de notificaciones, quítelo o no lo arranque en niri: solo uno puede recibirlas.
+- **Si usa también Plasma u otro escritorio en la misma máquina:** Hokum (y mako, si lo tiene) pueden quitarle las notificaciones al otro escritorio, porque arrancan solos cuando llega una notificación. Aquí niri lo arranca a mano; para bloquear el arranque automático:
+  ```bash
+  systemctl --user mask hokum.service
+  ```
+  y cree `~/.local/share/dbus-1/services/app.hokum.Notifications.service` con el `Exec=` del servicio de notificaciones de su otro escritorio.
+- **Sin un programa de notificaciones**, algunas apps (como la de escritorio de Claude) se congelan esperando respuesta. No quite Hokum sin poner otro.
+- **No molestar** lo guarda Hokum; los interruptores de Menisco (ajustes, barra, lanzador, modo juego) lo cambian con `hokum dnd`.
 - **Letras:** para buscar la letra, la isla manda el título y el artista de la canción a LRCLIB y, si no la encuentra, a NetEase (un servicio de China). Las dos se pueden apagar en Ajustes > Isla.
 - **Quickshell a la frecuencia del monitor:** niri lo lanza con `QSG_RENDER_LOOP=threaded`; sin eso, Qt anima a 60 fps aunque el monitor vaya a 144.
 - **El fondo de awww vive en el *backdrop* de niri:** por eso el fondo de los espacios de trabajo es transparente en la configuración.
@@ -165,7 +171,7 @@ El resto son los atajos de fábrica de niri.
 
 - [niri](https://github.com/niri-wm/niri) y [Lniri](https://github.com/TattvaOrg/Lniri) por el compositor y el *liquid glass*.
 - [Quickshell](https://quickshell.org).
-- [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [LRCLIB](https://lrclib.net).
+- [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [LRCLIB](https://lrclib.net).
 - Iconos: Material Symbols (Google) y WhiteSur.
 
 ---

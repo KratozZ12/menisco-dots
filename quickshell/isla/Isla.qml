@@ -14,7 +14,8 @@ import Quickshell.Services.Pipewire
 // Isla dinamica, pegada al borde de arriba como una muesca del monitor.
 // - Normal: asistente, hora y visualizador (o grabacion / temporizador a la derecha).
 // - Avisos: crece unos segundos para avisar (cancion nueva, audifonos, captura,
-//   notificacion, temperatura alta, temporizador terminado) y vuelve sola.
+//   temperatura alta, temporizador terminado, color copiado) y vuelve sola. Las notificaciones
+//   del sistema no: esas las muestra Hokum.
 // - Expandida: al pasar el cursor (o fija con un clic) crece hacia abajo con el boton del
 //   asistente y tres pestanas: Musica (sin el boton, a todo el ancho), Acciones y Rendimiento.
 // La ventana tiene tamano fijo y solo la forma de adentro se anima (si la ventana cambiara de
@@ -46,7 +47,7 @@ PanelWindow {
 
     // Con la isla abierta los avisos esperan en fila y salen al cerrarla.
     // Interruptor de Ajustes > Isla > Avisos para cada tipo (temporizador y color siempre salen: los pide usted).
-    readonly property var interruptorAviso: ({ musica: "avisoMusica", bt: "avisoBt", captura: "avisoCaptura", notificacion: "avisoNotif", temperatura: "avisoTemp" })
+    readonly property var interruptorAviso: ({ musica: "avisoMusica", bt: "avisoBt", captura: "avisoCaptura", temperatura: "avisoTemp" })
     function avisar(a) {
         const clave = interruptorAviso[a.tipo];
         if (clave && !Estilo.valor(clave)) return;
@@ -75,7 +76,7 @@ PanelWindow {
     // Tamano de la forma segun lo que muestra
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [360, 42, 20]
-        : ({ musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28], notificacion: [460, 78, 26],
+        : ({ musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
              temperatura: [390, 42, 20], temporizador: [380, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
     // ---------------- Forma ----------------
@@ -131,7 +132,6 @@ PanelWindow {
             Timer { id: salir; interval: 420; onTriggered: win.encima = false }
             TapHandler {
                 onTapped: {
-                    if (win.aviso && win.aviso.tipo === "notificacion") { win.aviso.abrir(); win.siguienteAviso(); return; }
                     if (win.aviso && win.aviso.tipo === "captura") { Quickshell.execDetached(["xdg-open", win.aviso.ruta]); win.siguienteAviso(); return; }
                     win.fijada = !win.fijada;
                     if (!win.fijada) win.encima = false;
@@ -250,7 +250,7 @@ PanelWindow {
 
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: capaAviso.a ? ({ musica: avMusica, bt: avBt, captura: avCaptura, notificacion: avNotif, color: avColor,
+                    sourceComponent: capaAviso.a ? ({ musica: avMusica, bt: avBt, captura: avCaptura, color: avColor,
                                                      temperatura: avTemp, temporizador: avTimer })[capaAviso.a.tipo] ?? null : null
                 }
             }
@@ -409,10 +409,9 @@ PanelWindow {
     }
     Timer { interval: 5000; repeat: true; running: true; onTriggered: temperaturas.running = true }
 
-    // Notificaciones y fin del temporizador los manda la raiz
+    // El fin del temporizador lo manda la raiz
     Connections {
         target: win.raiz
-        function onNotificacion(n) { win.avisar(n); }
         function onTemporizadorTerminado() { win.avisar({ tipo: "temporizador", ms: 5000 }); }
     }
 
@@ -471,26 +470,6 @@ PanelWindow {
                     Chip { texto: "Carpeta"; onPulsado: { Quickshell.execDetached(["xdg-open", capaAviso.a.ruta.replace(/\/[^/]+$/, "")]); win.siguienteAviso(); } }
                 }
             }
-        }
-    }
-    Component {
-        id: avNotif
-        Row {
-            anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
-            spacing: 12
-            ClippingRectangle {
-                width: 40; height: 40; radius: 20; color: "#3a3a3a"; anchors.verticalCenter: parent.verticalCenter
-                Image { anchors.fill: parent; source: capaAviso.a.imagen || ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(80, 80) }
-                Simbolo { anchors.centerIn: parent; visible: !capaAviso.a.imagen; text: "notifications"; font.pixelSize: 20; color: "#ddd" }
-            }
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 40 - 12 - (Estilo.valor("reaccionNotif") ? 34 + 12 : 0)
-                Texto { width: parent.width; text: capaAviso.a.app + " · ahora"; color: "#aaa"; font.pixelSize: 11; elide: Text.ElideRight }
-                Texto { width: parent.width; text: capaAviso.a.resumen; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                Texto { width: parent.width; text: capaAviso.a.cuerpo; color: "#ddd"; font.pixelSize: 12; elide: Text.ElideRight; maximumLineCount: 1; textFormat: Text.PlainText }
-            }
-            Asistente { visible: Estilo.valor("reaccionNotif"); width: 34; height: 34; emocion: "escucha"; fondoNegro: Estilo.valor("fondoNegro"); anchors.verticalCenter: parent.verticalCenter }
         }
     }
     Component {

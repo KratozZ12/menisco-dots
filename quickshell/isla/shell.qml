@@ -39,6 +39,37 @@ ShellRoot {
             modoJuego = false;
         }
     }
+    // ---- No molestar automatico (Ajustes > Notificaciones): en pantalla completa y al grabar ----
+    // Solo apaga lo que encendio el; si usted lo apaga mientras tanto, se queda apagado.
+    property bool pantallaCompleta: false
+    readonly property bool dndAutoPide: (Estilo.valor("dndPantallaCompleta") && pantallaCompleta) || (Estilo.valor("dndGrabando") && grabando)
+    property bool dndAuto: false
+    onDndAutoPideChanged: {
+        if (dndAutoPide && !Estilo.noMolestar) { dndAuto = true; Estilo.ponerNoMolestar(true); }
+        else if (!dndAutoPide && dndAuto) { dndAuto = false; Estilo.ponerNoMolestar(false); }
+    }
+    Connections { target: Estilo; function onNoMolestarChanged() { if (!Estilo.noMolestar) raiz.dndAuto = false; } }
+    // niri no dice si una ventana esta en pantalla completa: se compara su tamano con el del monitor.
+    Process {
+        running: Estilo.valor("dndPantallaCompleta")
+        command: ["niri", "msg", "-j", "event-stream"]
+        stdout: SplitParser { onRead: revisarCompleta.restart() }
+        onRunningChanged: if (!running) raiz.pantallaCompleta = false
+    }
+    Timer { id: revisarCompleta; interval: 300; onTriggered: pantallaCompletaProc.running = true }
+    Process {
+        id: pantallaCompletaProc
+        command: ["sh", "-c", "niri msg -j focused-window; niri msg -j focused-output"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const [v, s] = text.trim().split("\n").filter(l => l).map(l => JSON.parse(l));
+                    raiz.pantallaCompleta = !!v && !!s && v.layout.window_size[0] >= s.logical.width && v.layout.window_size[1] >= s.logical.height;
+                } catch (e) { raiz.pantallaCompleta = false; }
+            }
+        }
+    }
+
     property string perfilActual: "balanced"
     Process { running: true; command: ["powerprofilesctl", "get"]; stdout: StdioCollector { onStreamFinished: raiz.perfilActual = text.trim() } }
 
@@ -126,6 +157,11 @@ ShellRoot {
         function toggle(): void {
             if (ajustes.abierta) ajustes.cerrar();
             else monitorActivo.running = true;
+        }
+        // Abre en una seccion: qs -p ~/.config/quickshell/isla ipc call ajustes abrirEn notificaciones
+        function abrirEn(seccion: string): void {
+            ajustes.seccion = seccion;
+            if (!ajustes.abierta) monitorActivo.running = true;
         }
     }
 

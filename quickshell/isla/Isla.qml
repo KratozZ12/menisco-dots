@@ -10,11 +10,13 @@ import Quickshell.Widgets
 import Quickshell.Bluetooth
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
+import Quickshell.Services.UPower
 
 // Isla dinamica, pegada al borde de arriba como una muesca del monitor.
 // - Normal: asistente, hora y visualizador (o grabacion / temporizador a la derecha).
 // - Avisos: crece unos segundos para avisar (cancion nueva, audifonos, captura,
-//   temperatura alta, temporizador terminado, color copiado) y vuelve sola. Las notificaciones
+//   temperatura alta, bateria baja, salida de audio, temporizador terminado, color copiado)
+//   y vuelve sola. No molestar los calla (menos temporizador y color, que los pide usted). Las notificaciones
 //   del sistema no: esas las muestra Hokum.
 // - Expandida: al pasar el cursor (o fija con un clic) crece hacia abajo con el boton del
 //   asistente y tres pestanas: Musica (sin el boton, a todo el ancho), Acciones y Rendimiento.
@@ -46,11 +48,12 @@ PanelWindow {
     property var colaAvisos: []
 
     // Con la isla abierta los avisos esperan en fila y salen al cerrarla.
-    // Interruptor de Ajustes > Isla > Avisos para cada tipo (temporizador y color siempre salen: los pide usted).
-    readonly property var interruptorAviso: ({ musica: "avisoMusica", bt: "avisoBt", captura: "avisoCaptura", temperatura: "avisoTemp" })
+    // Interruptor de Ajustes > Notificaciones para cada tipo (temporizador y color siempre salen: los pide usted).
+    readonly property var interruptorAviso: ({ musica: "avisoMusica", bt: "avisoBt", captura: "avisoCaptura", temperatura: "avisoTemp",
+                                               bateria: "avisoBateria", salida: "avisoSalida" })
     function avisar(a) {
         const clave = interruptorAviso[a.tipo];
-        if (clave && !Estilo.valor(clave)) return;
+        if (clave && (!Estilo.valor(clave) || Estilo.noMolestar)) return;
         colaAvisos = colaAvisos.concat([a]);
         if (!aviso && !expandida) siguienteAviso();
     }
@@ -77,7 +80,7 @@ PanelWindow {
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [360, 42, 20]
         : ({ musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
-             temperatura: [390, 42, 20], temporizador: [380, 42, 20] })[aviso.tipo] || [360, 42, 20]
+             temperatura: [390, 42, 20], temporizador: [380, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
     // ---------------- Forma ----------------
     Item {
@@ -251,7 +254,7 @@ PanelWindow {
                 Loader {
                     anchors.fill: parent
                     sourceComponent: capaAviso.a ? ({ musica: avMusica, bt: avBt, captura: avCaptura, color: avColor,
-                                                     temperatura: avTemp, temporizador: avTimer })[capaAviso.a.tipo] ?? null : null
+                                                     temperatura: avTemp, temporizador: avTimer, bateria: avBateria, salida: avSalida })[capaAviso.a.tipo] ?? null : null
                 }
             }
 
@@ -317,11 +320,37 @@ PanelWindow {
     property string ultimaCancion: ""
     property bool listo: false
     Timer { interval: 2500; running: true; onTriggered: win.listo = true }
-    readonly property string cancionActual: reproductor && reproductor.isPlaying ? reproductor.trackTitle + "|" + reproductor.trackArtist : ""
+    // El aviso sale del primero que suene sin estar callado en Ajustes > Notificaciones.
+    readonly property var reproductorAviso: Mpris.players.values.find(p => p.isPlaying && !Estilo.valor("musicaIgnorar").includes(p.identity)) ?? null
+    readonly property string cancionActual: reproductorAviso ? reproductorAviso.trackTitle + "|" + reproductorAviso.trackArtist : ""
     onCancionActualChanged: {
-        if (listo && cancionActual && cancionActual !== ultimaCancion && reproductor.trackTitle)
-            avisar({ tipo: "musica", titulo: reproductor.trackTitle, artista: reproductor.trackArtist, arte: reproductor.trackArtUrl });
+        const r = reproductorAviso;
+        // Al pausar, cancionActual se vacia: volver a la misma cancion solo avisa si se pidio.
+        if (listo && cancionActual && r.trackTitle && (cancionActual !== ultimaCancion || Estilo.valor("musicaReanudar"))
+                && (r.trackArtUrl || !Estilo.valor("musicaConCaratula")))
+            avisarMusica({ tipo: "musica", titulo: r.trackTitle, artista: r.trackArtist, arte: r.trackArtUrl,
+                           apps: [r.desktopEntry, r.identity].filter(x => x).map(x => x.toLowerCase()) });
         if (cancionActual) ultimaCancion = cancionActual;
+    }
+    // "No avisar si la app esta al frente": se pregunta a niri por la ventana con el foco.
+    property var musicaPendiente: null
+    function avisarMusica(a) {
+        if (!Estilo.valor("musicaNoAlFrente")) { avisar(a); return; }
+        musicaPendiente = a;
+        ventanaFrente.running = true;
+    }
+    Process {
+        id: ventanaFrente
+        command: ["niri", "msg", "-j", "focused-window"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let id = "";
+                try { id = (JSON.parse(text)?.app_id ?? "").toLowerCase(); } catch (e) {}
+                const a = win.musicaPendiente;
+                win.musicaPendiente = null;
+                if (a && !(id && a.apps.some(x => id.includes(x) || x.includes(id)))) win.avisar(a);
+            }
+        }
     }
 
     // Color de la caratula para el tinte. ColorQuantizer solo lee archivos locales: las
@@ -363,11 +392,12 @@ PanelWindow {
             target: modelData
             function onConnectedChanged() {
                 if (win.listo && modelData.connected)
-                    avisoBt.restart(), win.ultimoBt = modelData;
+                    avisoBt.restart(), win.ultimoBt = modelData, win.ultimoBtMs = Date.now();
             }
         }
     }
     property var ultimoBt: null
+    property real ultimoBtMs: 0
     // Espera un momento: la bateria llega un poco despues de conectarse.
     Timer { id: avisoBt; interval: 900; onTriggered: if (win.ultimoBt) win.avisar({ tipo: "bt", nombre: win.ultimoBt.name, bateria: win.ultimoBt.batteryAvailable ? Math.round(win.ultimoBt.battery * 100) : -1 }) }
 
@@ -408,6 +438,34 @@ PanelWindow {
         }
     }
     Timer { interval: 5000; repeat: true; running: true; onTriggered: temperaturas.running = true }
+
+    // Bateria baja de mandos, audifonos o ratones (UPower, no la de la laptop): avisa al bajar
+    // de 20 %, una vez hasta que pase de 30 %.
+    property var bateriasAvisadas: ({})
+    Instantiator {
+        model: UPower.devices
+        delegate: Connections {
+            required property var modelData
+            target: modelData
+            function onPercentageChanged() { win.revisarBateria(modelData) }
+        }
+    }
+    function revisarBateria(d) {
+        if (d.isLaptopBattery || !d.isPresent) return;
+        const p = d.percentage > 1 ? d.percentage : d.percentage * 100;   // ponytail: 0..1 o 0..100 segun version de Quickshell
+        if (p <= 20 && !bateriasAvisadas[d.nativePath]) {
+            bateriasAvisadas[d.nativePath] = true;
+            avisar({ tipo: "bateria", nombre: d.model || "Dispositivo", bateria: Math.round(p), ms: 4500 });
+        } else if (p > 30) delete bateriasAvisadas[d.nativePath];
+    }
+
+    // Cambio de salida de audio. Si acaba de conectarse un Bluetooth, ese aviso ya lo dice.
+    readonly property var salidaAudio: Pipewire.defaultAudioSink
+    onSalidaAudioChanged: if (listo && salidaAudio && Date.now() - ultimoBtMs > 4000) avisoSalida.restart()
+    Timer {
+        id: avisoSalida; interval: 600
+        onTriggered: if (win.salidaAudio) win.avisar({ tipo: "salida", nombre: win.salidaAudio.description || win.salidaAudio.nickname || win.salidaAudio.name })
+    }
 
     // El fin del temporizador lo manda la raiz
     Connections {
@@ -490,6 +548,22 @@ PanelWindow {
             Rectangle { x: 14; width: 22; height: 22; radius: 11; color: capaAviso.a.hex; border.color: "#555"; anchors.verticalCenter: parent.verticalCenter }
             Texto { anchors.centerIn: parent; text: capaAviso.a.hex; font.weight: Font.DemiBold; font.pixelSize: 15; font.features: { "tnum": 1 } }
             Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Copiado"; color: "#aaa"; font.pixelSize: 12 }
+        }
+    }
+    Component {
+        id: avBateria
+        Item {
+            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "battery_alert"; color: "#ff6b6b"; font.pixelSize: 20 }
+            Texto { anchors.centerIn: parent; width: parent.width - 150; horizontalAlignment: Text.AlignHCenter; text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
+            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: capaAviso.a.bateria + " %"; color: "#ff6b6b"; font.pixelSize: 12 }
+        }
+    }
+    Component {
+        id: avSalida
+        Item {
+            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "volume_up"; font.pixelSize: 20 }
+            Texto { anchors.centerIn: parent; width: parent.width - 150; horizontalAlignment: Text.AlignHCenter; text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
+            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Salida"; color: "#aaa"; font.pixelSize: 12 }
         }
     }
     Component {

@@ -21,10 +21,15 @@ Singleton {
         islaAsistente: true, islaVisualizador: true, reloj12: false, segundos: false,
         personalidad: "normal",         // tranquilo | normal | inquieto
         reaccionMusica: true,
-        // Isla: como se abre y que avisos muestra
+        // Isla: como se abre y que avisos muestra (los avisos se ajustan en Notificaciones)
         islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
         avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
         avisoGrados: 80, avisoDuracion: "normal",                          // corta | normal | larga
+        avisoBateria: true, avisoSalida: false,
+        // Notificaciones: No molestar automatico y aviso de "ahora suena"
+        dndPantallaCompleta: true, dndGrabando: true,
+        musicaIgnorar: [], musicaNoAlFrente: true, musicaConCaratula: false, musicaReanudar: false,   // musicaIgnorar: identity de MPRIS
+        hokumApps: [],                  // apps listadas en Por aplicacion (sus reglas viven en el config.kdl de Hokum)
         // Pestana Musica de la isla
         musicaLetra: true, letraNetease: true, musicaTinte: true, musicaAudio: true, ocultarVisualizador: true,
         // Asistente

@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Bluetooth
+import Quickshell.Services.Mpris
 import Quickshell.Widgets
 
 // Ventana de ajustes de los dots. Capa flotante centrada (niri no la acomoda).
@@ -264,6 +265,7 @@ PanelWindow {
                 { id: "apariencia", texto: "Apariencia", icono: "palette" },
                 { id: "pantallas", texto: "Pantallas", icono: "desktop_windows" },
                 { id: "isla", texto: "Isla", icono: "pill" },
+                { id: "notificaciones", texto: "Notificaciones", icono: "notifications" },
                 { id: "asistente", texto: "Asistente", icono: "smart_toy" },
                 { id: "barra", texto: "Barra lateral", icono: "view_sidebar" },
                 { id: "vidrio", texto: "Liquid glass", icono: "water_drop" },
@@ -519,14 +521,254 @@ PanelWindow {
                         Interruptor { titulo: "Volumen y salida de audio"; sub: "Abajo a la derecha de los controles"; encendido: Estilo.valor("musicaAudio"); onCambiar: v => Estilo.poner("musicaAudio", v) }
                         Interruptor { titulo: "Esconder el visualizador"; sub: "Las ondas junto al reloj, mientras se ve Música"; encendido: Estilo.valor("ocultarVisualizador"); onCambiar: v => Estilo.poner("ocultarVisualizador", v) }
                     }
-                    Encabezado { text: "Avisos" }
+                }
+            }
+
+            // ---------------- Notificaciones ----------------
+            // Los avisos de la isla se guardan en menisco.json; lo de Hokum, en su config.kdl
+            // (menisco-hokum.py), que Hokum recarga solo al guardarse.
+            Pagina {
+                id: paginaNotif
+                anchors.fill: parent
+                activa: ventana.seccion === "notificaciones"
+                onActivaChanged: if (activa) leerHokum.running = true
+
+                property var hokum: ({ posicion: "top-right", dura: "6", maximo: 5, apps: [] })
+                readonly property string lado: hokum.posicion.split("-")[1]
+                readonly property string alto: hokum.posicion.split("-")[0]
+                Process {
+                    id: leerHokum
+                    command: ["python3", Estilo.carpeta + "/menisco-hokum.py", "leer"]
+                    stdout: StdioCollector { onStreamFinished: { try { paginaNotif.hokum = JSON.parse(text); } catch (e) {} } }
+                }
+                // Se cambia aqui al instante y el archivo se escribe aparte.
+                // ponytail: dos clics muy seguidos escriben a la vez; cola si algun dia se pierde uno.
+                function hokumCmd(args, cambio) {
+                    hokum = Object.assign({}, hokum, cambio);
+                    Quickshell.execDetached(["python3", Estilo.carpeta + "/menisco-hokum.py"].concat(args));
+                }
+                function ponerPosicion(alto, lado) {
+                    const pos = alto + "-" + lado;
+                    hokumCmd(["comportamiento", "position", pos === "top-right" ? "" : '"' + pos + '"'], { posicion: pos });
+                }
+                // Apps de "Por aplicacion": las agregadas aqui y las que ya tienen regla en Hokum.
+                readonly property var listaApps: {
+                    const l = Estilo.valor("hokumApps").slice();
+                    for (const a of hokum.apps) if (!l.includes(a.app)) l.push(a.app);
+                    return l;
+                }
+                function regla(app) { return hokum.apps.find(a => a.app === app) || { app: app, modo: "mostrar", interrumpe: false }; }
+                function ponerApp(app, modo, interrumpe) {
+                    const apps = hokum.apps.filter(a => a.app !== app);
+                    if (modo !== "mostrar" || interrumpe) apps.push({ app: app, modo: modo, interrumpe: interrumpe });
+                    hokumCmd(["app", app, modo, interrumpe ? "si" : "no"], { apps: apps });
+                }
+                function quitarApp(app) {
+                    Estilo.poner("hokumApps", Estilo.valor("hokumApps").filter(a => a !== app));
+                    hokumCmd(["quitar", app], { apps: hokum.apps.filter(a => a.app !== app) });
+                }
+                function agregarApp(app) {
+                    app = app.trim();
+                    if (app && !listaApps.includes(app)) Estilo.poner("hokumApps", Estilo.valor("hokumApps").concat([app]));
+                    agregando = false;
+                }
+                property bool agregando: false
+
+                Desplazable {
+                    Encabezado { text: "Vista previa" }
+                    Rectangle {
+                        width: parent.width; height: 96; radius: 12; color: "#3a3f4a"
+                        clip: true
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 220; height: 30; color: Estilo.fondo
+                            topLeftRadius: 0; topRightRadius: 0; bottomLeftRadius: 15; bottomRightRadius: 15
+                            Texto { anchors.centerIn: parent; text: "Ahora suena"; font.pixelSize: 11; color: "#ccc" }
+                        }
+                        // Tarjeta de Hokum en la posicion elegida
+                        Rectangle {
+                            width: 150; height: 34; radius: 12; color: "#1b1b1b"
+                            x: paginaNotif.lado === "left" ? 10 : paginaNotif.lado === "center" ? (parent.width - width) / 2 : parent.width - width - 10
+                            y: paginaNotif.alto === "top" ? 38 : parent.height - height - 8
+                            Behavior on x { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                            Behavior on y { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                            Column {
+                                anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                                Texto { text: "Discord"; color: "#888"; font.pixelSize: 10 }
+                                Texto { text: "Nuevo mensaje"; font.pixelSize: 11 }
+                            }
+                        }
+                    }
+
+                    Encabezado { text: "No molestar" }
                     Grupo {
-                        Interruptor { titulo: "Canción nueva"; sub: "Carátula y título unos segundos"; encendido: Estilo.valor("avisoMusica"); onCambiar: v => Estilo.poner("avisoMusica", v) }
-                        Interruptor { titulo: "Audífonos y bocinas"; encendido: Estilo.valor("avisoBt"); onCambiar: v => Estilo.poner("avisoBt", v) }
-                        Interruptor { titulo: "Capturas de pantalla"; encendido: Estilo.valor("avisoCaptura"); onCambiar: v => Estilo.poner("avisoCaptura", v) }
-                        Interruptor { titulo: "Temperatura alta"; encendido: Estilo.valor("avisoTemp"); onCambiar: v => Estilo.poner("avisoTemp", v) }
-                        Deslizador { titulo: "Avisar desde"; desde: 60; hasta: 95; unidad: " °C"; valor: Estilo.valor("avisoGrados"); onSoltado: v => Estilo.poner("avisoGrados", v) }
-                        Segmentos { titulo: "Duración de los avisos"; opciones: ["Corta", "Normal", "Larga"]; claves: ["corta", "normal", "larga"]; elegida: Estilo.valor("avisoDuracion"); onElegir: c => Estilo.poner("avisoDuracion", c) }
+                        Interruptor { titulo: "No molestar"; sub: "Calla a Hokum y los avisos de la isla"; encendido: Estilo.noMolestar; onCambiar: v => Estilo.ponerNoMolestar(v) }
+                        Interruptor { titulo: "Automático en pantalla completa"; sub: "Juegos y videos: se enciende solo y se apaga al salir"; encendido: Estilo.valor("dndPantallaCompleta"); onCambiar: v => Estilo.poner("dndPantallaCompleta", v) }
+                        Interruptor { titulo: "Mientras grabo la pantalla"; sub: "Que no salga nada en el video"; encendido: Estilo.valor("dndGrabando"); onCambiar: v => Estilo.poner("dndGrabando", v) }
+                    }
+
+                    Encabezado { text: "Avisos en la isla" }
+                    Grupo {
+                        Interruptor { icono: "music_note"; titulo: "Ahora suena"; encendido: Estilo.valor("avisoMusica"); onCambiar: v => Estilo.poner("avisoMusica", v) }
+                        Interruptor { icono: "headphones"; titulo: "Audífonos y bocinas"; encendido: Estilo.valor("avisoBt"); onCambiar: v => Estilo.poner("avisoBt", v) }
+                        Interruptor { icono: "screenshot_region"; titulo: "Capturas de pantalla"; encendido: Estilo.valor("avisoCaptura"); onCambiar: v => Estilo.poner("avisoCaptura", v) }
+                        Segmentos {
+                            icono: "thermostat"; titulo: "Temperatura alta"
+                            opciones: ["No", "70°", "80°", "90°"]; claves: [0, 70, 80, 90]
+                            elegida: Estilo.valor("avisoTemp") ? Estilo.valor("avisoGrados") : 0
+                            onElegir: c => { Estilo.poner("avisoTemp", c > 0); if (c > 0) Estilo.poner("avisoGrados", c); }
+                        }
+                        Interruptor { icono: "battery_alert"; titulo: "Batería baja del mando o audífonos"; sub: "Al bajar de 20 %"; encendido: Estilo.valor("avisoBateria"); onCambiar: v => Estilo.poner("avisoBateria", v) }
+                        Interruptor { icono: "volume_up"; titulo: "Cambio de salida de audio"; encendido: Estilo.valor("avisoSalida"); onCambiar: v => Estilo.poner("avisoSalida", v) }
+                        Segmentos { titulo: "Duración"; opciones: ["Corta", "Normal", "Larga"]; claves: ["corta", "normal", "larga"]; elegida: Estilo.valor("avisoDuracion"); onElegir: c => Estilo.poner("avisoDuracion", c) }
+                    }
+
+                    Encabezado { text: "Ahora suena" }
+                    Grupo {
+                        Item {
+                            width: parent.width; height: fichas.y + fichas.height + 10
+                            Column {
+                                id: textoFichas
+                                x: 12; y: 9
+                                Texto { text: "Apps que avisan" }
+                                Texto { text: "Toque una para callarla. Salen las abiertas y las ya calladas"; color: "#888"; font.pixelSize: 11 }
+                            }
+                            Flow {
+                                id: fichas
+                                x: 12; y: textoFichas.y + textoFichas.height + 8
+                                width: parent.width - 24; spacing: 6
+                                Repeater {
+                                    id: repFichas
+                                    // ponytail: solo las que tienen reproductor abierto ahora; recordar todas las vistas si hace falta
+                                    model: {
+                                        const l = Mpris.players.values.map(p => p.identity).filter(x => x);
+                                        for (const x of Estilo.valor("musicaIgnorar")) if (!l.includes(x)) l.push(x);
+                                        return l.filter((x, i) => l.indexOf(x) === i);
+                                    }
+                                    delegate: Rectangle {
+                                        id: ficha
+                                        required property string modelData
+                                        readonly property bool callada: Estilo.valor("musicaIgnorar").includes(modelData)
+                                        width: filaFicha.width + 16; height: 26; radius: 9; color: "#1b1b1b"
+                                        Row {
+                                            id: filaFicha
+                                            anchors.centerIn: parent; spacing: 5
+                                            Simbolo { text: ficha.callada ? "music_off" : "music_note"; font.pixelSize: 14; color: ficha.callada ? "#666" : "#ddd"; anchors.verticalCenter: parent.verticalCenter }
+                                            Texto { text: ficha.modelData; font.pixelSize: 12; font.strikeout: ficha.callada; color: ficha.callada ? "#666" : "#ddd"; anchors.verticalCenter: parent.verticalCenter }
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: {
+                                                const l = Estilo.valor("musicaIgnorar");
+                                                Estilo.poner("musicaIgnorar", ficha.callada ? l.filter(x => x !== ficha.modelData) : l.concat([ficha.modelData]));
+                                            }
+                                        }
+                                    }
+                                }
+                                Texto { visible: repFichas.count === 0; text: "Ponga algo a sonar y aparecerá aquí"; color: "#666"; font.pixelSize: 12 }
+                            }
+                            Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: "#383838" }
+                        }
+                        Interruptor { titulo: "No avisar si la app está al frente"; sub: "Si ya está mirando el reproductor, no hace falta"; encendido: Estilo.valor("musicaNoAlFrente"); onCambiar: v => Estilo.poner("musicaNoAlFrente", v) }
+                        Interruptor { titulo: "Solo con carátula"; sub: "Ignora videos y sonidos sueltos sin portada"; encendido: Estilo.valor("musicaConCaratula"); onCambiar: v => Estilo.poner("musicaConCaratula", v) }
+                        Segmentos { titulo: "Al reanudar la misma canción"; opciones: ["No avisar", "Avisar"]; claves: [false, true]; elegida: Estilo.valor("musicaReanudar"); onElegir: c => Estilo.poner("musicaReanudar", c) }
+                    }
+
+                    Encabezado { text: "Hokum (notificaciones de apps)" }
+                    Grupo {
+                        Segmentos { titulo: "Posición"; opciones: ["Izquierda", "Centro", "Derecha"]; claves: ["left", "center", "right"]; elegida: paginaNotif.lado; onElegir: c => paginaNotif.ponerPosicion(paginaNotif.alto, c) }
+                        Segmentos { titulo: "Arriba o abajo"; opciones: ["Arriba", "Abajo"]; claves: ["top", "bottom"]; elegida: paginaNotif.alto; onElegir: c => paginaNotif.ponerPosicion(c, paginaNotif.lado) }
+                        Segmentos {
+                            titulo: "Cuánto duran"; sub: "Si la app no dice otra cosa"
+                            opciones: ["4 s", "6 s", "10 s", "20 s"]; claves: ["4", "6", "10", "20"]; elegida: paginaNotif.hokum.dura
+                            onElegir: c => paginaNotif.hokumCmd(["comportamiento", "stay", c === "6" ? "" : c], { dura: c })
+                        }
+                        Deslizador {
+                            titulo: "Máximo a la vista"; sub: "Las demás esperan en fila"; desde: 1; hasta: 8; valor: paginaNotif.hokum.maximo
+                            onSoltado: v => paginaNotif.hokumCmd(["comportamiento", "show-at-most", v === 5 ? "" : String(v)], { maximo: v })
+                        }
+                    }
+
+                    Encabezado { text: "Por aplicación" }
+                    Grupo {
+                        Repeater {
+                            model: paginaNotif.listaApps
+                            delegate: Segmentos {
+                                id: filaApp
+                                required property string modelData
+                                readonly property var r: paginaNotif.regla(modelData)
+                                icono: DesktopEntries.applications.values.find(e => e.name.toLowerCase() === modelData.toLowerCase())?.icon ?? ""
+                                iconoEsApp: true
+                                titulo: modelData
+                                sub: r.interrumpe ? "Atraviesa No molestar" : ""
+                                opciones: ["Mostrar", "Ocultar"]; claves: ["mostrar", "ocultar"]; elegida: r.modo
+                                onElegir: c => paginaNotif.ponerApp(modelData, c, r.interrumpe)
+                                // A la derecha de los segmentos: atravesar No molestar y quitar de la lista.
+                                margenDerecho: 12 + iconosApp.width + 10
+                                Row {
+                                    id: iconosApp
+                                    parent: filaApp
+                                    anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                                    spacing: 2
+                                    Simbolo {
+                                        text: "notifications_active"; font.pixelSize: 17
+                                        color: filaApp.r.interrumpe ? "#fff" : "#555"
+                                        MouseArea { anchors.fill: parent; anchors.margins: -5; onClicked: paginaNotif.ponerApp(filaApp.modelData, filaApp.r.modo, !filaApp.r.interrumpe) }
+                                    }
+                                    Simbolo {
+                                        text: "close"; font.pixelSize: 17; color: "#666"
+                                        MouseArea { anchors.fill: parent; anchors.margins: -5; onClicked: paginaNotif.quitarApp(filaApp.modelData) }
+                                    }
+                                }
+                            }
+                        }
+                        Fila {
+                            visible: !paginaNotif.agregando
+                            icono: "add"; titulo: "Agregar aplicación"; clicable: true
+                            onPulsada: { paginaNotif.agregando = true; buscaApp.text = ""; buscaApp.forceActiveFocus(); }
+                            Simbolo { text: "chevron_right"; color: "#888" }
+                        }
+                        Item {
+                            visible: paginaNotif.agregando
+                            width: parent.width; height: visible ? sugerencias.y + sugerencias.height + 10 : 0
+                            Rectangle {
+                                x: 12; y: 8; width: parent.width - 24; height: 28; radius: 8; color: "#1b1b1b"
+                                border.width: 1; border.color: buscaApp.activeFocus ? "#666" : "transparent"
+                                TextInput {
+                                    id: buscaApp
+                                    anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    clip: true
+                                    color: "#eee"; selectionColor: "#555"
+                                    font { family: Estilo.letra; pixelSize: 12 }
+                                    onAccepted: paginaNotif.agregarApp(text)
+                                    Keys.onEscapePressed: paginaNotif.agregando = false
+                                    Texto { visible: !parent.text; text: "Nombre de la app, como sale en la notificación"; color: "#666"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                }
+                            }
+                            Flow {
+                                id: sugerencias
+                                x: 12; y: 44; width: parent.width - 24; spacing: 6
+                                Repeater {
+                                    model: !paginaNotif.agregando || !buscaApp.text.trim() ? []
+                                        : DesktopEntries.applications.values
+                                            .filter(e => !e.noDisplay && e.name.toLowerCase().includes(buscaApp.text.trim().toLowerCase()))
+                                            .slice(0, 6).map(e => e.name)
+                                    delegate: Rectangle {
+                                        required property string modelData
+                                        width: tSug.implicitWidth + 18; height: 26; radius: 9; color: zSug.containsMouse ? "#3a3a3a" : "#1b1b1b"
+                                        Texto { id: tSug; anchors.centerIn: parent; text: modelData; font.pixelSize: 12 }
+                                        MouseArea { id: zSug; anchors.fill: parent; hoverEnabled: true; onClicked: paginaNotif.agregarApp(modelData) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Texto {
+                        topPadding: 10
+                        width: parent.width; wrapMode: Text.Wrap
+                        text: "La campana deja pasar esa app aunque esté puesto No molestar. Ocultar la calla del todo."
+                        color: "#888"; font.pixelSize: 11
                     }
                 }
             }
@@ -1231,19 +1473,30 @@ PanelWindow {
         property string titulo
         property string sub: ""
         property bool clicable: false       // toda la fila responde al clic (atajos)
+        property string icono: ""           // simbolo (o, con iconoEsApp, icono de app) a la izquierda
+        property bool iconoEsApp: false
+        property real margenDerecho: 12
         signal pulsada()
         default property alias derecha: lado.data
         width: parent ? parent.width : 0
         height: sub ? 50 : 40
         MouseArea { anchors.fill: parent; enabled: filaBase.clicable; onClicked: filaBase.pulsada() }
+        Rectangle {
+            id: cajaIcono
+            visible: filaBase.icono !== "" || filaBase.iconoEsApp
+            x: 12; anchors.verticalCenter: parent.verticalCenter
+            width: 24; height: 24; radius: 7; color: "#3a3a3a"
+            Simbolo { visible: !filaBase.iconoEsApp || !filaBase.icono; anchors.centerIn: parent; text: filaBase.iconoEsApp ? "notifications" : filaBase.icono; font.pixelSize: 15 }
+            IconImage { visible: filaBase.iconoEsApp && filaBase.icono !== ""; anchors.centerIn: parent; implicitSize: 18; source: filaBase.icono ? Quickshell.iconPath(filaBase.icono, true) : "" }
+        }
         Column {
-            anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter; right: lado.left; rightMargin: 10 }
+            anchors { left: parent.left; leftMargin: cajaIcono.visible ? 46 : 12; verticalCenter: parent.verticalCenter; right: lado.left; rightMargin: 10 }
             Texto { text: titulo; width: parent.width; elide: Text.ElideRight }
             Texto { visible: sub !== ""; text: sub; color: "#888"; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
         Item {
             id: lado
-            anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            anchors { right: parent.right; rightMargin: filaBase.margenDerecho; verticalCenter: parent.verticalCenter }
             width: childrenRect.width; height: childrenRect.height
         }
         Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: "#383838" }

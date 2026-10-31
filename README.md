@@ -22,9 +22,11 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*.
 - se conectan audífonos o bocinas Bluetooth (con su batería);
 - se guarda una captura (miniatura, con botones Abrir y Carpeta);
 - la CPU o la GPU pasan de cierta temperatura;
+- un mando, unos audífonos o un ratón bajan de 20 % de batería;
+- cambia la salida de audio (apagado de fábrica);
 - termina el temporizador o se copia un color.
 
-Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Las notificaciones de las apps no pasan por la isla: las muestra [Hokum](https://hokum.app).
+Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No molestar puesto no salen (menos temporizador y color, que los pide usted). Las notificaciones de las apps no pasan por la isla: las muestra [Hokum](https://hokum.app).
 
 **Vista expandida.** Al pasar el cursor (o fija con un clic) crece hacia abajo con tres pestañas:
 - **Música:** carátula grande (un clic lleva a la app), la isla teñida con el color del disco, barra de progreso que se arrastra, pastillas para elegir reproductor si suena más de uno, volumen de esa app, salida de audio (audífonos, bocinas, HDMI) y **letra sincronizada** abajo, que sube línea por línea con una ola, al estilo de Apple Music. La letra se busca en [LRCLIB](https://lrclib.net) y, si no está, en NetEase (`letra.sh`).
@@ -78,7 +80,8 @@ Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config
 - **Inicio:** fondo de pantalla actual y selector (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`), y opciones rápidas.
 - **Apariencia:** velocidad y rebote de las animaciones, color de la isla, tipografía, esquinas, espacio entre ventanas.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
-- **Isla:** qué muestra, cómo se abre y en qué pestaña, opciones de la pestaña Música y qué avisos salen.
+- **Isla:** qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
+- **Notificaciones:** No molestar (también automático en pantalla completa y al grabar), qué avisos salen en la isla, qué apps no avisan de la canción que suena, y lo de Hokum: posición, duración, cuántas a la vista y, por app, ocultarla o dejarla pasar aunque esté No molestar. Lo de Hokum lo escribe `menisco-hokum.py` en `~/.config/hokum/config.kdl` (lo valida con `hokum check` antes de guardar).
 - **Asistente:** sus gotas, carácter y el botón de luz.
 - **Barra lateral:** lado, alto, ancho, y una miniatura donde se reordenan las secciones arrastrándolas.
 

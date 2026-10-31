@@ -1,6 +1,13 @@
-# Menisco
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/menisco-banner-dark.svg">
+    <img alt="Menisco" src="assets/menisco-banner-light.svg" width="640">
+  </picture>
+</p>
 
-> El *menisco* es la curva que forma un líquido en el borde de su recipiente: lo mismo que dibuja el liquid glass en el borde del vidrio.
+<p align="center"><i>El menisco es la curva que forma un líquido en el borde de su recipiente:<br>lo mismo que dibuja el liquid glass en el borde del vidrio.</i></p>
+
+<br>
 
 Un escritorio para **niri** hecho a mano con **Quickshell**: una isla dinámica con avisos, música con letra, acciones rápidas y rendimiento; un asistente animado y personalizable; un dock de vidrio; un lanzador que brota del dock; una barra lateral; una ventana de ajustes completa; y un aviso de volumen de líquido. Todo en grises, blanco y vidrio, con tipografía SF Pro y animaciones con rebote suave.
 

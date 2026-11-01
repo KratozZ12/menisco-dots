@@ -113,7 +113,7 @@ PanelWindow {
     Rectangle {
         id: panel
         // Alto = pagina visible + botones de energia (solo en inicio); se anima al cambiar de pagina.
-        readonly property real altoPagina: [pInicio, pBt, pRed, pSonido].find(p => p.activa).implicitHeight
+        readonly property real altoPagina: [pInicio, pBt, pRed, pSonido].find(p => p.activa)?.implicitHeight ?? 0
         property real alto: 28 + altoPagina
         // Solo al cambiar de pagina: al abrir, el alto ya debe ser el final (si no, se ve crecer).
         Behavior on alto { enabled: panel.mostrar > 0.99; NumberAnimation { duration: Estilo.t(300); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
@@ -173,6 +173,8 @@ PanelWindow {
                     delegate: Loader {
                         required property var modelData
                         width: pInicio.width
+                        // Oculto se sale de la columna y no deja hueco (sin musica, la tarjeta no ocupa nada).
+                        visible: modelData.id !== "musica" || !!barra.reproductor
                         sourceComponent: ({ rapidos: cRapidos, sonido: cSonido, musica: cMusica, calendario: cCalendario, energia: cEnergia })[modelData.id] ?? null
                     }
                 }
@@ -372,7 +374,6 @@ PanelWindow {
     Component {
         id: cMusica
         Column {
-            visible: !!barra.reproductor
             Encabezado { text: "Reproduciendo"; topPadding: 0 }
             Rectangle {
                 width: parent.width; height: 72; radius: 16; color: "#2e2e2e"

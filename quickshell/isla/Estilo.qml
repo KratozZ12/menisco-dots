@@ -95,8 +95,10 @@ Singleton {
 
     // Bluetooth: al encender, primero se quita el bloqueo de rfkill (Plasma lo deja bloqueado al
     // apagarlo desde alli, y con el bloqueo BlueZ se niega a encender). Apagar no bloquea.
+    // Si BlueZ ya lo tiene encendido, el boton solo se ve apagado porque Quickshell se perdio el
+    // aviso (ver shell.qml): se apaga y enciende para que se entere.
     function bluetooth(adaptador, encender) {
-        if (encender) Quickshell.execDetached(["sh", "-c", "rfkill unblock bluetooth; sleep 0.5; bluetoothctl power on"]);
+        if (encender) Quickshell.execDetached(["sh", "-c", "rfkill unblock bluetooth; sleep 0.5; bluetoothctl show | grep -q 'Powered: yes' && bluetoothctl power off; bluetoothctl power on"]);
         else if (adaptador) adaptador.enabled = false;
     }
 

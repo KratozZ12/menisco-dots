@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Mpris
+import Quickshell.Bluetooth
 
 // Isla dinamica de adorno, pegada al borde de arriba como una muesca del monitor.
 // Abajo esquinas redondeadas; arriba, curvas hacia afuera que la funden con el borde.
@@ -49,6 +50,18 @@ ShellRoot {
         else if (!dndAutoPide && dndAuto) { dndAuto = false; Estilo.ponerNoMolestar(false); }
     }
     Connections { target: Estilo; function onNoMolestarChanged() { if (!Estilo.noMolestar) raiz.dndAuto = false; } }
+
+    // ---- Bluetooth que se queda en "apagado" ----
+    // El receptor USB (Realtek) se cuelga al iniciar sesion y el kernel lo reinicia: el adaptador
+    // vuelve como uno nuevo. Si eso pasa con el shell ya abierto, a Quickshell se le escapa el aviso
+    // de que se encendio y lo muestra apagado aunque funcione. Apagar y encender de verdad lo pone
+    // al dia; solo se hace si BlueZ dice que esta encendido, para no prender uno que usted apago.
+    Connections { target: Bluetooth; function onDefaultAdapterChanged() { revisarBt.restart() } }
+    Timer {
+        id: revisarBt; interval: 4000
+        onTriggered: if (Bluetooth.defaultAdapter && !Bluetooth.defaultAdapter.enabled)
+            Quickshell.execDetached(["sh", "-c", "bluetoothctl show | grep -q 'Powered: yes' && bluetoothctl power off && bluetoothctl power on"])
+    }
     // niri no dice si una ventana esta en pantalla completa: se compara su tamano con el del monitor.
     Process {
         running: Estilo.valor("dndPantallaCompleta")

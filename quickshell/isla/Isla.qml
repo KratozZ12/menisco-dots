@@ -66,6 +66,10 @@ PanelWindow {
         finAviso.restart();
     }
     Timer { id: finAviso; onTriggered: win.siguienteAviso() }
+    // 0 = fila de arriba, 1 = aviso. Una sola animacion: la primera mitad apaga uno y la segunda
+    // enciende el otro, asi nunca se ven los dos textos encimados.
+    property real fundidoAviso: aviso ? 1 : 0
+    Behavior on fundidoAviso { NumberAnimation { duration: Estilo.t(320) } }
     onExpandidaChanged: {
         if (expandida) {
             if (Estilo.valor("islaPestana") !== "ultima") pestana = Estilo.valor("islaPestana");
@@ -84,7 +88,7 @@ PanelWindow {
     // Tamano de la forma segun lo que muestra
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [360, 42, 20]
-        : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
+        : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [420, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
              temperatura: [390, 42, 20], temporizador: [380, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
     // ---------------- Forma ----------------
@@ -167,8 +171,7 @@ PanelWindow {
             Item {
                 id: cabecera
                 width: parent.width; height: 42
-                opacity: win.aviso ? 0 : 1
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(180) } }
+                opacity: Math.max(0, 1 - win.fundidoAviso * 2)
 
                 SystemClock { id: reloj; precision: Estilo.valor("segundos") ? SystemClock.Seconds : SystemClock.Minutes }
 
@@ -253,9 +256,8 @@ PanelWindow {
             Item {
                 id: capaAviso
                 anchors.fill: parent
-                opacity: win.aviso ? 1 : 0
+                opacity: Math.max(0, win.fundidoAviso * 2 - 1)
                 visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(220) } }
                 property var a: win.aviso || capaAviso.a   // conserva el ultimo mientras se desvanece
 
                 Loader {
@@ -510,12 +512,14 @@ PanelWindow {
             Asistente { width: 46; height: 46; emocion: "feliz"; fondoNegro: Estilo.valor("fondoNegro"); anchors.verticalCenter: parent.verticalCenter }
         }
     }
-    // qs -p ~/.config/quickshell/isla ipc call gota_HDMI-A-1 abrir | preguntar "texto"
+    // qs -p ~/.config/quickshell/isla ipc call gota_HDMI-A-1 abrir | preguntar "texto" | pestana acciones
     IpcHandler {
         target: "gota_" + (win.screen ? win.screen.name : "")
         function abrir(): void { win.conGota = true; win.fijada = true; }
+        function pestana(p: string): void { win.conGota = false; win.pestana = p; win.fijada = true; }
         function cerrar(): void { win.conGota = false; win.fijada = false; win.encima = false; }
         function preguntar(texto: string): void { abrir(); Cerebro.preguntar(texto); }
+        function avisoBt(nombre: string, bateria: int): void { win.avisar({ tipo: "bt", nombre: nombre, bateria: bateria }); }
     }
     Connections {
         target: Cerebro
@@ -554,8 +558,14 @@ PanelWindow {
         id: avBt
         Item {
             Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "headphones"; font.pixelSize: 20 }
-            Texto { anchors.centerIn: parent; text: capaAviso.a.nombre + "  "; font.weight: Font.DemiBold
-                Texto { anchors.left: parent.right; anchors.baseline: parent.baseline; text: "conectados"; color: "#aaa" } }
+            // Nombre y "conectados" centrados juntos en 240 px (el aviso mide 420: 90 libres a cada lado
+            // para el icono y la bateria). Fijo, no el ancho vivo: al encogerse la isla el nombre se recortaba.
+            Row {
+                anchors.centerIn: parent
+                spacing: 6
+                Texto { width: Math.min(implicitWidth, 240 - conectados.width - 6); text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                Texto { id: conectados; text: "conectados"; color: "#aaa" }
+            }
             Row {
                 visible: capaAviso.a.bateria >= 0
                 anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
@@ -907,61 +917,76 @@ PanelWindow {
         }
 
         // ---- Botones ----
-        // Flow (no Grid): el temporizador ocupa dos celdas y Grid no sabe de celdas dobles.
-        Flow {
-            id: rejilla
+        // Tres grupos: las capturas en una barra partida en cuatro, dos interruptores, y abajo el
+        // temporizador con las utilidades (solo icono).
+        Column {
             visible: win.vistaAcciones === "botones"
             width: parent.width
-            spacing: 8
-            readonly property real celda: (width - 24) / 4
+            spacing: 10
 
-            Accion { icono: "screenshot_region"; titulo: "Captura"; sub: "Elegir zona"; onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["sh", "-c", "sleep 0.5; niri msg action screenshot"]); } }
-            Accion { icono: "fullscreen"; titulo: "Pantalla"; sub: "Captura completa"; onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["sh", "-c", "sleep 0.6; niri msg action screenshot-screen"]); } }
-            Accion { icono: win.raiz.grabando ? "stop_circle" : "radio_button_checked"; colorIcono: "#ff453a"; titulo: win.raiz.grabando ? "Detener" : "Grabar"
-                     sub: win.raiz.grabando ? win.mmss(win.raiz.segundosGrabando) : "Con sonido"; encendida: win.raiz.grabando
-                     onPulsado: { if (!win.raiz.grabando) { win.fijada = false; win.encima = false; } win.raiz.alternarGrabacion(); } }
-            Accion { icono: "colorize"; titulo: "Color"; sub: "Tomar de pantalla"; onPulsado: { win.fijada = false; win.encima = false; tomarColor.running = true; } }
-
-            // Temporizador: ocupa dos celdas, con botones directos
-            Rectangle {
-                width: rejilla.celda * 2 + 8; height: 70; radius: 16
-                color: zonaTm.containsMouse ? "#333" : "#2b2b2b"
-                Behavior on color { ColorAnimation { duration: 200 } }
-                MouseArea { id: zonaTm; anchors.fill: parent; hoverEnabled: true }
+            ClippingRectangle {
+                width: parent.width; height: 66; radius: 20
+                color: "#2e2e2e"
                 Row {
-                    x: 10; y: 9; spacing: 8
-                    Rectangle { width: 28; height: 28; radius: 9; color: "#3a3a3a"
-                        Simbolo { anchors.centerIn: parent; text: win.raiz.temporizadorRestante > 0 ? "timer_off" : "timer"; color: "#ff9f0a"; font.pixelSize: 17 } }
-                    Column {
-                        Texto { text: "Temporizador"; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Texto { text: win.raiz.temporizadorRestante > 0 ? "Quedan " + win.mmss(win.raiz.temporizadorRestante) : "Un toque para empezar"; color: "#888"; font.pixelSize: 10 }
-                    }
-                }
-                Row {
-                    x: 10; anchors { bottom: parent.bottom; bottomMargin: 9 } spacing: 5
-                    Repeater {
-                        model: win.raiz.temporizadorRestante > 0 ? [["Cancelar", 0]] : [["1 min", 60], ["5 min", 300], ["10 min", 600], ["25 min", 1500]]
-                        delegate: Rectangle {
-                            required property var modelData
-                            width: tTm.implicitWidth + 14; height: 22; radius: 8
-                            color: zc2.containsMouse ? "#444" : "#1b1b1b"
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            scale: zc2.pressed ? 0.9 : 1
-                            Behavior on scale { NumberAnimation { duration: Estilo.t(zc2.pressed ? 80 : 360); easing.type: zc2.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
-                            Texto { id: tTm; anchors.centerIn: parent; text: modelData[0]; font.pixelSize: 11; color: "#ddd" }
-                            MouseArea { id: zc2; anchors.fill: parent; hoverEnabled: true
-                                onClicked: modelData[1] > 0 ? win.raiz.iniciarTemporizador(modelData[1]) : win.raiz.cancelarTemporizador() }
-                        }
-                    }
+                    anchors.fill: parent
+                    Segmento { icono: "screenshot_region"; texto: "Zona"
+                               onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["sh", "-c", "sleep 0.5; niri msg action screenshot"]); } }
+                    Segmento { icono: "fullscreen"; texto: "Pantalla"
+                               onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["sh", "-c", "sleep 0.6; niri msg action screenshot-screen"]); } }
+                    Segmento { icono: win.raiz.grabando ? "stop_circle" : "radio_button_checked"; colorIcono: "#ff453a"
+                               texto: win.raiz.grabando ? win.mmss(win.raiz.segundosGrabando) : "Grabar"
+                               onPulsado: { if (!win.raiz.grabando) { win.fijada = false; win.encima = false; } win.raiz.alternarGrabacion(); } }
+                    Segmento { icono: "colorize"; texto: "Color"; ultimo: true
+                               onPulsado: { win.fijada = false; win.encima = false; tomarColor.running = true; } }
                 }
             }
-            Accion { icono: "content_paste"; titulo: "Portapapeles"; sub: "Últimos copiados"; onPulsado: { leerHistorial.running = true; win.vistaAcciones = "portapapeles"; } }
-            Accion { icono: "sports_esports"; titulo: "Modo juego"; sub: encendida ? "Activado" : "Apagado"; encendida: win.raiz.modoJuego; onPulsado: win.raiz.alternarModoJuego() }
-            Accion { icono: pa.micMudo ? "mic_off" : "mic"; titulo: "Micrófono"; sub: pa.micMudo ? "Silenciado" : "Activo"; encendida: pa.micMudo
-                     onPulsado: if (Pipewire.defaultAudioSource && Pipewire.defaultAudioSource.audio) Pipewire.defaultAudioSource.audio.muted = !pa.micMudo }
-            Accion { icono: "lock"; titulo: "Bloquear"; sub: "Ahora"; onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["swaylock"]); } }
-            Accion { icono: "wallpaper"; titulo: "Fondo"; sub: "Siguiente"; onPulsado: siguienteFondo.running = true }
-            Accion { icono: "edit_note"; titulo: "Nota"; sub: "Rápida"; onPulsado: { win.fijada = true; win.vistaAcciones = "nota"; } }
+
+            Row {
+                width: parent.width
+                spacing: 10
+                Interruptor { icono: "sports_esports"; texto: "Modo juego"; encendido: win.raiz.modoJuego; onPulsado: win.raiz.alternarModoJuego() }
+                Interruptor { icono: pa.micMudo ? "mic_off" : "mic"; texto: "Micrófono"; encendido: !pa.micMudo
+                              onPulsado: if (Pipewire.defaultAudioSource && Pipewire.defaultAudioSource.audio) Pipewire.defaultAudioSource.audio.muted = !pa.micMudo }
+            }
+
+            Row {
+                width: parent.width
+                spacing: 8
+                Rectangle {
+                    id: tempo
+                    // Un booleano aparte: si el modelo del Repeater dependiera del tiempo restante,
+                    // se recrearian los botones en cada tic.
+                    readonly property bool corriendo: win.raiz.temporizadorRestante > 0
+                    width: parent.width - 4 * (46 + 8); height: 46; radius: 18
+                    color: "#2e2e2e"
+                    Row {
+                        x: 12; anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+                        Simbolo { text: tempo.corriendo ? "timer_off" : "timer"; font.pixelSize: 19; anchors.verticalCenter: parent.verticalCenter }
+                        Texto { visible: tempo.corriendo; text: win.mmss(win.raiz.temporizadorRestante); font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                        Repeater {
+                            model: tempo.corriendo ? [["Cancelar", 0]] : [["1", 60], ["5", 300], ["10", 600], ["25", 1500]]
+                            delegate: Rectangle {
+                                required property var modelData
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: tTm.implicitWidth + 18; height: 26; radius: 13
+                                color: zc2.containsMouse ? "#444" : "#1b1b1b"
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                                scale: zc2.pressed ? 0.9 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zc2.pressed ? 80 : 360); easing.type: zc2.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
+                                Texto { id: tTm; anchors.centerIn: parent; text: modelData[0]; font.pixelSize: 11 }
+                                MouseArea { id: zc2; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: modelData[1] > 0 ? win.raiz.iniciarTemporizador(modelData[1]) : win.raiz.cancelarTemporizador() }
+                            }
+                        }
+                        Texto { visible: !tempo.corriendo; text: "min"; color: "#888"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+                BotonIcono { icono: "content_paste"; onPulsado: { leerHistorial.running = true; win.vistaAcciones = "portapapeles"; } }
+                BotonIcono { icono: "edit_note"; onPulsado: { win.fijada = true; win.vistaAcciones = "nota"; } }
+                BotonIcono { icono: "wallpaper"; onPulsado: siguienteFondo.running = true }
+                BotonIcono { icono: "lock"; onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["swaylock"]); } }
+            }
         }
 
         // ---- Nota rapida: se guarda sola en nota.txt ----
@@ -1036,32 +1061,67 @@ PanelWindow {
         }
     }
 
-    component Accion: Rectangle {
-        id: acc
+    // Piezas de la pestana Acciones. Hover gris claro, y al pulsar se encogen y rebotan.
+    component Segmento: Rectangle {
+        id: seg
         property string icono
-        property string titulo
-        property string sub
+        property string texto
         property color colorIcono: "#ffffff"
-        property bool encendida: false
+        property bool ultimo: false
         signal pulsado()
-        width: rejilla.celda; height: 70; radius: 16
-        color: encendida ? "#ffffff" : (za.containsMouse ? "#333" : "#2b2b2b")
-        Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
-        transform: Translate { y: za.containsMouse && !za.pressed ? -2 : 0; Behavior on y { NumberAnimation { duration: Estilo.t(360); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } } }
-        scale: za.pressed ? 0.94 : 1
-        Behavior on scale { NumberAnimation { duration: Estilo.t(za.pressed ? 80 : 400); easing.type: za.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
-        Rectangle {
-            x: 10; y: 9; width: 28; height: 28; radius: 9
-            color: acc.encendida ? "#e6e6e6" : "#3a3a3a"
-            Simbolo { anchors.centerIn: parent; text: acc.icono; font.pixelSize: 17; color: acc.encendida ? "#111" : acc.colorIcono }
-        }
+        width: parent.width / 4; height: parent.height
+        color: zs.containsMouse ? "#3a3a3a" : "#002e2e2e"
+        Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
         Column {
-            x: 10; anchors { bottom: parent.bottom; bottomMargin: 8 }
-            width: parent.width - 16
-            Texto { text: acc.titulo; font.pixelSize: 12; font.weight: Font.DemiBold; color: acc.encendida ? "#111" : "#fff"; width: parent.width; elide: Text.ElideRight }
-            Texto { text: acc.sub; font.pixelSize: 10; color: acc.encendida ? "#555" : "#888"; width: parent.width; elide: Text.ElideRight }
+            anchors.centerIn: parent
+            spacing: 5
+            scale: zs.pressed ? 0.9 : 1
+            Behavior on scale { NumberAnimation { duration: Estilo.t(zs.pressed ? 80 : 400); easing.type: zs.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
+            Simbolo { anchors.horizontalCenter: parent.horizontalCenter; text: seg.icono; font.pixelSize: 22; color: seg.colorIcono }
+            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: seg.texto; font.pixelSize: 11; color: "#bbb" }
         }
-        MouseArea { id: za; anchors.fill: parent; hoverEnabled: true; onClicked: acc.pulsado() }
+        // Raya que separa del siguiente, del color de la isla
+        Rectangle { visible: !seg.ultimo; anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: 1; color: Estilo.fondo }
+        MouseArea { id: zs; anchors.fill: parent; hoverEnabled: true; onClicked: seg.pulsado() }
+    }
+    component Interruptor: Rectangle {
+        id: itr
+        property string icono
+        property string texto
+        property bool encendido: false
+        signal pulsado()
+        width: (parent.width - 10) / 2; height: 52; radius: 18
+        color: encendido ? "#ffffff" : (zi.containsMouse ? "#3a3a3a" : "#2e2e2e")
+        Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
+        scale: zi.pressed ? 0.96 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zi.pressed ? 80 : 400); easing.type: zi.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
+        Simbolo { x: 12; anchors.verticalCenter: parent.verticalCenter; text: itr.icono; font.pixelSize: 21; color: itr.encendido ? "#111" : "#fff" }
+        Texto { x: 43; anchors.verticalCenter: parent.verticalCenter; text: itr.texto; font.pixelSize: 12; font.weight: Font.DemiBold; color: itr.encendido ? "#111" : "#fff" }
+        Rectangle {
+            anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            width: 34; height: 20; radius: 10
+            color: itr.encendido ? "#111111" : "#444444"
+            Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
+            Rectangle {
+                y: 3; width: 14; height: 14; radius: 7
+                x: itr.encendido ? 17 : 3
+                Behavior on x { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                color: itr.encendido ? "#ffffff" : "#bbbbbb"
+            }
+        }
+        MouseArea { id: zi; anchors.fill: parent; hoverEnabled: true; onClicked: itr.pulsado() }
+    }
+    component BotonIcono: Rectangle {
+        id: bi
+        property string icono
+        signal pulsado()
+        width: 46; height: 46; radius: 16
+        color: zbi.containsMouse ? "#3a3a3a" : "#2e2e2e"
+        Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
+        scale: zbi.pressed ? 0.9 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zbi.pressed ? 80 : 400); easing.type: zbi.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
+        Simbolo { anchors.centerIn: parent; text: bi.icono; font.pixelSize: 20 }
+        MouseArea { id: zbi; anchors.fill: parent; hoverEnabled: true; onClicked: bi.pulsado() }
     }
 
     component Volver: Item {

@@ -4,7 +4,8 @@
 Uso: rendimiento.py [segundos entre medidas]   (por defecto 1.2)
 
 Por linea: consumo del CPU (W, por RAPL), uso del CPU (%), temperatura del CPU (k10temp),
-consumo, uso y temperatura de la GPU NVIDIA (nvidia-smi) y los 3 programas que mas CPU usan
+consumo, uso y temperatura de la GPU NVIDIA (nvidia-smi), la RAM en uso y total (GiB,
+/proc/meminfo: total menos disponible, como los monitores del sistema) y los 3 programas que mas CPU usan
 en esa vuelta (por diferencia de tiempos en /proc, no el promedio de toda su vida).
 """
 import glob
@@ -54,6 +55,11 @@ def procesos():
     return r
 
 
+def ram():
+    m = {l.split(":")[0]: int(l.split()[1]) for l in leer("/proc/meminfo").splitlines() if ":" in l}
+    return (m["MemTotal"] - m["MemAvailable"]) / 2**20, m["MemTotal"] / 2**20   # kB -> GiB
+
+
 def gpu():
     try:
         o = subprocess.run(["nvidia-smi", "--query-gpu=power.draw,utilization.gpu,temperature.gpu",
@@ -75,11 +81,13 @@ while True:
     nucleos = os.cpu_count() or 1
     top = sorted(((n, (p1[n] - p0.get(n, 0)) / HZ / dt * 100 / nucleos) for n in p1), key=lambda x: -x[1])[:3]
     gw, gu, gt = gpu()
+    ram_usada, ram_total = ram()
     print(json.dumps({
         "cpuW": round(cpu_w, 1) if cpu_w is not None else None,
         "cpuUso": round(uso),
         "cpuTemp": round(int(leer(temp_cpu, "0")) / 1000) if temp_cpu else None,
         "gpuW": gw, "gpuUso": gu, "gpuTemp": gt,
+        "ramUsada": round(ram_usada, 2), "ramTotal": round(ram_total, 1),
         "top": [[n, round(p, 1)] for n, p in top if p > 0.05],
     }), flush=True)
     e0, t0, i0, p0, m0 = e1, t1, i1, p1, m1

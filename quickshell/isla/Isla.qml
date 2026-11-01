@@ -1140,7 +1140,6 @@ PanelWindow {
 
         property var dato: ({})
         property var histC: []; property var histG: []; property var histT: []
-        readonly property real total: (dato.cpuW || 0) + (dato.gpuW || 0)
         function sumar(h, v) { const r = h.concat([v || 0]); return r.length > 24 ? r.slice(r.length - 24) : r; }
 
         // Solo mide mientras la pagina se ve
@@ -1163,7 +1162,8 @@ PanelWindow {
             spacing: 10
             Row {
                 width: parent.width; spacing: 12
-                Medidor { valor: pr.total; maximo: 250; anchors.verticalCenter: parent.verticalCenter }
+                Medidor { valor: pr.dato.ramUsada || 0; maximo: pr.dato.ramTotal || 16; anchors.verticalCenter: parent.verticalCenter
+                          etiqueta: pr.dato.ramTotal ? "de " + pr.dato.ramTotal.toFixed(1) + " GB" : "RAM" }
                 Row {
                     spacing: 7; anchors.verticalCenter: parent.verticalCenter
                     readonly property real ancho: (pr.width - 96 - 12 - 14) / 3
@@ -1489,11 +1489,12 @@ PanelWindow {
             }
         }
     }
-    // Medidor de consumo con marcas, como un velocimetro
+    // Medidor de la RAM en uso (GB), con marcas como un velocimetro
     component Medidor: Item {
         id: med
         property real valor
-        property real maximo: 250
+        property real maximo
+        property string etiqueta
         property real visto: valor
         Behavior on visto { NumberAnimation { duration: 1000; easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
         width: 96; height: 96
@@ -1524,8 +1525,8 @@ PanelWindow {
         }
         Column {
             anchors.centerIn: parent
-            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: Math.round(med.visto); font.pixelSize: 24; font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: "vatios"; color: "#888"; font.pixelSize: 10 }
+            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.visto.toFixed(1); font.pixelSize: 24; font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
+            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.etiqueta; color: "#888"; font.pixelSize: 10 }
         }
     }
     // Tarjeta con mini grafica en vivo

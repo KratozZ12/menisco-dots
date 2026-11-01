@@ -41,7 +41,7 @@ Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No
 - **Rendimiento:** consumo en vatios, uso y temperatura de la CPU y la GPU NVIDIA, perfil de energía y los programas que más gastan (`rendimiento.py`, solo corre mientras se ve).
 
 ### Asistente
-Una carita con ojos proyectados en 3D sobre una esfera. Mira a su alrededor, parpadea y se duerme entre gestos para no gastar CPU. Todavía no responde; es el diseño.
+Una carita con ojos proyectados en 3D sobre una esfera. Mira a su alrededor, parpadea y se duerme entre gestos para no gastar CPU. Y piensa: ver **Gota** más abajo.
 
 - Seis emociones, cada una con su forma y su color. Cambiar de una a otra transforma la cabeza con un rebote:
 
@@ -56,7 +56,16 @@ Una carita con ojos proyectados en 3D sobre una esfera. Mira a su alrededor, par
 
   Para probarlas: `qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz`
 - **Gotas:** en Ajustes > Asistente se crean asistentes propios con nombre, una de 14 formas y uno de 11 colores. Se puede elegir que cambie de forma con las emociones o que solo cambien los ojos.
-- En la isla abierta tiene un botón vertical con luz azul que gira y chispas (se puede apagar).
+- En la isla abierta tiene un botón vertical con luz azul que gira y chispas (se puede apagar). Al pulsarlo se abre la conversación.
+
+### Gota (el asistente que hace cosas)
+Se le habla dentro de la isla, en el mismo marco que las pestañas: «acomoda mis descargas», «¿por qué no suena nada?», «¿qué ocupa espacio?». El cerebro es [OpenCode](https://opencode.ai) con un agente propio (`gota/agents/gota.md`: personalidad y reglas), por defecto con un modelo gratuito de OpenCode (`deepseek-v4.1-flash-free`; se cambia en la cabecera de ese archivo).
+
+- **Mira sin pedir permiso, cambia solo con su visto bueno.** Para mover, renombrar, mandar a la papelera o reiniciar un servicio, propone un plan (carpetas, cuántos archivos) con **Cancelar** y **Hazlo**. Después ofrece **Deshacer**.
+- **La IA nunca escribe nada.** Corre dentro de una caja de solo lectura (`bwrap`): aunque un comando se cuele, el sistema no la deja tocar archivos. Los planes los aplica `gota/gota-plan.py`, que no sale de la carpeta personal, nunca sobrescribe, nunca borra (usa la papelera) y solo acepta una lista cerrada de comandos. Nada con `sudo`: eso se lo dice a usted para que lo ejecute.
+- **Avisa de fallos.** `gota/vigilar.sh` revisa cada minuto Bluetooth, sonido, portal del escritorio, la gráfica, el disco y los servicios de usuario; si algo cae, la isla lo muestra con un botón **Arreglar** que le pasa el problema a la Gota.
+- Sus caras siguen la conversación: escucha mientras escribe, piensa mientras trabaja, feliz al terminar, confundida si falla. Si termina con la isla cerrada, avisa.
+- Desde la terminal: `qs -p ~/.config/quickshell/isla ipc call gota_<monitor> preguntar "texto"` (también `abrir` y `cerrar`).
 
 ### Dock
 - Vidrio esmerilado en niri; *liquid glass* en Lniri.
@@ -84,7 +93,8 @@ Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi,
 
 ### Ajustes (`Super+.`)
 Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar).
-- **Inicio:** fondo de pantalla actual y selector (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`), y opciones rápidas.
+- **Inicio:** buscador que lleva a cualquier ajuste y lo ilumina; fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
+- También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
 - **Apariencia:** velocidad y rebote de las animaciones, color de la isla, tipografía, esquinas, espacio entre ventanas.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
 - **Isla:** qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
@@ -111,6 +121,7 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 | `wf-recorder`, `cliphist`, `swaylock` | grabar pantalla, historial del portapapeles, bloquear |
 | PipeWire, BlueZ, NetworkManager, `power-profiles-daemon` | volumen, Bluetooth, Wi-Fi y perfil de energía |
 | `nvidia-smi` (opcional) | datos de la GPU en Rendimiento |
+| [OpenCode](https://opencode.ai), `bubblewrap` (`bwrap`), `gio` | la Gota: su cerebro, su caja de solo lectura y la papelera |
 | Tipografía **SF Pro** | textos (ver la nota de abajo) |
 | [Material Symbols Rounded](https://github.com/google/material-design-icons) (fuente variable) | iconos |
 | Tema de iconos [WhiteSur](https://github.com/vinceliuice/WhiteSur-icon-theme) | iconos del dock (opcional) |
@@ -171,6 +182,7 @@ El resto son los atajos de fábrica de niri.
   y cree `~/.local/share/dbus-1/services/app.hokum.Notifications.service` con el `Exec=` del servicio de notificaciones de su otro escritorio.
 - **Sin un programa de notificaciones**, algunas apps (como la de escritorio de Claude) se congelan esperando respuesta. No quite Hokum sin poner otro.
 - **No molestar** lo guarda Hokum; los interruptores de Menisco (ajustes, barra, lanzador, modo juego) lo cambian con `hokum dnd`.
+- **Gota y privacidad:** lo que le pide a la Gota, y lo que ella lee para contestar (nombres de archivos, registros del sistema), va al servidor del modelo que use OpenCode. Con los modelos gratuitos, revise qué hace OpenCode con esos datos.
 - **Letras:** para buscar la letra, la isla manda el título y el artista de la canción a LRCLIB y, si no la encuentra, a NetEase (un servicio de China). Las dos se pueden apagar en Ajustes > Isla.
 - **Quickshell a la frecuencia del monitor:** niri lo lanza con `QSG_RENDER_LOOP=threaded`; sin eso, Qt anima a 60 fps aunque el monitor vaya a 144.
 - **El fondo de awww vive en el *backdrop* de niri:** por eso el fondo de los espacios de trabajo es transparente en la configuración.

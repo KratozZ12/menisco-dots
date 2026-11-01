@@ -34,8 +34,9 @@ PanelWindow {
     color: "transparent"
     visible: raiz.islaVisible
     WlrLayershell.namespace: "isla"
-    // Solo pide el teclado mientras se escribe la nota rapida.
-    WlrLayershell.keyboardFocus: expandida && pestana === "acciones" && vistaAcciones === "nota" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // Solo pide el teclado mientras se escribe la nota rapida o se habla con la Gota.
+    WlrLayershell.keyboardFocus: expandida && (conGota || (pestana === "acciones" && vistaAcciones === "nota")) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    property bool conGota: false                      // conversacion con la Gota en vez de las pestanas
     property string vistaAcciones: "botones"          // botones | nota | portapapeles
     mask: Region { x: forma.x0 - win.hombro; y: 0; width: forma.ancho + win.hombro * 2; height: forma.alto }
 
@@ -50,7 +51,7 @@ PanelWindow {
     // Con la isla abierta los avisos esperan en fila y salen al cerrarla.
     // Interruptor de Ajustes > Notificaciones para cada tipo (temporizador y color siempre salen: los pide usted).
     readonly property var interruptorAviso: ({ musica: "avisoMusica", bt: "avisoBt", captura: "avisoCaptura", temperatura: "avisoTemp",
-                                               bateria: "avisoBateria", salida: "avisoSalida" })
+                                               bateria: "avisoBateria", salida: "avisoSalida", fallo: "avisoFallos" })
     function avisar(a) {
         const clave = interruptorAviso[a.tipo];
         if (clave && (!Estilo.valor(clave) || Estilo.noMolestar)) return;
@@ -72,14 +73,18 @@ PanelWindow {
             finAviso.stop();
             if (aviso && aviso.tipo !== "musica") colaAvisos = [aviso].concat(colaAvisos);
             aviso = null;
-        } else if (colaAvisos.length) reanudar.restart();
+        } else {
+            // Si no esta trabajando ni esperando un "Hazlo", al cerrar se vuelve a las pestanas.
+            if (!Cerebro.ocupada && Cerebro.estado !== "plan") conGota = false;
+            if (colaAvisos.length) reanudar.restart();
+        }
     }
     Timer { id: reanudar; interval: 450; onTriggered: if (!win.expandida && !win.aviso) win.siguienteAviso() }
 
     // Tamano de la forma segun lo que muestra
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [360, 42, 20]
-        : ({ musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
+        : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [390, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
              temperatura: [390, 42, 20], temporizador: [380, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
     // ---------------- Forma ----------------
@@ -136,6 +141,7 @@ PanelWindow {
             TapHandler {
                 onTapped: {
                     if (win.aviso && win.aviso.tipo === "captura") { Quickshell.execDetached(["xdg-open", win.aviso.ruta]); win.siguienteAviso(); return; }
+                    if (win.aviso && (win.aviso.tipo === "gota" || win.aviso.tipo === "fallo")) { win.conGota = true; win.fijada = true; return; }
                     win.fijada = !win.fijada;
                     if (!win.fijada) win.encima = false;
                 }
@@ -171,7 +177,8 @@ PanelWindow {
                     id: asistenteIsla
                     width: 40; height: 40
                     x: 6; anchors.verticalCenter: parent.verticalCenter
-                    emocion: win.raiz.emocion === "normal" && Estilo.valor("reaccionMusica") && Mpris.players.values.some(p => p.isPlaying) ? "feliz" : win.raiz.emocion
+                    emocion: Cerebro.emocion ? Cerebro.emocion
+                        : win.raiz.emocion === "normal" && Estilo.valor("reaccionMusica") && Mpris.players.values.some(p => p.isPlaying) ? "feliz" : win.raiz.emocion
                     visible: Estilo.valor("islaAsistente")
                     ritmo: ({ tranquilo: 1.8, normal: 1, inquieto: 0.5 })[Estilo.valor("personalidad")] ?? 1
                     fondoNegro: Estilo.valor("fondoNegro")
@@ -253,7 +260,7 @@ PanelWindow {
 
                 Loader {
                     anchors.fill: parent
-                    sourceComponent: capaAviso.a ? ({ musica: avMusica, bt: avBt, captura: avCaptura, color: avColor,
+                    sourceComponent: capaAviso.a ? ({ gota: avGota, fallo: avFallo, musica: avMusica, bt: avBt, captura: avCaptura, color: avColor,
                                                      temperatura: avTemp, temporizador: avTimer, bateria: avBateria, salida: avSalida })[capaAviso.a.tipo] ?? null : null
                 }
             }
@@ -268,21 +275,31 @@ PanelWindow {
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(win.expandida ? 260 : 120) } }
 
                 // En Musica no sale el boton: la pagina ocupa todo el ancho.
-                readonly property bool conBoton: win.pestana !== "musica" && Estilo.valor("botEnPaginas")
+                readonly property bool conBoton: win.conGota || (win.pestana !== "musica" && Estilo.valor("botEnPaginas"))
                 BotonAsistente {
                     id: botonAsistente
                     y: 2
                     height: 276
                     emocion: asistenteIsla.emocion
+                    onPulsado: { win.conGota = !win.conGota; win.fijada = win.conGota; }
                     opacity: cuerpo.conBoton ? 1 : 0
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(cuerpo.conBoton ? 320 : 180) } }
                 }
                 Connections { target: win; function onExpandidaChanged() { if (win.expandida) botonAsistente.aparecer(); } }
 
+                PaginaGota {
+                    x: botonAsistente.width + 18
+                    width: cuerpo.width - x; height: cuerpo.height
+                    activa: win.conGota
+                }
+
                 Column {
                     width: cuerpo.width
                     spacing: 10
+                    opacity: win.conGota ? 0 : 1
+                    visible: opacity > 0.01
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(win.conGota ? 140 : 260) } }
 
                     Selector {
                         x: botonAsistente.width + 18
@@ -491,6 +508,46 @@ PanelWindow {
                 Texto { width: parent.width; text: capaAviso.a.artista || ""; color: "#aaa"; font.pixelSize: 12; elide: Text.ElideRight }
             }
             Asistente { width: 46; height: 46; emocion: "feliz"; fondoNegro: Estilo.valor("fondoNegro"); anchors.verticalCenter: parent.verticalCenter }
+        }
+    }
+    // qs -p ~/.config/quickshell/isla ipc call gota_HDMI-A-1 abrir | preguntar "texto"
+    IpcHandler {
+        target: "gota_" + (win.screen ? win.screen.name : "")
+        function abrir(): void { win.conGota = true; win.fijada = true; }
+        function cerrar(): void { win.conGota = false; win.fijada = false; win.encima = false; }
+        function preguntar(texto: string): void { abrir(); Cerebro.preguntar(texto); }
+    }
+    Connections {
+        target: Cerebro
+        function onTermino(texto) {
+            if (win.expandida && win.conGota) return;
+            win.avisar({ tipo: "gota", texto: Cerebro.estado === "plan" ? "Tengo un plan listo. Ábreme para verlo."
+                                        : (texto || Cerebro.mensajes.length && Cerebro.mensajes[Cerebro.mensajes.length - 1].texto || "Listo.").split("\n")[0], ms: 6000 });
+        }
+    }
+    Connections {
+        target: Cerebro
+        function onFallo(clave, titulo, detalle) { win.avisar({ tipo: "fallo", titulo: titulo, detalle: detalle, ms: 12000 }); }
+    }
+    // Fallo detectado: la Gota confundida, que es y "Arreglar" (le pasa el problema)
+    Component {
+        id: avFallo
+        Item {
+            Asistente { x: 8; width: 30; height: 30; anchors.verticalCenter: parent.verticalCenter; emocion: "confuso" }
+            Texto { x: 46; width: parent.width - 46 - arreglar.width - 26; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.titulo; elide: Text.ElideRight; font.weight: Font.DemiBold }
+            Chip {
+                id: arreglar
+                anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                texto: "Arreglar"; blanco: true
+                onPulsado: { const a = capaAviso.a; win.siguienteAviso(); win.conGota = true; win.fijada = true; Cerebro.arreglar(a.titulo, a.detalle); }
+            }
+        }
+    }
+    Component {
+        id: avGota
+        Item {
+            Asistente { x: 8; width: 30; height: 30; anchors.verticalCenter: parent.verticalCenter; emocion: Cerebro.emocion || "feliz" }
+            Texto { x: 46; width: parent.width - 62; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.texto; elide: Text.ElideRight; font.weight: Font.DemiBold }
         }
     }
     Component {
@@ -1096,6 +1153,206 @@ PanelWindow {
                 }
             }
         }
+    }
+
+    // ---- Gota: conversacion con el asistente (se abre con el boton grande) ----
+    // Mismo marco que las pestanas: la isla no cambia de tamano. La logica vive en Cerebro.qml.
+    component PaginaGota: Item {
+        id: pg
+        property bool activa
+        opacity: activa ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Estilo.t(activa ? 280 : 140) } }
+        transform: Translate { y: pg.activa ? 0 : 8; Behavior on y { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } } }
+        onActivaChanged: if (activa) campo.forceActiveFocus()
+
+        // Segundos pensando
+        property int segundos: 0
+        Timer { interval: 1000; repeat: true; running: Cerebro.ocupada && pg.visible; onTriggered: pg.segundos = Math.round((Date.now() - Cerebro.inicio) / 1000) }
+        Connections { target: Cerebro; function onEstadoChanged() { pg.segundos = 0; } }
+
+        // El plan, resumido por carpeta destino: [[icono, texto, detalle]]
+        function resumen(plan) {
+            if (!plan) return [];
+            const casa = Quickshell.env("HOME"), grupos = {}, filas = [];
+            let papelera = 0;
+            for (const a of plan.acciones) {
+                if (a.tipo === "mover") { const d = a.a.replace(/\/[^/]*$/, "").replace(casa, "~"); grupos[d] = (grupos[d] || 0) + 1; }
+                else if (a.tipo === "papelera") papelera++;
+                else if (a.tipo === "comando") filas.push(["terminal", a.cmd.join(" "), "comando"]);
+            }
+            const lista = Object.keys(grupos).sort().map(d => ["folder", d.replace(/^.*\//, ""), grupos[d] + (grupos[d] === 1 ? " archivo" : " archivos")]);
+            if (papelera) lista.push(["delete", "A la papelera", papelera + (papelera === 1 ? " archivo" : " archivos")]);
+            return lista.concat(filas);
+        }
+
+        // ---- Cabecera ----
+        Item {
+            id: cabGota
+            width: parent.width; height: 26
+            Texto { text: Estilo.gota.nombre; font { pixelSize: 15; weight: Font.DemiBold } anchors.verticalCenter: parent.verticalCenter }
+            Row {
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                spacing: 6
+                Texto {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Cerebro.ocupada ? (Cerebro.estado === "aplicando" ? "Aplicando… " : "Pensando… ") + pg.segundos + " s" : ""
+                    color: "#888"; font.pixelSize: 11
+                }
+                BotonRedondo { icono: Cerebro.ocupada ? "stop" : "edit_square"; tenue: !Cerebro.ocupada && !Cerebro.mensajes.length; onPulsado: Cerebro.ocupada ? Cerebro.detener() : Cerebro.nueva() }
+            }
+        }
+
+        // ---- Conversacion ----
+        ListView {
+            id: charla
+            anchors { top: cabGota.bottom; topMargin: 6; bottom: entrada.top; bottomMargin: 8; left: parent.left; right: parent.right }
+            clip: true
+            spacing: 8
+            boundsBehavior: Flickable.StopAtBounds
+            model: Cerebro.mensajes
+            onCountChanged: Qt.callLater(positionViewAtEnd)
+            footer: Item { width: charla.width; height: pieGota.implicitHeight + 6; Column { id: pieGota; y: 6; width: parent.width; spacing: 8
+                // Pensando: lo que hace ahora
+                Row {
+                    visible: Cerebro.ocupada
+                    spacing: 6
+                    Simbolo { text: "progress_activity"; color: "#888"; font.pixelSize: 15; RotationAnimation on rotation { running: Cerebro.ocupada && pg.visible; from: 0; to: 360; duration: 1100; loops: Animation.Infinite } }
+                    Texto { text: Cerebro.paso || "Pensando"; color: "#aaa"; font.pixelSize: 12 }
+                }
+                // Plan: espera Hazlo / Cancelar
+                Rectangle {
+                    visible: Cerebro.estado === "plan"
+                    width: parent.width; height: colPlan.implicitHeight + 20
+                    radius: 14; color: "#1e1e1e"
+                    Column {
+                        id: colPlan
+                        x: 12; y: 10; width: parent.width - 24; spacing: 2
+                        Repeater {
+                            model: pg.resumen(Cerebro.plan)
+                            delegate: Item {
+                                required property var modelData
+                                width: colPlan.width; height: 24
+                                Simbolo { text: modelData[0]; color: "#bbb"; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
+                                Texto { x: 22; width: parent.width - 120; elide: Text.ElideRight; text: modelData[1]; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                Texto { anchors { right: parent.right; verticalCenter: parent.verticalCenter } text: modelData[2]; color: "#888"; font.pixelSize: 11 }
+                            }
+                        }
+                        Item {
+                            width: colPlan.width; height: 30
+                            Texto { anchors.verticalCenter: parent.verticalCenter; width: parent.width - 140; elide: Text.ElideRight; text: Cerebro.plan ? Cerebro.plan.resumen || "" : ""; color: "#888"; font.pixelSize: 11 }
+                            Row {
+                                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                spacing: 6
+                                BotonTexto { texto: "Cancelar"; onPulsado: Cerebro.cancelar() }
+                                BotonTexto { texto: "Hazlo"; blanco: true; onPulsado: Cerebro.hazlo() }
+                            }
+                        }
+                    }
+                }
+            } }
+            delegate: Item {
+                id: burbuja
+                required property var modelData
+                required property int index
+                readonly property bool mia: modelData.de === "yo"
+                readonly property bool ultima: index === Cerebro.mensajes.length - 1
+                width: charla.width
+                height: fondoB.height + (acciones.visible ? acciones.height + 6 : 0)
+                Rectangle {
+                    id: fondoB
+                    anchors.right: burbuja.mia ? parent.right : undefined
+                    width: Math.min(textoB.implicitWidth, charla.width * (burbuja.mia ? 0.78 : 1)) + (burbuja.mia ? 22 : 0)
+                    height: textoB.height + (burbuja.mia ? 14 : 0)
+                    radius: 12
+                    color: burbuja.mia ? "#2c2c2e" : "transparent"
+                    Texto {
+                        id: textoB
+                        x: burbuja.mia ? 11 : 0; y: burbuja.mia ? 7 : 0
+                        width: Math.min(implicitWidth, charla.width * (burbuja.mia ? 0.78 : 1))
+                        wrapMode: Text.Wrap
+                        text: burbuja.modelData.texto
+                        color: burbuja.mia ? "#ddd" : "#fff"
+                        font.pixelSize: 13
+                        lineHeight: 1.15
+                    }
+                }
+                // Despues de aplicar un plan: Deshacer y Abrir carpeta
+                Row {
+                    id: acciones
+                    visible: burbuja.modelData.extra === "hecho" && burbuja.ultima
+                    anchors.top: fondoB.bottom; anchors.topMargin: 6
+                    spacing: 6
+                    BotonTexto { visible: Cerebro.puedeDeshacer; texto: "Deshacer"; icono: "undo"; onPulsado: Cerebro.deshacer() }
+                    BotonTexto { visible: Cerebro.carpetaPlan !== ""; texto: "Abrir carpeta"; onPulsado: Quickshell.execDetached(["xdg-open", Cerebro.carpetaPlan]) }
+                }
+            }
+        }
+
+        // Sin conversacion: sugerencias
+        Column {
+            visible: !Cerebro.mensajes.length && !Cerebro.ocupada
+            anchors { left: parent.left; right: parent.right; bottom: entrada.top; bottomMargin: 10 }
+            spacing: 8
+            Texto { text: "¿Qué hago?"; color: "#888"; font.pixelSize: 12 }
+            Flow {
+                width: parent.width; spacing: 6
+                Repeater {
+                    model: ["Acomoda mis descargas", "¿Qué ocupa más espacio?", "¿Cómo está el Bluetooth?", "¿Por qué no suena nada?"]
+                    delegate: BotonTexto { required property string modelData; texto: modelData; onPulsado: Cerebro.preguntar(modelData) }
+                }
+            }
+        }
+
+        // ---- Campo para escribir ----
+        Rectangle {
+            id: entrada
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+            height: 38; radius: 13
+            color: "#1e1e1e"
+            border.width: 1; border.color: campo.activeFocus ? "#444" : "transparent"
+            TextInput {
+                id: campo
+                anchors { left: parent.left; leftMargin: 13; right: enviar.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                clip: true
+                color: "#fff"; selectionColor: "#555"
+                font { family: Estilo.letra; pixelSize: 13 }
+                onTextChanged: Cerebro.escribiendo = text !== ""
+                onAccepted: { if (text.trim() && !Cerebro.ocupada) { Cerebro.preguntar(text); text = ""; } }
+                Keys.onEscapePressed: { win.conGota = false; win.fijada = false; win.encima = false; }
+                Texto { visible: !campo.text; anchors.verticalCenter: parent.verticalCenter; text: Cerebro.ocupada ? "Espera a que termine…" : "Pídele algo a " + Estilo.gota.nombre; color: "#666" }
+            }
+            Rectangle {
+                id: enviar
+                anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter }
+                width: 28; height: 28; radius: 9
+                color: campo.text && !Cerebro.ocupada ? "#fff" : "#333"
+                Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
+                Simbolo { anchors.centerIn: parent; text: "arrow_upward"; font.pixelSize: 18; color: campo.text && !Cerebro.ocupada ? "#111" : "#777" }
+                MouseArea { anchors.fill: parent; onClicked: campo.accepted() }
+            }
+        }
+    }
+    // Boton con texto (y quiza icono): blanco = la accion principal
+    component BotonTexto: Rectangle {
+        id: bt
+        property string texto
+        property string icono: ""
+        property bool blanco: false
+        signal pulsado()
+        width: filaBt.implicitWidth + 22; height: 28; radius: 9
+        color: blanco ? (zbt.containsMouse ? "#e6e6e6" : "#ffffff") : (zbt.containsMouse ? "#3a3a3a" : "#2c2c2e")
+        Behavior on color { ColorAnimation { duration: 140 } }
+        scale: zbt.pressed ? 0.93 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zbt.pressed ? 80 : 380); easing.type: zbt.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
+        Row {
+            id: filaBt
+            anchors.centerIn: parent
+            spacing: 4
+            Simbolo { visible: bt.icono !== ""; text: bt.icono; font.pixelSize: 15; color: bt.blanco ? "#111" : "#fff"; anchors.verticalCenter: parent.verticalCenter }
+            Texto { text: bt.texto; font.pixelSize: 12; color: bt.blanco ? "#111" : "#fff"; anchors.verticalCenter: parent.verticalCenter }
+        }
+        MouseArea { id: zbt; anchors.fill: parent; hoverEnabled: true; onClicked: bt.pulsado() }
     }
 
     // ---------------- Piezas ----------------

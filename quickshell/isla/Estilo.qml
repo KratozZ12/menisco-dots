@@ -25,7 +25,7 @@ Singleton {
         islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
         avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
         avisoGrados: 80, avisoDuracion: "normal",                          // corta | normal | larga
-        avisoBateria: true, avisoSalida: false,
+        avisoBateria: true, avisoSalida: false, avisoFallos: true,
         // Notificaciones: No molestar automatico y aviso de "ahora suena"
         dndPantallaCompleta: true, dndGrabando: true,
         musicaIgnorar: [], musicaNoAlFrente: true, musicaConCaratula: false, musicaReanudar: false,   // musicaIgnorar: identity de MPRIS

@@ -144,6 +144,7 @@ ShellRoot {
     Barra { raiz: raiz; ajustes: ajustes }
     BotonBarra { raiz: raiz }
     BordeBarra { raiz: raiz }
+    BotonMenisco { raiz: raiz; ajustes: ajustes }
 
     // Para probar: qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz
     IpcHandler {

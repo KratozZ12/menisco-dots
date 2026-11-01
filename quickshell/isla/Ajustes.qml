@@ -947,7 +947,7 @@ PanelWindow {
                     Grupo {
                         Interruptor { titulo: "Luz que gira"; sub: "Apagada, la luz queda quieta"; encendido: Estilo.valor("botLuz"); onCambiar: v => Estilo.poner("botLuz", v) }
                         Interruptor { titulo: "Chispas"; encendido: Estilo.valor("botChispas"); onCambiar: v => Estilo.poner("botChispas", v) }
-                        Interruptor { titulo: "Mostrar en Acciones y Rendimiento"; encendido: Estilo.valor("botEnPaginas"); onCambiar: v => Estilo.poner("botEnPaginas", v) }
+                        Interruptor { titulo: "Mostrar en Acciones"; encendido: Estilo.valor("botEnPaginas"); onCambiar: v => Estilo.poner("botEnPaginas", v) }
                     }
                     Encabezado { text: "Animaciones" }
                     Grupo {

@@ -276,8 +276,8 @@ PanelWindow {
                 visible: opacity > 0.01
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(win.expandida ? 260 : 120) } }
 
-                // En Musica no sale el boton: la pagina ocupa todo el ancho.
-                readonly property bool conBoton: win.conGota || (win.pestana !== "musica" && Estilo.valor("botEnPaginas"))
+                // El boton solo sale en Acciones; en Musica y Rendimiento la pagina ocupa todo el ancho.
+                readonly property bool conBoton: win.conGota || (win.pestana === "acciones" && Estilo.valor("botEnPaginas"))
                 BotonAsistente {
                     id: botonAsistente
                     y: 2

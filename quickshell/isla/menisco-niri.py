@@ -14,6 +14,7 @@ Uso:
   menisco-niri.py salida HDMI-A-1 principal
   menisco-niri.py vidrio '{"refraccion":70,...}'
   menisco-niri.py atajo lanzador Mod+Space
+  menisco-niri.py tabla                        # atajos para la tabla de Super+Shift+/
 """
 import json
 import os
@@ -177,6 +178,12 @@ def vidrio(js):
     guardar_validando(NIRI, t)
 
 
+def contiene(linea, marca):
+    """La marca esta en la linea, sin mirar comillas: la config puede decir
+    spawn "qs" "-p" ... "ipc" "call" "lanzador" "toggle" o spawn-sh "qs -p ... lanzador toggle"."""
+    return marca.replace('"', "") in linea.replace('"', "")
+
+
 def atajo(id_, tecla):
     if id_ not in ATAJOS:
         sys.exit("error: atajo desconocido")
@@ -187,7 +194,7 @@ def atajo(id_, tecla):
     marca = ATAJOS[id_]
     idx = next((i for i, l in enumerate(lineas)
                 if not l.strip().startswith("//") and
-                (l.strip().startswith(marca + " ") if id_ == "captura" else marca in l)), None)
+                (l.strip().startswith(marca + " ") if id_ == "captura" else contiene(l, marca))), None)
     if idx is None:
         sys.exit("error: no encontre ese atajo en la config")
     vieja = lineas[idx].split()[0]
@@ -211,13 +218,65 @@ def atajos():
             s = l.strip()
             if s.startswith("//") or not s:
                 continue
-            if (s.startswith(marca + " ") if id_ == "captura" else marca in s):
+            if (s.startswith(marca + " ") if id_ == "captura" else contiene(s, marca)):
                 r[id_] = s.split()[0]
                 break
     print(json.dumps(r))
 
 
+# Tabla de atajos (Super+Shift+/): grupo, titulo y lo que identifica cada accion en su linea.
+# Con dos acciones se juntan en una fila ("Super ← →"). Las teclas se leen de la config cada vez.
+TABLA = [
+    ("Menisco", "Lanzador", ['"lanzador" "toggle"']),
+    ("Menisco", "Barra lateral", ['"barra" "toggle"']),
+    ("Menisco", "Ajustes", ['"ajustes" "toggle"']),
+    ("Menisco", "Esta tabla", ['"atajos" "toggle"']),
+    ("Ventanas", "Cerrar ventana", ["close-window;"]),
+    ("Ventanas", "Maximizar columna", ["maximize-column;"]),
+    ("Ventanas", "Pantalla completa", ["fullscreen-window;"]),
+    ("Ventanas", "Flotante o en mosaico", ["toggle-window-floating;"]),
+    ("Ventanas", "Cambiar ancho", ["switch-preset-column-width;"]),
+    ("Ventanas", "Juntar o separar columna", ["consume-or-expel-window-left;", "consume-or-expel-window-right;"]),
+    ("Moverse", "Foco izquierda o derecha", ["focus-column-left;", "focus-column-right;"]),
+    ("Moverse", "Mover columna", ["move-column-left;", "move-column-right;"]),
+    ("Moverse", "Espacio arriba o abajo", ["focus-workspace-up;", "focus-workspace-down;"]),
+    ("Moverse", "Llevar a otro espacio", ["move-column-to-workspace-up;", "move-column-to-workspace-down;"]),
+    ("Moverse", "Vista general", ["toggle-overview;"]),
+    ("Sistema", "Modo captura", ['"captura" "abrir"']),
+    ("Sistema", "Captura completa", ["screenshot-screen;"]),
+    ("Sistema", "Terminal", ['spawn "alacritty"']),
+    ("Sistema", "Bloquear pantalla", ['spawn "swaylock"']),
+    ("Sistema", "Salir de niri", ['"salir" "toggle"']),
+]
+NOMBRES = {"Mod": "Super", "Left": "←", "Right": "→", "Up": "↑", "Down": "↓", "Page_Up": "RePág",
+           "Page_Down": "AvPág", "Slash": "/", "Period": ".", "Comma": ",", "BracketLeft": "[",
+           "BracketRight": "]", "Print": "ImprPant", "Return": "Enter", "Space": "Espacio",
+           "Escape": "Esc", "Minus": "-", "Equal": "="}
+
+
+def tabla():
+    """Imprime [{grupo, titulo, teclas: [..]}] con las teclas actuales, ya en nombres legibles."""
+    t = leer(NIRI)
+    a, b = bloque(t, "binds")
+    lineas = [l.strip() for l in t[a:b].split("\n") if l.strip() and not l.strip().startswith("//")]
+    # La captura de region vive en varias teclas (ImprPant y Super+Shift+S): se prefiere la de Super.
+    lineas.sort(key=lambda l: not l.startswith("Mod+"))
+    r = []
+    for grupo, titulo, marcas in TABLA:
+        combos = []
+        for m in marcas:
+            l = next((l for l in lineas if contiene(l, m) and "Wheel" not in l), None)
+            if l:
+                combos.append([NOMBRES.get(k, k) for k in l.split()[0].split("+")])
+        if not combos:
+            continue
+        teclas = combos[0][:-1] + [c[-1] for c in combos] if all(c[:-1] == combos[0][:-1] for c in combos) \
+            else [k for c in combos for k in c]
+        r.append({"grupo": grupo, "titulo": titulo, "teclas": teclas})
+    print(json.dumps(r, ensure_ascii=False))
+
+
 if __name__ == "__main__":
     orden, *resto = sys.argv[1:]
     {"esquinas": esquinas, "espacio": espacio, "borde": borde, "salida": salida,
-     "vidrio": vidrio, "atajo": atajo, "atajos": atajos}[orden](*resto)
+     "vidrio": vidrio, "atajo": atajo, "atajos": atajos, "tabla": tabla}[orden](*resto)

@@ -126,7 +126,7 @@ PanelWindow {
          : (parent.height - height) / 2
         radius: 24
         color: Estilo.fondo
-        border.color: "#3a3a3a"
+        border.color: Estilo.borde
         border.width: 1
         clip: true
         // Apertura: llega desde la derecha recorriendo solo 48 px, crece desde 0.92 con el
@@ -162,7 +162,7 @@ PanelWindow {
                     width: parent.width; height: 52
                     Column {
                         Texto { text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font.pixelSize: 24; font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-                        Texto { text: Qt.locale("es_MX").toString(reloj.date, "dddd d 'de' MMMM"); color: "#888"; font.pixelSize: 12 }
+                        Texto { text: Qt.locale("es_MX").toString(reloj.date, "dddd d 'de' MMMM"); color: Estilo.texto2; font.pixelSize: 12 }
                     }
                     Redondo { anchors { right: parent.right; verticalCenter: parent.verticalCenter } icono: "tune"; onPulsado: { barra.cerrar(); barra.raiz.abrirAjustes(); } }
                 }
@@ -234,7 +234,7 @@ PanelWindow {
                 Encabezado { text: "Wi-Fi" }
                 Texto {
                     visible: !barra.hayWifi
-                    width: parent.width; wrapMode: Text.Wrap; color: "#888"; font.pixelSize: 12; leftPadding: 8; rightPadding: 8
+                    width: parent.width; wrapMode: Text.Wrap; color: Estilo.texto2; font.pixelSize: 12; leftPadding: 8; rightPadding: 8
                     text: "Este equipo no tiene Wi-Fi."
                 }
                 Repeater {
@@ -251,15 +251,15 @@ PanelWindow {
                         }
                         Rectangle {
                             visible: barra.redPidiendo === modelData.ssid
-                            width: parent.width; height: visible ? 38 : 0; radius: 12; color: "#1b1b1b"
+                            width: parent.width; height: visible ? 38 : 0; radius: 12; color: Estilo.hundido
                             TextInput {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                                 verticalAlignment: TextInput.AlignVCenter
                                 echoMode: TextInput.Password
-                                color: "#fff"; font { family: Estilo.letra; pixelSize: 13 }
+                                color: Estilo.texto; font { family: Estilo.letra; pixelSize: 13 }
                                 focus: parent.visible
                                 onAccepted: barra.conectarWifi(modelData.ssid, text)
-                                Texto { visible: !parent.text; text: "Contraseña y Enter"; color: "#777"; anchors.verticalCenter: parent.verticalCenter }
+                                Texto { visible: !parent.text; text: "Contraseña y Enter"; color: Estilo.texto3; anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
                     }
@@ -318,7 +318,7 @@ PanelWindow {
         case "cafe": return { icono: "coffee", titulo: "Modo café", activa: ajustes.cafe,
                               detalle: ajustes.cafe ? "Sin suspender" : "Apagado", fn: () => ajustes.cafe = !ajustes.cafe };
         case "captura": return { icono: "screenshot_region", titulo: "Captura", activa: false, detalle: "Elegir zona",
-                                 fn: () => { cerrar(); ejecutar(["sh", "-c", "sleep 0.5; niri msg action screenshot"]); } };
+                                 fn: () => { cerrar(); ejecutar(["sh", "-c", "sleep 0.5; qs -p '" + Estilo.carpeta + "' ipc call captura abrir zona"]); } };
         case "isla": return { icono: "pill", titulo: "Isla", activa: raiz.islaVisible, detalle: raiz.islaVisible ? "Visible" : "Oculta",
                               fn: () => raiz.islaVisible = !raiz.islaVisible };
         case "vidrio": return { icono: "water_drop", titulo: "Liquid glass", activa: ajustes.vidrio, detalle: ajustes.vidrio ? "Activado" : "Apagado",
@@ -376,18 +376,18 @@ PanelWindow {
         Column {
             Encabezado { text: "Reproduciendo"; topPadding: 0 }
             Rectangle {
-                width: parent.width; height: 72; radius: 16; color: "#2e2e2e"
+                width: parent.width; height: 72; radius: 16; color: Estilo.tarjeta
                 ClippingRectangle {
                     id: caratula
                     x: 10; anchors.verticalCenter: parent.verticalCenter
-                    width: 52; height: 52; radius: 10; color: "#3a3a3a"
+                    width: 52; height: 52; radius: 10; color: Estilo.hover
                     Image { anchors.fill: parent; source: barra.reproductor ? barra.reproductor.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true }
                 }
                 Column {
                     anchors { left: caratula.right; leftMargin: 10; right: controles.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
                     spacing: 2
                     Texto { width: parent.width; text: barra.reproductor ? (barra.reproductor.trackTitle || barra.reproductor.identity) : ""; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                    Texto { width: parent.width; text: barra.reproductor ? (barra.reproductor.trackTitle ? [barra.reproductor.trackArtist, barra.reproductor.identity].filter(s => s).join(" · ") : "Sin título") : ""; color: "#888"; font.pixelSize: 11; elide: Text.ElideRight }
+                    Texto { width: parent.width; text: barra.reproductor ? (barra.reproductor.trackTitle ? [barra.reproductor.trackArtist, barra.reproductor.identity].filter(s => s).join(" · ") : "Sin título") : ""; color: Estilo.texto2; font.pixelSize: 11; elide: Text.ElideRight }
                 }
                 Row {
                     id: controles
@@ -444,7 +444,7 @@ PanelWindow {
                         Texto {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: barra.confirmar === modelData.id ? "¿Seguro?" : modelData.texto
-                            color: barra.confirmar === modelData.id ? "#ff6b6b" : "#888"; font.pixelSize: 10
+                            color: barra.confirmar === modelData.id ? Estilo.peligro : Estilo.texto2; font.pixelSize: 10
                         }
                     }
                 }
@@ -454,7 +454,7 @@ PanelWindow {
 
     // ---- Piezas ----
     component Texto: Text {
-        color: "#eee"
+        color: Estilo.texto
         font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
     }
     component Simbolo: Text {
@@ -464,7 +464,7 @@ PanelWindow {
         renderType: Text.NativeRendering
     }
     component Encabezado: Texto {
-        color: "#888"; font.pixelSize: 11; font.weight: Font.Bold
+        color: Estilo.texto2; font.pixelSize: 11; font.weight: Font.Bold
         leftPadding: 4; topPadding: 14; bottomPadding: 6
     }
     component Pagina: Column {
@@ -496,11 +496,12 @@ PanelWindow {
         property bool rojo: false
         signal pulsado()
         width: chico ? 32 : 40; height: width; radius: width / 2
-        color: blanco ? "#ffffff" : (zonaR.containsMouse ? "#3a3a3a" : "#2e2e2e")
+        color: blanco ? Estilo.activo : (zonaR.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        border.width: 1; border.color: blanco ? Estilo.activoBorde : Estilo.linea
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         scale: zonaR.pressed ? 0.88 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zonaR.pressed ? 80 : 380); easing.type: zonaR.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
-        Simbolo { anchors.centerIn: parent; text: red.icono; color: red.blanco ? "#111" : red.rojo ? "#ff6b6b" : "#ddd"; font.pixelSize: red.chico ? 20 : 19 }
+        Simbolo { anchors.centerIn: parent; text: red.icono; color: red.blanco ? Estilo.iconoActivo : red.rojo ? Estilo.peligro : Estilo.texto; font.pixelSize: red.chico ? 20 : 19 }
         MouseArea { id: zonaR; anchors.fill: parent; hoverEnabled: true; onClicked: red.pulsado() }
     }
     component Rapido: Rectangle {
@@ -514,17 +515,18 @@ PanelWindow {
         property real relleno: activa ? 1 : 0
         Behavior on relleno { NumberAnimation { duration: Estilo.t(260) } }
         height: 56; radius: 16
-        color: activa ? "#ffffff" : (zonaQ.containsMouse ? "#363636" : "#2e2e2e")
+        color: activa ? Estilo.activo : (zonaQ.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        border.width: 1; border.color: activa ? Estilo.activoBorde : Estilo.linea
         Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
         scale: zonaQ.pressed ? 0.95 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zonaQ.pressed ? 90 : 420); easing.type: zonaQ.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
-        Simbolo { id: iq; x: 12; anchors.verticalCenter: parent.verticalCenter; text: rap.icono; relleno: rap.relleno; color: rap.activa ? "#111" : "#ddd" }
+        Simbolo { id: iq; x: 12; anchors.verticalCenter: parent.verticalCenter; text: rap.icono; relleno: rap.relleno; color: rap.activa ? Estilo.iconoActivo : Estilo.texto }
         Column {
             anchors { left: iq.right; leftMargin: 9; right: parent.right; rightMargin: rap.flecha ? 26 : 8; verticalCenter: parent.verticalCenter }
-            Texto { text: rap.titulo; color: rap.activa ? "#111" : "#eee"; font.weight: Font.DemiBold; width: parent.width; elide: Text.ElideRight }
-            Texto { visible: rap.detalle !== ""; text: rap.detalle; color: rap.activa ? "#555" : "#888"; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
+            Texto { text: rap.titulo; color: rap.activa ? Estilo.enActivo : Estilo.texto; font.weight: Font.DemiBold; width: parent.width; elide: Text.ElideRight }
+            Texto { visible: rap.detalle !== ""; text: rap.detalle; color: rap.activa ? Qt.alpha(Estilo.enActivo, 0.65) : Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
-        Simbolo { visible: rap.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 16; color: rap.activa ? "#777" : "#888" }
+        Simbolo { visible: rap.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 16; color: rap.activa ? Qt.alpha(Estilo.enActivo, 0.65) : Estilo.texto2 }
         MouseArea { id: zonaQ; anchors.fill: parent; hoverEnabled: true; onClicked: rap.pulsado() }
     }
     component Nivel: Rectangle {
@@ -538,15 +540,15 @@ PanelWindow {
         signal flecha_pulsada()
         property real vivo: valor
         onValorChanged: if (!zonaN.pressed) vivo = valor
-        width: parent.width; height: 40; radius: 14; color: "#2e2e2e"
-        Simbolo { id: inv; visible: niv.icono !== ""; x: 10; anchors.verticalCenter: parent.verticalCenter; text: niv.icono; font.pixelSize: 19; color: "#ddd"
+        width: parent.width; height: 40; radius: 14; color: Estilo.tarjeta
+        Simbolo { id: inv; visible: niv.icono !== ""; x: 10; anchors.verticalCenter: parent.verticalCenter; text: niv.icono; font.pixelSize: 19; color: Estilo.texto
             MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: niv.icono_pulsado() } }
         Texto { id: etq; visible: niv.etiqueta !== ""; x: 12; width: 76; anchors.verticalCenter: parent.verticalCenter; text: niv.etiqueta; font.pixelSize: 12; elide: Text.ElideRight }
         Rectangle {
             id: pista
             anchors { left: niv.etiqueta ? etq.right : inv.right; leftMargin: 10; right: valorTxt.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-            height: 20; radius: 10; color: "#1b1b1b"
-            Rectangle { height: parent.height; radius: 10; color: "#f2f2f2"; width: Math.max(height, parent.width * niv.vivo) }
+            height: 20; radius: 10; color: Estilo.hundido
+            Rectangle { height: parent.height; radius: 10; color: Estilo.acento; width: Math.max(height, parent.width * niv.vivo) }
             MouseArea {
                 id: zonaN
                 anchors.fill: parent
@@ -555,8 +557,8 @@ PanelWindow {
                 onPositionChanged: m => mover(m)
             }
         }
-        Texto { id: valorTxt; anchors { right: niv.flecha ? fl.left : parent.right; rightMargin: niv.flecha ? 2 : 10; verticalCenter: parent.verticalCenter } width: 28; horizontalAlignment: Text.AlignRight; text: Math.round(niv.vivo * 100); color: "#aaa"; font.pixelSize: 11; font.features: { "tnum": 1 } }
-        Simbolo { id: fl; visible: niv.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 18; color: "#888"
+        Texto { id: valorTxt; anchors { right: niv.flecha ? fl.left : parent.right; rightMargin: niv.flecha ? 2 : 10; verticalCenter: parent.verticalCenter } width: 28; horizontalAlignment: Text.AlignRight; text: Math.round(niv.vivo * 100); color: Estilo.texto2; font.pixelSize: 11; font.features: { "tnum": 1 } }
+        Simbolo { id: fl; visible: niv.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 18; color: Estilo.texto2
             MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: niv.flecha_pulsada() } }
     }
     component FilaLista: Rectangle {
@@ -568,21 +570,21 @@ PanelWindow {
         property bool tenue: false
         signal pulsada()
         width: parent ? parent.width : 0; height: detalle ? 48 : 40; radius: 12
-        color: marcada ? "#2e2e2e" : (zonaL.containsMouse ? "#2a2a2a" : "#002a2a2a")
+        color: marcada ? Estilo.tarjeta : (zonaL.containsMouse ? Estilo.tarjeta : Estilo.nada)
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         opacity: tenue ? 0.75 : 1
-        Simbolo { id: il; x: 10; anchors.verticalCenter: parent.verticalCenter; text: fl2.icono; font.pixelSize: 19; color: "#ddd" }
+        Simbolo { id: il; x: 10; anchors.verticalCenter: parent.verticalCenter; text: fl2.icono; font.pixelSize: 19; color: Estilo.texto }
         Column {
             anchors { left: il.right; leftMargin: 10; right: parent.right; rightMargin: 34; verticalCenter: parent.verticalCenter }
             Texto { text: fl2.titulo; width: parent.width; elide: Text.ElideRight }
-            Texto { visible: fl2.detalle !== ""; text: fl2.detalle; color: "#888"; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
+            Texto { visible: fl2.detalle !== ""; text: fl2.detalle; color: Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
-        Simbolo { visible: fl2.marcada; anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "check"; font.pixelSize: 18; color: "#fff" }
+        Simbolo { visible: fl2.marcada; anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "check"; font.pixelSize: 18; color: Estilo.acento }
         MouseArea { id: zonaL; anchors.fill: parent; hoverEnabled: true; onClicked: fl2.pulsada() }
     }
     component Calendario: Rectangle {
         id: cal
-        height: rejilla.implicitHeight + 16; radius: 16; color: "#2e2e2e"
+        height: rejilla.implicitHeight + 16; radius: 16; color: Estilo.tarjeta
         readonly property date hoy: reloj.date
         readonly property bool lunes: barra.cfg.semanaLunes
         readonly property int primerDia: (new Date(hoy.getFullYear(), hoy.getMonth(), 1).getDay() + (lunes ? 6 : 0)) % 7
@@ -593,7 +595,7 @@ PanelWindow {
             columns: 7; rowSpacing: 2
             Repeater {
                 model: cal.lunes ? ["L", "M", "M", "J", "V", "S", "D"] : ["D", "L", "M", "M", "J", "V", "S"]
-                Texto { required property string modelData; width: rejilla.width / 7; horizontalAlignment: Text.AlignHCenter; text: modelData; color: "#666"; font.pixelSize: 11; font.weight: Font.Bold }
+                Texto { required property string modelData; width: rejilla.width / 7; horizontalAlignment: Text.AlignHCenter; text: modelData; color: Estilo.texto3; font.pixelSize: 11; font.weight: Font.Bold }
             }
             Repeater {
                 model: cal.primerDia + cal.dias
@@ -601,9 +603,9 @@ PanelWindow {
                     required property int index
                     readonly property int dia: index - cal.primerDia + 1
                     width: rejilla.width / 7; height: 24
-                    Rectangle { anchors.centerIn: parent; width: 26; height: 22; radius: 8; color: "#ffffff"; visible: parent.dia === cal.hoy.getDate() }
+                    Rectangle { anchors.centerIn: parent; width: 26; height: 22; radius: 8; color: Estilo.acento; visible: parent.dia === cal.hoy.getDate() }
                     Texto { anchors.centerIn: parent; visible: parent.dia > 0; text: parent.dia; font.pixelSize: 11; font.features: { "tnum": 1 }
-                        color: parent.dia === cal.hoy.getDate() ? "#111" : "#bbb"; font.weight: parent.dia === cal.hoy.getDate() ? Font.Bold : Font.Normal }
+                        color: parent.dia === cal.hoy.getDate() ? Estilo.sobreAcento : Estilo.texto2; font.weight: parent.dia === cal.hoy.getDate() ? Font.Bold : Font.Normal }
                 }
             }
         }

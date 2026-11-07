@@ -26,7 +26,7 @@ PanelWindow {
         anchors.fill: parent
         radius: 12
         // Abierta: blanco con el destello oscuro, como los botones encendidos de Menisco.
-        color: boton.abierta ? "#ffffff" : zona.containsMouse ? Qt.lighter(Estilo.fondo, 1.45) : Estilo.fondo
+        color: boton.abierta ? Estilo.activo : zona.containsMouse ? Estilo.hover : Estilo.fondo
         Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
         scale: zona.pressed ? 0.86 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 420); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
@@ -43,7 +43,7 @@ PanelWindow {
             Behavior on scale { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
 
             ShapePath {
-                fillColor: boton.abierta ? "#111111" : "#ffffff"
+                fillColor: boton.abierta ? Estilo.iconoActivo : Estilo.texto
                 Behavior on fillColor { ColorAnimation { duration: Estilo.t(220) } }
                 strokeWidth: -1
                 // Cuatro puntas (arriba, derecha, abajo, izquierda) unidas por curvas que

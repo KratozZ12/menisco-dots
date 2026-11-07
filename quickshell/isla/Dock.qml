@@ -209,16 +209,9 @@ PanelWindow {
             }
 
             // Menu de apps (lo mismo que Super+D): no se agranda; se aclara al pasar
-            // el cursor y se hunde con rebote al pulsar. El lanzador brota de aqui.
+            // el cursor y se hunde con rebote al pulsar.
             Rectangle {
                 id: botonLanzador
-                Binding {
-                    target: dock.shell
-                    property: "origenLanzadorX"
-                    // mapToItem no avisa si el dock cambia de ancho; leer los anchos fuerza a recalcular.
-                    value: { fila.width; fondo.width; return botonLanzador.mapToItem(fondo, botonLanzador.width / 2, 0).x - fondo.width / 2; }
-                    when: dock.shell !== null
-                }
                 width: dock.icono
                 height: dock.icono
                 radius: 12
@@ -280,7 +273,7 @@ PanelWindow {
             anchors.fill: parent
             radius: 14
             color: Estilo.fondo
-            border.color: "#3a3a3a"
+            border.color: Estilo.borde
             border.width: 1
             transformOrigin: Item.Bottom
 
@@ -300,7 +293,7 @@ PanelWindow {
                     width: parent.width
                     leftPadding: 10; topPadding: 4; bottomPadding: 4
                     text: menu.app && menu.app.entrada ? menu.app.entrada.name : (menu.app ? menu.app.clave : "")
-                    color: "#888"
+                    color: Estilo.texto2
                     elide: Text.ElideRight
                     font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
                 }
@@ -312,7 +305,7 @@ PanelWindow {
                         width: columna.width
                         height: 32
                         radius: 9
-                        color: opcion.containsMouse ? "#333" : "#00333333"
+                        color: opcion.containsMouse ? Estilo.hover : Estilo.nada
                         Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                         scale: opcion.pressed ? 0.96 : 1
                         Behavior on scale { NumberAnimation { duration: Estilo.t(140); easing.type: Easing.OutCubic } }
@@ -321,7 +314,7 @@ PanelWindow {
                             id: iconoOpcion
                             anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
                             text: modelData.icono
-                            color: modelData.id === "cerrar" ? "#ff6b6b" : "#ddd"
+                            color: modelData.id === "cerrar" ? Estilo.peligro : Estilo.texto
                             font { family: "Material Symbols Rounded"; pixelSize: 18 }
                             font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 20 }
                             renderType: Text.NativeRendering
@@ -329,7 +322,7 @@ PanelWindow {
                         Text {
                             anchors { left: iconoOpcion.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
                             text: modelData.texto
-                            color: modelData.id === "cerrar" ? "#ff6b6b" : "#eee"
+                            color: modelData.id === "cerrar" ? Estilo.peligro : Estilo.texto
                             font { family: Estilo.letra; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
                         }
                         MouseArea { id: opcion; anchors.fill: parent; hoverEnabled: true; onClicked: menu.elegir(modelData.id) }

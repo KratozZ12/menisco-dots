@@ -1,68 +1,59 @@
-// Tipografia SF Pro Text (HIG); iconos Material Symbols Rounded; grises de Menisco.
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Widgets
 import Quickshell.Bluetooth
-import Quickshell.Services.Mpris
 
-// Lanzador: brota del boton de cuadricula del dock (Super+D) y regresa a el al cerrar.
-// Sin texto: musica, frecuentes, ventanas abiertas y recientes. Al escribir: calculadora,
-// apps, acciones, archivos, emojis (":palabra") y busqueda web. El asistente vive en la barra.
+// Lanzador (Super+D): una pildora en el centro de la pantalla, con la Gota dentro. Al abrirse no
+// muestra nada mas; al escribir, la misma pildora crece hacia abajo con los resultados dentro,
+// el primero grande. Busca calculadora, temporizador, apps, acciones, archivos, emojis (":palabra") y web.
+// Esc o un clic fuera lo cierran.
 PanelWindow {
     id: lanz
 
-    required property var raiz          // abierta, origen del brote, ajustes
+    required property var raiz          // lanzadorAbierto, temporizador, ajustes
 
-    readonly property var curvaIos: [0.32, 0.72, 0, 1, 1, 1]
-    readonly property var curvaRebote: [0.3, 1.55, 0.5, 1, 1, 1]
     readonly property string carpeta: Quickshell.env("HOME") + "/.config/quickshell/isla"
     readonly property bool abierta: raiz.lanzadorAbierto
+    readonly property int maximo: 7     // tarjetas a la vista
 
     property string consulta: ""
     property int elegido: 0
-    property var usos: ({})            // { idDesktop: veces abierta } para "Frecuentes"
-    property var recientes: []         // [{ nombre, ruta, carpeta }]
+    property var usos: ({})            // { idDesktop: veces abierta }: desempata entre apps
     property var encontrados: []       // archivos que coinciden con la busqueda
     readonly property bool noMolestar: Estilo.noMolestar
     property string confirmar: ""      // accion que espera un segundo Enter (apagar, reiniciar)
 
-    visible: abierta || panel.escala > 0.01
-    anchors.bottom: true
-    // Ventana con holgura alrededor del panel: el rebote del brote no choca con sus bordes.
-    readonly property int holgura: 24
-    margins.bottom: 100 - holgura       // el panel queda donde estaba, encima del dock
-    implicitWidth: 500 + holgura * 2
-    implicitHeight: 560 + holgura
+    // 0 -> 1 al abrir, con rebote; al cerrar baja rapido y la ventana se oculta al llegar a 0.
+    property real mostrar: abierta ? 1 : 0
+    Behavior on mostrar { NumberAnimation { duration: Estilo.t(lanz.abierta ? 460 : 150); easing.type: Easing.BezierSpline; easing.bezierCurve: lanz.abierta ? Estilo.curvaRebote : Estilo.curvaIos } }
+
+    visible: abierta || mostrar > 0.01
+    anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "lanzador"
     WlrLayershell.keyboardFocus: abierta ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    // Mascara con numeros, no con "item": el panel se anima con una transformacion de escala,
-    // y con "item" la mascara se calculaba con el panel a escala 0 y los clics lo atravesaban.
-    mask: Region { x: panel.x; y: panel.y; width: panel.width; height: panel.height }
 
     onAbiertaChanged: {
         if (abierta) {
-            consulta = ""; buscador.text = ""; elegido = 0; confirmar = "";
+            consulta = ""; buscador.text = ""; elegido = 0; confirmar = ""; encontrados = [];
             buscador.forceActiveFocus();
-        } else {
-            leerRecientes.running = true;   // se precargan al cerrar: al abrir el panel ya tiene su alto final
         }
     }
 
     function cerrar() { raiz.lanzadorAbierto = false }
+    function escribir(texto) { buscador.text = texto }
     function ejecutar(cmd) { Quickshell.execDetached(cmd) }
 
     // ---- Datos ----
     FileView {
+        id: archivoUsos
         path: lanz.carpeta + "/lanzador.json"
         watchChanges: true
         onFileChanged: reload()
         onLoaded: { try { lanz.usos = JSON.parse(text()); } catch (e) {} }
-        id: archivoUsos
     }
     function abrirApp(entrada) {
         if (!entrada) return;
@@ -75,31 +66,6 @@ PanelWindow {
     }
 
     readonly property var apps: DesktopEntries.applications.values.filter(e => !e.noDisplay)
-    readonly property var frecuentes: {
-        const porUso = apps.filter(e => usos[e.id]).sort((a, b) => usos[b.id] - usos[a.id]);
-        const base = ["helium", "claude-desktop-unofficial", "org.gnome.Nautilus", "kitty", "steam", "spotify"]
-            .map(id => apps.find(e => e.id === id)).filter(e => e && !porUso.includes(e));
-        return porUso.concat(base).slice(0, 6);
-    }
-
-    // Recientes: el historial de GTK, los 6 mas nuevos que todavia existen.
-    Process {
-        id: leerRecientes
-        running: true
-        command: ["python3", "-c", "import re,os,urllib.parse as u\n" +
-            "t=open(os.path.expanduser('~/.local/share/recently-used.xbel'),encoding='utf-8').read()\n" +
-            "v=re.findall(r'href=\"file://([^\"]+)\"[^>]*modified=\"([^\"]+)\"',t)\n" +
-            "v=sorted(v,key=lambda x:x[1],reverse=True);s=set()\n" +
-            "for r,_ in v:\n" +
-            " p=u.unquote(r)\n" +
-            " if p in s or not os.path.isfile(p): continue\n" +
-            " s.add(p);print(p)\n" +
-            " if len(s)>=6: break"]
-        stdout: StdioCollector {
-            onStreamFinished: lanz.recientes = text.trim().split("\n").filter(p => p)
-                .map(p => ({ nombre: p.split("/").pop(), ruta: p, carpeta: p.split("/").slice(-2, -1)[0] }))
-        }
-    }
 
     // Archivos: plocate en la carpeta personal, sin carpetas ocultas.
     Process {
@@ -109,8 +75,8 @@ PanelWindow {
                 const casa = Quickshell.env("HOME") + "/";
                 lanz.encontrados = text.trim().split("\n")
                     .filter(p => p.startsWith(casa) && !p.slice(casa.length).split("/").some(s => s.startsWith(".")))
-                    .slice(0, 4)
-                    .map(p => ({ nombre: p.split("/").pop(), ruta: p, carpeta: p.split("/").slice(-2, -1)[0] }));
+                    .slice(0, 3)
+                    .map(p => ({ nombre: p.split("/").pop(), ruta: p, carpeta: "~/" + p.slice(casa.length).split("/").slice(0, -1).join("/") }));
             }
         }
     }
@@ -124,14 +90,6 @@ PanelWindow {
         }
     }
 
-
-    readonly property var reproductor: Mpris.players.values.find(p => p.isPlaying) ?? Mpris.players.values[0] ?? null
-    Timer {   // la posicion de MPRIS no avisa sola: se refresca mientras se ve
-        interval: 1000; repeat: true
-        running: lanz.visible && lanz.reproductor && lanz.reproductor.isPlaying
-        onTriggered: lanz.reproductor.positionChanged()
-    }
-
     // emojis.json: [emoji, "palabras en espanol e ingles"], los comunes primero (~1700).
     property var emojis: []
     FileView {
@@ -140,7 +98,7 @@ PanelWindow {
     }
     // Apps por nombre, y tambien por su descripcion, palabras clave y tipo: "minecraft"
     // encuentra Prism Launcher porque su descripcion lo menciona. Primero lo que coincide
-    // en el nombre; el subtitulo dice por que salio cuando no es por el nombre.
+    // en el nombre; a igualdad, la que mas se abre.
     function buscarApps(k) {
         const r = [];
         for (const e of apps) {
@@ -156,9 +114,9 @@ PanelWindow {
             else if (k.length >= 3 && desc.includes(k)) { p = 20; sub = e.comment; }
             if (p) r.push({ e: e, p: p, sub: sub });
         }
-        return r.sort((a, b) => b.p - a.p || a.e.name.length - b.e.name.length);
+        return r.sort((a, b) => b.p - a.p || (usos[b.e.id] || 0) - (usos[a.e.id] || 0) || a.e.name.length - b.e.name.length);
     }
-    function sinAcentos(s) { return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+    function sinAcentos(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
     function buscarEmojis(k, max) {
         const r = [];
         for (const e of emojis) {
@@ -168,7 +126,7 @@ PanelWindow {
         return r;
     }
 
-    // ---- Resultados al escribir (lista plana con secciones, para navegar con flechas) ----
+    // ---- Resultados al escribir ----
     function calcular(t) {
         if (!/^[\d\s.+\-*/()%^]+$/.test(t) || !/\d/.test(t) || !/[+\-*/%^]/.test(t)) return null;
         try { const r = Function("return (" + t.replace(/\^/g, "**") + ")")(); return Number.isFinite(r) ? Math.round(r * 1e6) / 1e6 : null; }
@@ -181,43 +139,37 @@ PanelWindow {
         { titulo: "Cerrar sesión", icono: "logout", fn: () => ejecutar(["niri", "msg", "action", "quit"]) },
         { titulo: "Bluetooth", icono: "bluetooth", interruptor: "bt", fn: () => { const a = Bluetooth.defaultAdapter; Estilo.bluetooth(a, !(a && a.enabled)); } },
         { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => Estilo.ponerNoMolestar(!lanz.noMolestar) },
-        { titulo: "Captura de pantalla", icono: "screenshot_region", fn: () => ejecutar(["sh", "-c", "sleep 0.4; niri msg action screenshot"]) },
+        { titulo: "Captura de pantalla", icono: "screenshot_region", fn: () => ejecutar(["sh", "-c", "sleep 0.4; qs -p '" + Estilo.carpeta + "' ipc call captura abrir zona"]) },
         { titulo: "Ajustes de Menisco", icono: "tune", fn: () => raiz.abrirAjustes() }
     ]
     readonly property var resultados: {
         const t = consulta.trim(), tl = t.toLowerCase(), r = [];
         if (!t) return r;
-        if (tl.startsWith(":")) {   // ":" = solo emojis, muchos
-            for (const e of buscarEmojis(sinAcentos(tl.slice(1)), 40)) r.push({ seccion: "Emojis", tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
-            return marcarSecciones(r);
+        if (tl.startsWith(":")) {   // ":" = solo emojis
+            for (const e of buscarEmojis(sinAcentos(tl.slice(1)), maximo)) r.push({ tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
+            return r;
         }
         // "temporizador 5 min", "timer 30 s", "temporizador 1 h"
         const tm = tl.match(/^(?:temporizador|timer|alarma)\s+(\d+(?:[.,]\d+)?)\s*(s|seg|segundos?|m|min|minutos?|h|horas?)?$/);
         if (tm) {
             const n = parseFloat(tm[1].replace(",", ".")), u = (tm[2] || "min")[0];
             const seg = Math.round(n * (u === "s" ? 1 : u === "h" ? 3600 : 60));
-            r.push({ seccion: "Temporizador", tipo: "timer", titulo: "Iniciar temporizador de " + tm[1] + " " + ({ s: "s", m: "min", h: "h" })[u], sub: "Cuenta regresiva en la isla", segundos: seg });
+            r.push({ tipo: "timer", titulo: "Temporizador de " + tm[1] + " " + ({ s: "s", m: "min", h: "h" })[u], sub: "Cuenta regresiva en la isla", segundos: seg });
         }
         if (raiz.temporizadorRestante > 0 && /^(cancelar|parar|detener|temporizador|timer)/.test(tl))
-            r.push({ seccion: "Temporizador", tipo: "timerFin", titulo: "Cancelar temporizador", sub: "Quedan " + Math.ceil(raiz.temporizadorRestante / 60) + " min" });
+            r.push({ tipo: "timerFin", titulo: "Cancelar temporizador", sub: "Quedan " + Math.ceil(raiz.temporizadorRestante / 60) + " min" });
         const c = calcular(t);
-        if (c !== null) r.push({ seccion: "Calculadora", tipo: "calc", titulo: c.toLocaleString(Qt.locale("es_MX"), "f", Number.isInteger(c) ? 0 : Math.min(6, String(c).split(".")[1].length)), sub: t + " =", valor: String(c) });
-        for (const x of buscarApps(sinAcentos(t)).slice(0, 5))
-            r.push({ seccion: "Apps", tipo: "app", titulo: x.e.name, sub: x.sub, entrada: x.e });
-        for (const a of acciones.filter(a => a.titulo.toLowerCase().includes(tl)).slice(0, 3))
-            r.push({ seccion: "Acciones", tipo: "accion", titulo: a.titulo, sub: "", accion: a });
-        if (tl.length >= 2)         // en la busqueda normal, los 3 mejores emojis
-            for (const e of buscarEmojis(sinAcentos(tl), 3)) r.push({ seccion: "Emojis", tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
+        if (c !== null) r.push({ tipo: "calc", titulo: c.toLocaleString(Qt.locale("es_MX"), "f", Number.isInteger(c) ? 0 : Math.min(6, String(c).split(".")[1].length)), sub: t + " =", valor: String(c) });
+        for (const x of buscarApps(sinAcentos(t)).slice(0, 4))
+            r.push({ tipo: "app", titulo: x.e.name, sub: x.sub, entrada: x.e });
+        for (const a of acciones.filter(a => a.titulo.toLowerCase().includes(tl)).slice(0, 2))
+            r.push({ tipo: "accion", titulo: a.titulo, sub: "", accion: a });
+        if (tl.length >= 2)
+            for (const e of buscarEmojis(sinAcentos(tl), 2)) r.push({ tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
         for (const f of encontrados)
-            r.push({ seccion: "Archivos", tipo: "archivo", titulo: f.nombre, sub: f.carpeta, ruta: f.ruta });
-        if (c === null) r.push({ seccion: "Web", tipo: "web", titulo: "Buscar “" + t + "”", sub: "en Helium" });
-        return marcarSecciones(r);
-    }
-    // El titulo de seccion va dentro del primer resultado de cada una (los modelos de lista
-    // simples no admiten secciones de ListView).
-    function marcarSecciones(r) {
-        r.forEach((x, i) => x.encabezado = i === 0 || r[i - 1].seccion !== x.seccion);
-        return r;
+            r.push({ tipo: "archivo", titulo: f.nombre, sub: f.carpeta, ruta: f.ruta });
+        if (c === null) r.push({ tipo: "web", titulo: "Buscar “" + t + "” en la web", sub: "" });
+        return r.slice(0, maximo);
     }
     readonly property string emocion: {
         if (!consulta.trim()) return "normal";
@@ -245,332 +197,272 @@ PanelWindow {
             return;
         }
     }
+    // Lo que dice la tarjeta a la derecha, y lo que hace Enter en la grande
+    readonly property var etiquetas: ({ app: "App", accion: "Acción", emoji: "Emoji", web: "Web", calc: "Calculadora", timer: "Temporizador", timerFin: "Temporizador" })
+    readonly property var verbos: ({ app: "abrir", calc: "copiar", emoji: "copiar", archivo: "abrir", web: "buscar", timer: "iniciar", timerFin: "cancelar", accion: "hacer" })
 
-    // ---- Panel ----
+    // Un clic fuera de la pildora y las tarjetas lo cierra.
+    MouseArea { anchors.fill: parent; onClicked: lanz.cerrar() }
+
+    // ---- La pildora ----
     Rectangle {
-        id: panel
-        // Escala 0..1 del brote; el origen esta en el boton del dock, debajo del panel.
-        property real escala: 0
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: lanz.holgura }
-        height: Math.min(lanz.height - lanz.holgura * 2, contenido.implicitHeight + barra.height + 34)
-        Behavior on height { enabled: lanz.abierta && panel.escala > 0.99; NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: lanz.curvaIos } }
-        radius: 22
+        id: pildora
+        // un tercio de pantalla hacia abajo: tiene sitio para crecer
+        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: Math.round(parent.height * 0.28) }
+        width: 600
+        readonly property bool abiertaAbajo: lanz.resultados.length > 0
+        height: 54 + (abiertaAbajo ? lista.implicitHeight + 10 : 0)
+        // Crece con rebote; al encogerse no rebota (se pasaria por debajo de su alto y se veria roto).
+        Behavior on height {
+            id: animAlto
+            NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: animAlto.targetValue < pildora.height ? Estilo.curvaIos : Estilo.curvaRebote }
+        }
+        radius: abiertaAbajo ? 24 : 27
+        Behavior on radius { NumberAnimation { duration: Estilo.t(300) } }
         color: Estilo.fondo
-        border.color: "#3a3a3a"
-        border.width: 1
+        border.width: 1; border.color: Estilo.borde
         clip: true
-        opacity: lanz.abierta ? Math.min(1, escala * 3) : escala
-        transform: Scale {
-            origin.x: panel.width / 2 + raiz.origenLanzadorX
-            origin.y: panel.height + 40
-            xScale: panel.escala
-            yScale: panel.escala
-        }
-
-        states: State { name: "abierto"; when: lanz.abierta; PropertyChanges { target: panel; escala: 1 } }
-        transitions: [
-            // Rebote corto (~4 %): con el rebote general de Menisco el panel se pasaba de largo y se veia brusco.
-            Transition { to: "abierto"; NumberAnimation { property: "escala"; duration: Estilo.t(520); easing.type: Easing.BezierSpline; easing.bezierCurve: [0.25, 1.18, 0.4, 1, 1, 1] } },
-            Transition { from: "abierto"; NumberAnimation { property: "escala"; duration: Estilo.t(280); easing.type: Easing.OutCubic } }
+        opacity: Math.min(1, lanz.mostrar * 1.6)
+        transform: [
+            Scale { origin.x: 300; origin.y: 27; xScale: 0.9 + 0.1 * lanz.mostrar; yScale: 0.9 + 0.1 * lanz.mostrar },
+            Translate { y: (1 - lanz.mostrar) * -14 }
         ]
+        MouseArea { anchors.fill: parent; onClicked: buscador.forceActiveFocus() }
 
-        Keys.onEscapePressed: lanz.cerrar()
-
-        // ---- Contenido de arriba: inicio o resultados ----
         Item {
-            id: contenido
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
-            implicitHeight: lanz.consulta.trim() ? Math.min(380, lista.contentHeight) : inicio.implicitHeight
+            id: cabeza
+            width: parent.width; height: 54
 
-            Column {
-                id: inicio
-                width: parent.width
-                visible: !lanz.consulta.trim()
-                spacing: 0
-
-                // Lo que suena
-                Rectangle {
-                    visible: !!lanz.reproductor
-                    width: parent.width; height: visible ? 62 : 0
-                    radius: 14; color: "#1b1b1b"
-                    ClippingRectangle {
-                        id: caratula
-                        x: 8; anchors.verticalCenter: parent.verticalCenter
-                        width: 46; height: 46; radius: 9; color: "#333"
-                        Image { anchors.fill: parent; source: lanz.reproductor ? lanz.reproductor.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true }
-                    }
-                    Column {
-                        anchors { left: caratula.right; leftMargin: 10; right: controles.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                        spacing: 2
-                        Texto { width: parent.width; text: lanz.reproductor ? lanz.reproductor.trackTitle : ""; color: "#fff"; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                        Texto { width: parent.width; text: lanz.reproductor ? lanz.reproductor.trackArtist + " · " + lanz.reproductor.identity : ""; color: "#888"; font.pixelSize: 11; elide: Text.ElideRight }
-                        Rectangle {
-                            width: parent.width; height: 3; radius: 2; color: "#333"
-                            Rectangle {
-                                height: 3; radius: 2; color: "#fff"
-                                width: lanz.reproductor && lanz.reproductor.length > 0 ? parent.width * Math.min(1, lanz.reproductor.position / lanz.reproductor.length) : 0
-                                Behavior on width { NumberAnimation { duration: Estilo.t(900) } }
-                            }
-                        }
-                    }
-                    Row {
-                        id: controles
-                        anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                        spacing: 6
-                        Boton { icono: "skip_previous"; onPulsado: lanz.reproductor.previous() }
-                        Boton { icono: lanz.reproductor && lanz.reproductor.isPlaying ? "pause" : "play_arrow"; lleno: true; onPulsado: lanz.reproductor.togglePlaying() }
-                        Boton { icono: "skip_next"; onPulsado: lanz.reproductor.next() }
-                    }
+            Rectangle {
+                id: nido
+                x: 9; anchors.verticalCenter: parent.verticalCenter
+                width: 36; height: 36; radius: 18
+                color: Estilo.tarjeta; border.width: 1; border.color: Estilo.borde
+                Asistente {
+                    id: asistente
+                    anchors.centerIn: parent
+                    width: 32; height: 32
+                    emocion: lanz.emocion
+                    fondoNegro: true
+                    // Llega despues de la pildora: crece desde un punto, se estira y se asienta, y parpadea.
+                    transform: Scale { id: llegadaEsc; origin.x: 16; origin.y: 16; xScale: 0; yScale: 0 }
                 }
-
-                Titulo { text: "Frecuentes" }
-                Row {
-                    width: parent.width
-                    Repeater {
-                        model: lanz.frecuentes
-                        delegate: Item {
-                            required property var modelData
-                            width: inicio.width / 6; height: 66
-                            Column {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 4
-                                Image {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: 42; height: 42; sourceSize: Qt.size(48, 48)
-                                    source: Quickshell.iconPath(modelData.icon, "application-x-executable")
-                                    scale: zonaF.pressed ? 0.88 : (zonaF.containsMouse ? 1.08 : 1)
-                                    Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-                                }
-                                Texto { anchors.horizontalCenter: parent.horizontalCenter; width: inicio.width / 6 - 6; horizontalAlignment: Text.AlignHCenter; text: modelData.name; font.pixelSize: 11; color: "#ddd"; elide: Text.ElideRight }
-                            }
-                            MouseArea { id: zonaF; anchors.fill: parent; hoverEnabled: true; onClicked: lanz.abrirApp(modelData) }
-                        }
-                    }
-                }
-
-                Titulo { text: "Ventanas abiertas"; visible: ToplevelManager.toplevels.values.length > 0 }
-                Repeater {
-                    model: ToplevelManager.toplevels.values.slice(0, 4)
-                    delegate: Fila {
-                        required property var modelData
-                        width: inicio.width
-                        iconoApp: (DesktopEntries.heuristicLookup(modelData.appId) || {}).icon || modelData.appId
-                        titulo: modelData.title
-                        derecha: "ir"
-                        onPulsada: { modelData.activate(); lanz.cerrar(); }
-                    }
-                }
-
-                Titulo { text: "Recientes"; visible: lanz.recientes.length > 0 }
-                Flow {
-                    width: parent.width
-                    spacing: 6
-                    Repeater {
-                        model: lanz.recientes
-                        delegate: Rectangle {
-                            required property var modelData
-                            width: Math.min(inicio.width, chip.implicitWidth + 36); height: 26; radius: 9
-                            color: zonaR.containsMouse ? "#383838" : "#2e2e2e"
-                            Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
-                            Simbolo { x: 8; anchors.verticalCenter: parent.verticalCenter; text: "description"; font.pixelSize: 14; color: "#aaa" }
-                            Texto { id: chip; x: 28; width: parent.width - 36; anchors.verticalCenter: parent.verticalCenter; text: modelData.nombre; font.pixelSize: 11; color: "#ddd"; elide: Text.ElideMiddle }
-                            MouseArea { id: zonaR; anchors.fill: parent; hoverEnabled: true; onClicked: { lanz.ejecutar(["xdg-open", modelData.ruta]); lanz.cerrar(); } }
-                        }
-                    }
-                }
-            }
-
-            ListView {
-                id: lista
-                width: parent.width
-                height: Math.min(380, contentHeight)
-                visible: lanz.consulta.trim() !== ""
-                interactive: contentHeight > height
-                model: lanz.resultados
-                currentIndex: lanz.elegido
-                boundsBehavior: Flickable.StopAtBounds
-                highlightMoveDuration: 0
-                delegate: Column {
-                    id: celda
-                    required property var modelData
-                    required property int index
-                    width: lista.width
-                    Titulo { visible: celda.modelData.encabezado; text: celda.modelData.seccion }
-                    Fila {
-                    readonly property var modelData: celda.modelData
-                    readonly property int index: celda.index
-                    width: lista.width
-                    marcada: index === lanz.elegido
-                    grande: modelData.tipo === "calc"
-                    emoji: modelData.tipo === "emoji"
-                    iconoApp: modelData.tipo === "app" ? modelData.entrada.icon : ""
-                    simbolo: ({ accion: modelData.accion ? modelData.accion.icono : "", archivo: "description", web: "travel_explore", calc: "calculate", timer: "timer", timerFin: "timer_off" })[modelData.tipo] || ""
-                    rojo: modelData.tipo === "accion" && !!modelData.accion.rojo
-                    titulo: lanz.confirmar === modelData.titulo ? modelData.titulo + ": pulse Enter otra vez" : modelData.titulo
-                    sub: modelData.sub
-                    interruptor: modelData.tipo === "accion" && modelData.accion.interruptor
-                        ? (modelData.accion.interruptor === "bt" ? (Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false) : lanz.noMolestar)
-                        : undefined
-                    derecha: index === lanz.elegido ? "Enter" : ""
-                    onPulsada: lanz.activar(modelData)
-                    onEncima: lanz.elegido = index
-                    }
-                }
-            }
-        }
-
-        // ---- Barra de busqueda, abajo, con el asistente ----
-        Rectangle {
-            id: barra
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }
-            height: 42
-            radius: 12
-            color: "#1b1b1b"
-
-            Asistente {
-                id: asistente
-                width: 32; height: 32
-                x: 6; anchors.verticalCenter: parent.verticalCenter
-                emocion: lanz.emocion
-                // Llega despues de que el panel empieza a brotar: crece desde un punto, se
-                // estira y se aplasta antes de asentarse, y parpadea al llegar.
-                transform: Scale { id: llegadaEsc; origin.x: 16; origin.y: 16; xScale: 0; yScale: 0 }
             }
             SequentialAnimation {
                 id: llegada
                 PropertyAction { target: llegadaEsc; properties: "xScale,yScale"; value: 0 }
-                PauseAnimation { duration: Estilo.t(300) }
+                PauseAnimation { duration: Estilo.t(160) }
                 ParallelAnimation {
-                    NumberAnimation { target: llegadaEsc; property: "xScale"; to: 1; duration: Estilo.t(520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.2) }
+                    NumberAnimation { target: llegadaEsc; property: "xScale"; to: 1; duration: Estilo.t(480); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.2) }
                     SequentialAnimation {
-                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1.25; duration: Estilo.t(220); easing.type: Easing.OutCubic }
-                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1; duration: Estilo.t(380); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.5) }
+                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1.25; duration: Estilo.t(200); easing.type: Easing.OutCubic }
+                        NumberAnimation { target: llegadaEsc; property: "yScale"; to: 1; duration: Estilo.t(360); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.5) }
                     }
                 }
                 ScriptAction { script: asistente.parpadear() }
             }
-            NumberAnimation { id: salida; target: llegadaEsc; properties: "xScale,yScale"; to: 0; duration: Estilo.t(200); easing.type: Easing.InBack; easing.overshoot: Estilo.o(1.6) }
             Connections {
                 target: lanz
-                function onAbiertaChanged() { if (lanz.abierta) { salida.stop(); llegada.restart(); } else { llegada.stop(); salida.restart(); } }
+                function onAbiertaChanged() { if (lanz.abierta) llegada.restart(); }
             }
 
             TextInput {
                 id: buscador
-                anchors { left: parent.left; leftMargin: 46; right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
-                color: "#ffffff"
-                selectionColor: "#555"
-                font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
+                anchors { left: nido.right; leftMargin: 12; right: pistaEsc.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                color: Estilo.texto
+                selectionColor: Qt.alpha(Estilo.acento, 0.4)
+                font { family: Estilo.letra; pixelSize: 17; letterSpacing: -0.2 }
                 clip: true
                 onTextChanged: { lanz.consulta = text; lanz.confirmar = ""; lanz.elegido = 0; esperaArchivos.restart(); }
                 Keys.onEscapePressed: lanz.cerrar()
                 Keys.onDownPressed: lanz.elegido = Math.min(lanz.elegido + 1, lanz.resultados.length - 1)
                 Keys.onUpPressed: lanz.elegido = Math.max(lanz.elegido - 1, 0)
+                Keys.onTabPressed: lanz.elegido = (lanz.elegido + 1) % Math.max(1, lanz.resultados.length)
                 Keys.onReturnPressed: lanz.activar(lanz.resultados[lanz.elegido])
                 Keys.onEnterPressed: lanz.activar(lanz.resultados[lanz.elegido])
-
                 Texto {
                     visible: !buscador.text
                     text: "Buscar apps, archivos, acciones…"
-                    color: "#777"
+                    color: Estilo.texto3
+                    font.pixelSize: 17; font.letterSpacing: -0.2
                     anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+            Texto {
+                id: pistaEsc
+                anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                text: "Esc"; color: Estilo.texto3; font.pixelSize: 11
+            }
+        }
+        Rectangle {   // linea entre la busqueda y los resultados
+            x: 16; y: 54; width: parent.width - 32; height: 1
+            color: Estilo.linea
+            opacity: pildora.abiertaAbajo ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+        }
+
+        // ---- Los resultados ----
+        // Modelo por indice (no el arreglo de resultados): al escribir las filas que ya estan
+        // solo cambian de contenido, y solo las nuevas entran con su animacion.
+        Column {
+            id: lista
+            x: 6; y: 60; width: parent.width - 12
+            spacing: 2
+            Repeater {
+                model: lanz.resultados.length
+                delegate: Tarjeta {
+                    required property int index
+                    datos: lanz.resultados[index] || null
+                    grande: index === 0
+                    marcada: index === lanz.elegido
+                    orden: index
                 }
             }
         }
     }
 
-    // ---- Piezas ----
-    component Texto: Text {
-        color: "#eee"
-        font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
+    component Tarjeta: Rectangle {
+        id: t
+        property var datos
+        property bool grande
+        property bool marcada
+        property int orden
+        readonly property string tipo: datos ? datos.tipo : ""
+        readonly property bool conInterruptor: tipo === "accion" && !!datos.accion.interruptor
+        readonly property bool encendido: conInterruptor && (datos.accion.interruptor === "bt" ? (Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false) : lanz.noMolestar)
+        readonly property bool rojo: tipo === "accion" && !!datos.accion.rojo
+        readonly property string titulo: !datos ? "" : lanz.confirmar === datos.titulo ? datos.titulo + ": pulse Enter otra vez" : tipo === "emoji" ? datos.sub : datos.titulo
+
+        width: lista.width
+        height: grande ? 70 : 42
+        radius: grande ? 18 : 14
+        color: marcada ? Estilo.activo : zona.containsMouse ? Estilo.hover : Estilo.nada
+        border.width: 1; border.color: marcada ? Estilo.activoBorde : "transparent"
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+        Behavior on height { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+
+        // Entrada al aparecer: baja un poco y se asienta, cada una un instante despues que la anterior.
+        opacity: 0
+        transform: Translate { id: bajada; y: -6 }
+        Component.onCompleted: entrada.start()
+        ParallelAnimation {
+            id: entrada
+            SequentialAnimation {
+                PauseAnimation { duration: Estilo.t(Math.min(t.orden, 5) * 28) }
+                ParallelAnimation {
+                    NumberAnimation { target: t; property: "opacity"; to: 1; duration: Estilo.t(200); easing.type: Easing.OutCubic }
+                    NumberAnimation { target: bajada; property: "y"; to: 0; duration: Estilo.t(380); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote }
+                }
+            }
+        }
+        scale: zona.pressed ? 0.98 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 320); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+
+        // Icono: el de la app, un emoji o un simbolo; la calculadora no lleva (el numero es grande)
+        Item {
+            id: icono
+            visible: t.tipo !== "calc" || !t.grande
+            x: t.grande ? 12 : 10
+            width: t.grande ? 48 : 26; height: width
+            anchors.verticalCenter: parent.verticalCenter
+            Image {
+                anchors.fill: parent; visible: t.tipo === "app"
+                sourceSize: Qt.size(64, 64)
+                source: t.tipo === "app" ? Quickshell.iconPath(t.datos.entrada.icon, "application-x-executable") : ""
+            }
+            Rectangle {
+                anchors.fill: parent; visible: t.tipo !== "app"
+                radius: t.grande ? 14 : 8
+                color: t.marcada ? Qt.alpha(Estilo.iconoActivo, 0.12) : Estilo.tarjeta
+                Text { anchors.centerIn: parent; visible: t.tipo === "emoji"; text: t.datos ? t.datos.titulo : ""; font.pixelSize: t.grande ? 28 : 16 }
+                Simbolo {
+                    anchors.centerIn: parent; visible: t.tipo !== "emoji"
+                    font.pixelSize: t.grande ? 26 : 17
+                    color: t.rojo ? Estilo.peligro : t.marcada ? Estilo.iconoActivo : Estilo.texto
+                    text: t.tipo === "accion" ? t.datos.accion.icono
+                        : ({ archivo: "description", web: "travel_explore", calc: "calculate", timer: "timer", timerFin: "timer_off" })[t.tipo] || ""
+                }
+            }
+        }
+
+        Column {
+            anchors { left: icono.visible ? icono.right : parent.left; leftMargin: icono.visible ? 12 : 22
+                      right: lado.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+            spacing: 1
+            Texto {   // en la calculadora grande, la cuenta va arriba del resultado
+                visible: t.grande && t.tipo === "calc"
+                text: t.datos ? t.datos.sub : ""; color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
+            }
+            Texto {
+                width: parent.width
+                text: t.titulo
+                elide: Text.ElideRight
+                color: t.rojo ? Estilo.peligro : t.marcada ? Estilo.enActivo : Estilo.texto
+                font.pixelSize: t.grande ? (t.tipo === "calc" ? 28 : 17) : 13
+                font.weight: t.grande ? Font.DemiBold : Font.Normal
+                font.features: { "tnum": 1 }
+            }
+            Texto {
+                visible: t.grande && t.tipo !== "calc" && t.datos && t.datos.sub !== "" && t.tipo !== "emoji"
+                width: parent.width; elide: Text.ElideRight
+                text: t.datos ? t.datos.sub : ""
+                color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
+            }
+        }
+
+        // A la derecha: interruptor, teclas (en la grande) o el tipo de resultado
+        Item {
+            id: lado
+            anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+            width: t.conInterruptor ? 34 : t.grande ? teclas.implicitWidth : Math.min(200, etiqueta.implicitWidth)
+            height: 22
+            Rectangle {
+                visible: t.conInterruptor
+                width: 34; height: 20; radius: 10; anchors.verticalCenter: parent.verticalCenter
+                color: t.encendido ? Estilo.acento : Estilo.apagado
+                Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
+                Rectangle {
+                    width: 16; height: 16; radius: 8; y: 2
+                    color: t.encendido ? Estilo.sobreAcento : Estilo.texto2
+                    x: t.encendido ? 16 : 2
+                    Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
+                }
+            }
+            Row {
+                id: teclas
+                visible: !t.conInterruptor && t.grande
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                Tecla { texto: "Enter"; tenue: !t.marcada }
+                Texto { text: lanz.verbos[t.tipo] || ""; font.pixelSize: 11; color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; anchors.verticalCenter: parent.verticalCenter }
+            }
+            Texto {
+                id: etiqueta
+                visible: !t.conInterruptor && !t.grande
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                width: Math.min(200, implicitWidth); elide: Text.ElideMiddle
+                text: t.tipo === "archivo" ? t.datos.sub : lanz.etiquetas[t.tipo] || ""
+                color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; font.pixelSize: 11
+            }
+        }
+
+        MouseArea { id: zona; anchors.fill: parent; hoverEnabled: true; onClicked: lanz.activar(t.datos); onEntered: lanz.elegido = t.orden }
     }
-    component Titulo: Texto {
-        color: "#888"
-        font { pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
-        leftPadding: 4; topPadding: 12; bottomPadding: 6
+
+    component Tecla: Rectangle {
+        property string texto
+        property bool tenue
+        width: tt.implicitWidth + 12; height: 20; radius: 6
+        color: Estilo.hundido; border.width: 1; border.color: Estilo.borde
+        Texto { id: tt; anchors.centerIn: parent; text: parent.texto; font.pixelSize: 10; color: parent.tenue ? Estilo.texto2 : Estilo.texto }
+    }
+    component Texto: Text {
+        color: Estilo.texto
+        font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
     }
     component Simbolo: Text {
         font { family: "Material Symbols Rounded"; pixelSize: 18 }
         font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 20 }
         renderType: Text.NativeRendering
-    }
-    component Boton: Rectangle {
-        id: boton
-        property string icono
-        property bool lleno: false
-        signal pulsado()
-        width: 30; height: 30; radius: 15
-        color: lleno ? "#fff" : (zonaB.containsMouse ? "#333" : "#00333333")
-        Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
-        scale: zonaB.pressed ? 0.88 : 1
-        Behavior on scale { NumberAnimation { duration: Estilo.t(zonaB.pressed ? 80 : 380); easing.type: zonaB.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
-        Simbolo { anchors.centerIn: parent; text: boton.icono; color: boton.lleno ? "#111" : "#ddd"; font.pixelSize: 20 }
-        MouseArea { id: zonaB; anchors.fill: parent; hoverEnabled: true; onClicked: boton.pulsado() }
-    }
-    component Fila: Rectangle {
-        id: fila
-        property string iconoApp: ""
-        property string simbolo: ""
-        property bool emoji: false
-        property bool grande: false
-        property bool rojo: false
-        property bool marcada: false
-        property string titulo
-        property string sub: ""
-        property string derecha: ""
-        property var interruptor: undefined
-        signal pulsada()
-        signal encima()
-
-        height: grande ? 74 : (sub ? 44 : 36)
-        radius: 10
-        color: marcada || zonaFila.containsMouse ? "#333" : "#00333333"
-        Behavior on color { ColorAnimation { duration: Estilo.t(110) } }
-
-        Item {
-            id: icono
-            visible: !fila.grande
-            x: 8; width: 28; height: 28; anchors.verticalCenter: parent.verticalCenter
-            Image { anchors.fill: parent; visible: fila.iconoApp !== ""; sourceSize: Qt.size(48, 48); source: fila.iconoApp ? Quickshell.iconPath(fila.iconoApp, "application-x-executable") : "" }
-            Rectangle {
-                anchors.fill: parent; radius: 8; color: "#2e2e2e"
-                visible: fila.iconoApp === ""
-                Simbolo { anchors.centerIn: parent; visible: !fila.emoji; text: fila.simbolo; color: fila.rojo ? "#ff6b6b" : "#ddd" }
-                Text { anchors.centerIn: parent; visible: fila.emoji; text: fila.titulo; font.pixelSize: 18 }
-            }
-        }
-        Column {
-            anchors { left: fila.grande ? parent.left : icono.right; leftMargin: fila.grande ? 14 : 10; right: parent.right; rightMargin: 60; verticalCenter: parent.verticalCenter }
-            spacing: 1
-            Texto { visible: fila.grande; text: fila.sub; color: "#888"; font.pixelSize: 11 }
-            Texto {
-                width: parent.width
-                text: fila.emoji ? fila.sub : fila.titulo
-                color: fila.rojo ? "#ff6b6b" : "#eee"
-                elide: Text.ElideRight
-                font.pixelSize: fila.grande ? 28 : 13
-                font.weight: fila.grande ? Font.DemiBold : Font.Normal
-                font.features: { "tnum": 1 }
-            }
-            Texto { visible: !fila.grande && fila.sub !== "" && !fila.emoji; width: parent.width; text: fila.sub; color: "#888"; font.pixelSize: 11; elide: Text.ElideRight }
-        }
-        Texto {
-            visible: fila.interruptor === undefined
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            text: fila.derecha; color: "#777"; font.pixelSize: 11
-        }
-        Rectangle {   // interruptor de Bluetooth / No molestar
-            visible: fila.interruptor !== undefined
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            width: 34; height: 20; radius: 10
-            color: fila.interruptor ? "#fff" : "#444"
-            Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
-            Rectangle {
-                width: 16; height: 16; radius: 8; color: Estilo.fondo; y: 2
-                x: fila.interruptor ? 16 : 2
-                Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
-            }
-        }
-        MouseArea { id: zonaFila; anchors.fill: parent; hoverEnabled: true; onClicked: fila.pulsada(); onEntered: fila.encima() }
     }
 }

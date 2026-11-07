@@ -17,6 +17,8 @@ poner() {   # poner <origen> <destino>
 poner "$AQUI/niri/config.kdl"     "$CFG/niri/config.kdl"
 poner "$AQUI/quickshell/isla"     "$CFG/quickshell/isla"
 poner "$AQUI/hokum/config.kdl"    "$CFG/hokum/config.kdl"
+mkdir -p "$CFG/hokum/themes"
+cp "$AQUI/hokum/themes/menisco.kdl" "$CFG/hokum/themes/"   # Menisco lo reescribe al cambiar de color
 mkdir -p "$CFG/lniri"
 cp "$AQUI/lniri/config.kdl" "$AQUI/lniri/vidrio-activo.kdl" "$CFG/lniri/"
 cp "$AQUI/lniri/vidrio-activo.kdl" "$CFG/lniri/vidrio.kdl"     # liquid glass encendido

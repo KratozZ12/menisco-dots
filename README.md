@@ -17,8 +17,11 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 
 ## Qué trae
 
+### Colores
+Cinco temas en negro, que se eligen en **Ajustes > Apariencia > Color**: Ónix, Champán, Medianoche, Rubí y Jade. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema.
+
 ### La isla
-Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*.
+Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la del panel.
 
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).
@@ -37,7 +40,7 @@ Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No
 
 **Vista expandida.** Al pasar el cursor (o fija con un clic) crece hacia abajo con tres pestañas:
 - **Música:** carátula grande (un clic lleva a la app), la isla teñida con el color del disco, barra de progreso que se arrastra, pastillas para elegir reproductor si suena más de uno, volumen de esa app, salida de audio (audífonos, bocinas, HDMI) y **letra sincronizada** abajo, que sube línea por línea con una ola, al estilo de Apple Music. La letra se busca en [LRCLIB](https://lrclib.net) y, si no está, en NetEase (`letra.sh`).
-- **Acciones:** captura de zona o de pantalla completa, grabar pantalla (`wf-recorder`), tomar un color de la pantalla, temporizador (1, 5, 10 o 25 min), historial del portapapeles, modo juego (esconde el dock, silencia avisos, perfil de rendimiento), micrófono, bloquear, siguiente fondo y una nota rápida.
+- **Acciones:** puede llevar una imagen de fondo que se funde hacia abajo (**Ajustes > Isla**, de `~/Imágenes/Wallpapers`). Captura de zona o de pantalla completa, grabar pantalla (`wf-recorder`), tomar un color de la pantalla, temporizador (1, 5, 10 o 25 min), historial del portapapeles, modo juego (esconde el dock, silencia avisos, perfil de rendimiento), micrófono, bloquear, siguiente fondo y una nota rápida.
 - **Rendimiento:** consumo en vatios, uso y temperatura de la CPU y la GPU NVIDIA, perfil de energía y los programas que más gastan (`rendimiento.py`, solo corre mientras se ve).
 
 ### Asistente
@@ -75,9 +78,8 @@ Se le habla dentro de la isla, en el mismo marco que las pestañas: «acomoda mi
 - Botón de cuadrícula que abre el lanzador (se aclara al pasar el cursor; no usa la lupa).
 
 ### Lanzador (`Super+D` o el botón del dock)
-Brota del botón de cuadrícula del dock con un rebote y regresa a él al cerrar. Al abrirlo, el asistente es "succionado" de la isla y reaparece en la barra de búsqueda, que está abajo, cerca del dock.
+Una píldora en el centro de la pantalla, con el asistente dentro. Al abrirse no muestra nada más; al escribir, la misma píldora crece hacia abajo con los resultados, el primero en grande. A igualdad, salen primero las apps que más abre.
 
-- **Sin escribir:** lo que está sonando (con controles), apps frecuentes (aprende de las que abre), ventanas abiertas y archivos recientes.
 - **Al escribir:**
   - **Apps:** por nombre, y también por descripción y palabras clave (`minecraft` encuentra Prism Launcher).
   - **Calculadora:** `12*8+4`; `Enter` copia el resultado.
@@ -86,7 +88,16 @@ Brota del botón de cuadrícula del dock con un rebote y regresa a él al cerrar
   - **Emojis**, en español o en inglés y sin importar acentos (`fuego`, `fire`). Con `:` delante se muestran solo emojis.
   - **Web:** buscar en el navegador.
 - El asistente reacciona a la búsqueda: piensa con varios resultados, se alegra con uno, se confunde si no hay nada.
-- Flechas para moverse, `Enter` para abrir, `Escape` para cerrar.
+- Flechas o `Tab` para moverse, `Enter` para abrir, `Escape` o un clic fuera para cerrar.
+
+### Modo captura (`Super+Shift+S`)
+La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve y se estira por las esquinas), **Ventana** (de una lista: niri no dice dónde está cada ventana) o **Pantalla**. La zona puede tener **forma**: rectángulo, círculo, triángulo, corazón o lazo a mano; lo de fuera queda transparente en la imagen. Opciones de incluir el cursor y abrir en `swappy` para anotar. Se guarda en `~/Pictures/Screenshots`, se copia y la isla muestra la miniatura. `ImprPant` sigue con la captura de niri, por si Quickshell no está corriendo.
+
+### Tabla de atajos y salir
+`Super+Shift+/` abre una tabla de atajos propia, en cuatro grupos, que lee las teclas de la config de niri cada vez. `Super+Shift+E` abre un cuadro para salir de niri (`Enter` sale, `Esc` cancela); `Ctrl+Alt+Supr` sigue con el de niri. Los dos siguen el tema de color.
+
+### Bandeja
+Píldora con los iconos de las apps en segundo plano, a la izquierda del botón de la barra lateral. Clic derecho abre el menú de la app.
 
 ### Barra lateral (`Super+A`)
 Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi, Bluetooth, No molestar, Modo café y más), volumen, música, calendario y energía, con páginas propias para Bluetooth, Wi-Fi y sonido. También se abre con el botón de estrella de la esquina o acercando el cursor al borde.
@@ -95,9 +106,9 @@ Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi,
 Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar).
 - **Inicio:** buscador que lleva a cualquier ajuste y lo ilumina; fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
 - También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
-- **Apariencia:** velocidad y rebote de las animaciones, color de la isla, tipografía, esquinas, espacio entre ventanas.
+- **Apariencia:** tema de color, velocidad y rebote de las animaciones, tipografía, esquinas, espacio entre ventanas.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
-- **Isla:** qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
+- **Isla:** forma, imagen de fondo de Acciones, qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
 - **Notificaciones:** No molestar (también automático en pantalla completa y al grabar), qué avisos salen en la isla, qué apps no avisan de la canción que suena, y lo de Hokum: posición, duración, cuántas a la vista y, por app, ocultarla o dejarla pasar aunque esté No molestar. Lo de Hokum lo escribe `menisco-hokum.py` en `~/.config/hokum/config.kdl` (lo valida con `hokum check` antes de guardar).
 - **Asistente:** sus gotas, carácter y el botón de luz.
 - **Barra lateral:** lado, alto, ancho, y una miniatura donde se reordenan las secciones arrastrándolas.
@@ -117,6 +128,7 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 | [Hokum](https://hokum.app) | las notificaciones (y su No molestar) |
 | [cava](https://github.com/karlstav/cava) | el visualizador de audio |
 | `plocate`, `wl-clipboard`, `python3` | archivos, copiar resultados y emojis, archivos recientes |
+| `grim`, `python3-pillow`, `swappy` | modo captura: congelar la pantalla, recortar con forma, anotar |
 | `curl`, `jq` | letras de canciones |
 | `wf-recorder`, `cliphist`, `swaylock` | grabar pantalla, historial del portapapeles, bloquear |
 | PipeWire, BlueZ, NetworkManager, `power-profiles-daemon` | volumen, Bluetooth, Wi-Fi y perfil de energía |
@@ -166,8 +178,9 @@ Compila niri 26.04 con los archivos de [TattvaOrg/Lniri](https://github.com/Tatt
 | `Super+T` | terminal |
 | `Super+Q` | cerrar ventana |
 | `Super+O` | vista general |
-| `Super+Shift+S` | captura de una zona |
-| `Super+Shift+/` | lista de todos los atajos |
+| `Super+Shift+S` | modo captura |
+| `Super+Shift+/` | tabla de atajos |
+| `Super+Shift+E` | salir de niri |
 
 El resto son los atajos de fábrica de niri.
 

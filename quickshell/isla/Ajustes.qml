@@ -274,7 +274,7 @@ PanelWindow {
         anchors.centerIn: parent
         radius: 16
         color: Estilo.fondo
-        border.color: "#3a3a3a"
+        border.color: Estilo.borde
         border.width: 1
         clip: true
 
@@ -297,7 +297,7 @@ PanelWindow {
             width: 170
             anchors { top: parent.top; bottom: parent.bottom; left: parent.left; margins: 1 }
             radius: 15
-            color: "#1c1c1c"
+            color: Estilo.hundido
             Rectangle { width: 16; anchors { top: parent.top; bottom: parent.bottom; right: parent.right } color: parent.color }
 
             readonly property var secciones: [
@@ -329,19 +329,19 @@ PanelWindow {
                     transform: Scale { xScale: 0.27; yScale: 0.27 }
                     ShapePath {
                         strokeWidth: -1
-                        fillColor: Qt.alpha("#888888", 0.45)
+                        fillColor: Qt.alpha(Estilo.texto2, 0.45)
                         startX: 0; startY: 0
                         PathSvg { path: "M0 16Q7.5 21.25 15 16V39A5 5 0 0 1 10 44H5A5 5 0 0 1 0 39ZM38 16Q45.5 21.25 53 16V39A5 5 0 0 1 48 44H43A5 5 0 0 1 38 39Z" }
                     }
                     ShapePath {
                         strokeWidth: -1
-                        fillColor: "#888888"
+                        fillColor: Estilo.texto2
                         PathSvg { path: "M19 0Q26.5 5.25 34 0V39A5 5 0 0 1 29 44H24A5 5 0 0 1 19 39Z" }
                     }
                 }
                 Text {
                     id: marca
-                    text: "MENISCO"; color: "#888"
+                    text: "MENISCO"; color: Estilo.texto2
                     font { family: letraMarca.name; pixelSize: 11; weight: Font.Black; letterSpacing: 0.4 }
                 }
             }
@@ -353,7 +353,7 @@ PanelWindow {
                 width: lateral.width - 24
                 height: 34
                 radius: 9
-                color: "#333"
+                color: Estilo.hover
                 Behavior on y { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
             }
 
@@ -377,14 +377,14 @@ PanelWindow {
                         width: parent.width
                         height: 34
                         radius: 9
-                        color: !elegida && zona.containsMouse ? "#262626" : "#00262626"
+                        color: !elegida && zona.containsMouse ? Estilo.tarjeta : Estilo.nada
                         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
 
                         Text {
                             id: iconoLateral
                             anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
                             text: modelData.icono
-                            color: fila.elegida ? "#fff" : "#bbb"
+                            color: fila.elegida ? Estilo.acento : Estilo.texto2
                             Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                             font { family: "Material Symbols Rounded"; pixelSize: 19 }
                             font.variableAxes: { "FILL": fila.relleno, "wght": 500, "opsz": 20 }
@@ -395,7 +395,7 @@ PanelWindow {
                         Text {
                             anchors { verticalCenter: parent.verticalCenter; left: iconoLateral.right; leftMargin: 10 }
                             text: modelData.texto
-                            color: fila.elegida ? "#fff" : "#bbb"
+                            color: fila.elegida ? Estilo.texto : Estilo.texto2
                             Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                             font { family: Estilo.letra; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
                         }
@@ -415,6 +415,37 @@ PanelWindow {
                 anchors.fill: parent
                 clave: "apariencia"; activa: ventana.seccion === clave
                 Desplazable {
+                    Encabezado { text: "Color" }
+                    // Una muestra por tema, pintada con sus propios colores; al tocarla cambia todo Menisco.
+                    Row {
+                        width: parent.width; spacing: 8
+                        Repeater {
+                            model: Estilo.ordenTemas
+                            delegate: Rectangle {
+                                id: muestra
+                                required property string modelData
+                                readonly property var t: Estilo.temas[modelData]
+                                readonly property bool elegido: Estilo.valor("tema") === modelData
+                                width: (parent.width - 32) / 5; height: 84; radius: 12
+                                color: t.fondo
+                                border.width: elegido ? 2 : 1; border.color: elegido ? t.acento : t.borde
+                                scale: zonaTema.pressed ? 0.95 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaTema.pressed ? 80 : 340); easing.type: zonaTema.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                Rectangle {
+                                    x: 10; y: 10; width: parent.width - 20; height: 26; radius: 8
+                                    color: muestra.t.tarjeta; border.width: 1; border.color: muestra.t.borde
+                                    Rectangle { x: 6; anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; radius: 7; color: muestra.t.acento }
+                                    Rectangle { x: 26; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 36; height: 4; radius: 2; color: muestra.t.texto3 }
+                                }
+                                Text {
+                                    anchors { left: parent.left; bottom: parent.bottom; margins: 10 }
+                                    text: muestra.t.nombre; color: muestra.t.texto
+                                    font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold; letterSpacing: -0.08 }
+                                }
+                                MouseArea { id: zonaTema; anchors.fill: parent; onClicked: Estilo.poner("tema", muestra.modelData) }
+                            }
+                        }
+                    }
                     Encabezado { text: "Ventanas" }
                     Grupo {
                         Deslizador {
@@ -447,10 +478,6 @@ PanelWindow {
                     Encabezado { text: "Isla y paneles" }
                     Grupo {
                         Segmentos {
-                            titulo: "Color de fondo"; sub: "Isla, lanzador, ajustes, volumen"; opciones: ["Gris", "Negro"]; claves: [false, true]
-                            elegida: Estilo.valor("fondoNegro"); onElegir: c => Estilo.poner("fondoNegro", c)
-                        }
-                        Segmentos {
                             titulo: "Letra"; opciones: ["SF Pro", "Inter"]; claves: ["SF Pro", "Inter"]
                             elegida: Estilo.valor("letra"); onElegir: c => Estilo.poner("letra", c)
                         }
@@ -467,7 +494,7 @@ PanelWindow {
                     Encabezado { text: "Disposición" }
                     Rectangle {
                         id: mapa
-                        width: parent.width; height: 150; radius: 12; color: "#1b1b1b"
+                        width: parent.width; height: 150; radius: 12; color: Estilo.hundido
                         // Escala del mapa: el conjunto de monitores cabe con margen.
                         readonly property real anchoTotal: Math.max(1, ventana.salidas.reduce((s, o) => s + o.ancho, 0))
                         readonly property real k: Math.min((width - 60) / anchoTotal, 84 / 1080)
@@ -481,15 +508,15 @@ PanelWindow {
                                 y: (mapa.height - height) / 2 - 6
                                 x: 30 + modelData.x * mapa.k
                                 radius: 8
-                                color: modelData.conectada ? "#2e2e2e" : "transparent"
-                                border.color: modelData.nombre === ventana.salidaElegida ? "#ffffff" : "#555"
+                                color: modelData.conectada ? Estilo.tarjeta : "transparent"
+                                border.color: modelData.nombre === ventana.salidaElegida ? Estilo.acento : Estilo.texto3
                                 border.width: modelData.nombre === ventana.salidaElegida ? 2 : 1
                                 opacity: modelData.conectada ? 1 : 0.55
                                 Behavior on x { enabled: !arrastre.active; NumberAnimation { duration: Estilo.t(380); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                                 Column {
                                     anchors.centerIn: parent
                                     Texto { anchors.horizontalCenter: parent.horizontalCenter; text: caja.modelData.modelo; font.weight: Font.DemiBold }
-                                    Texto { anchors.horizontalCenter: parent.horizontalCenter; text: caja.modelData.nombre + (caja.modelData.conectada ? "" : " · desconectado"); color: "#888"; font.pixelSize: 11 }
+                                    Texto { anchors.horizontalCenter: parent.horizontalCenter; text: caja.modelData.nombre + (caja.modelData.conectada ? "" : " · desconectado"); color: Estilo.texto2; font.pixelSize: 11 }
                                 }
                                 TapHandler { onTapped: if (caja.modelData.conectada) ventana.salidaElegida = caja.modelData.nombre }
                                 DragHandler {
@@ -500,7 +527,7 @@ PanelWindow {
                                 }
                             }
                         }
-                        Texto { x: 12; anchors { bottom: parent.bottom; bottomMargin: 8 } text: "Arrastre los monitores para acomodarlos"; color: "#888"; font.pixelSize: 11 }
+                        Texto { x: 12; anchors { bottom: parent.bottom; bottomMargin: 8 } text: "Arrastre los monitores para acomodarlos"; color: Estilo.texto2; font.pixelSize: 11 }
                     }
                     Encabezado { text: ventana.salidaActual ? ventana.salidaActual.modelo : "" }
                     Grupo {
@@ -541,15 +568,24 @@ PanelWindow {
 
                     Encabezado { text: "Vista previa" }
                     Rectangle {
+                        id: previaIsla
                         width: parent.width; height: 70; radius: 12; color: "#3a3f4a"
-                        Rectangle {
+                        clip: true
+                        Shape {   // la forma elegida, con las mismas cuentas que la isla de verdad
+                            anchors.fill: parent
+                            preferredRendererType: Shape.CurveRenderer
+                            ShapePath {
+                                fillColor: Estilo.fondo; strokeWidth: -1
+                                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(Estilo.valor("islaForma"), (previaIsla.width - 300) / 2 - Estilo.ajusteForma(Estilo.valor("islaForma"))[0], 38, 18, 16), previaIsla.width / 2) }
+                            }
+                        }
+                        Item {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 300; height: 38; color: Estilo.fondo
-                            topLeftRadius: 0; topRightRadius: 0; bottomLeftRadius: 18; bottomRightRadius: 18
+                            width: 300; height: 38
                             Rectangle {
                                 visible: Estilo.valor("islaAsistente")
                                 x: 14; anchors.verticalCenter: parent.verticalCenter
-                                width: 24; height: 24; radius: 12; color: Estilo.valor("fondoNegro") ? "#2c2c2e" : "#0b0b0c"
+                                width: 24; height: 24; radius: 12; color: Estilo.tarjeta
                                 Row { anchors.centerIn: parent; spacing: 4; Repeater { model: 2; Rectangle { width: 3; height: 8; radius: 2; color: "#fff" } } }
                             }
                             Texto {
@@ -562,6 +598,85 @@ PanelWindow {
                                 anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
                                 spacing: 3
                                 Repeater { model: [6, 11, 16, 11, 6]; Rectangle { required property int modelData; width: 3; height: modelData; radius: 1.5; color: "#fff"; anchors.verticalCenter: parent.verticalCenter } }
+                            }
+                        }
+                    }
+                    Encabezado { text: "Forma" }
+                    // Una muestra por forma, dibujada con las mismas cuentas que la isla.
+                    Flow {
+                        width: parent.width; spacing: 8
+                        Repeater {
+                            model: Estilo.formasIsla
+                            delegate: Rectangle {
+                                id: muestraForma
+                                required property var modelData
+                                readonly property bool elegida: Estilo.valor("islaForma") === modelData[0]
+                                width: (parent.width - 24) / 4; height: 74; radius: 12
+                                color: Estilo.tarjeta
+                                border.width: elegida ? 2 : 1; border.color: elegida ? Estilo.acento : Estilo.borde
+                                clip: true
+                                scale: zonaForma.pressed ? 0.95 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaForma.pressed ? 80 : 340); easing.type: zonaForma.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                Rectangle {   // franja de "pantalla" de la que cuelga la isla
+                                    x: 1; y: 1; width: parent.width - 2; height: 40; color: "#3a3f4a"
+                                    topLeftRadius: 11; topRightRadius: 11
+                                    Shape {
+                                        anchors.fill: parent
+                                        preferredRendererType: Shape.CurveRenderer
+                                        ShapePath {
+                                            fillColor: Estilo.fondo; strokeWidth: -1
+                                            PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(muestraForma.modelData[0], muestraForma.width / 2 - 34 - Estilo.ajusteForma(muestraForma.modelData[0])[0] / 2, 20, 9, 8), muestraForma.width / 2) }
+                                        }
+                                    }
+                                }
+                                Text {
+                                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 9 }
+                                    text: muestraForma.modelData[1]
+                                    color: muestraForma.elegida ? Estilo.texto : Estilo.texto2
+                                    font { family: Estilo.letra; pixelSize: 12; weight: muestraForma.elegida ? Font.DemiBold : Font.Normal }
+                                }
+                                MouseArea { id: zonaForma; anchors.fill: parent; onClicked: Estilo.poner("islaForma", muestraForma.modelData[0]) }
+                            }
+                        }
+                    }
+                    Encabezado { text: "Fondo de la pestaña Acciones" }
+                    // "Ninguna" y luego los fondos de pantalla; la elegida va dentro de la isla, desvanecida hacia abajo.
+                    Flow {
+                        width: parent.width; spacing: 8
+                        Rectangle {
+                            readonly property bool elegida: !Estilo.valor("islaImagen")
+                            width: 96; height: 60; radius: 10
+                            color: zonaSinImagen.containsMouse ? Estilo.hover : Estilo.tarjeta
+                            border.width: elegida ? 2 : 1; border.color: elegida ? Estilo.acento : Estilo.borde
+                            Texto { anchors.centerIn: parent; text: "Ninguna"; font.pixelSize: 12; color: parent.elegida ? Estilo.texto : Estilo.texto2 }
+                            MouseArea { id: zonaSinImagen; anchors.fill: parent; hoverEnabled: true; onClicked: Estilo.poner("islaImagen", "") }
+                        }
+                        Repeater {
+                            model: FolderListModel {
+                                folder: "file://" + ventana.carpetaFondos
+                                nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp"]
+                                showDirs: false
+                            }
+                            delegate: Item {
+                                id: imagenIsla
+                                required property string filePath
+                                readonly property bool elegida: Estilo.valor("islaImagen") === filePath
+                                width: 96; height: 60
+                                Rectangle {
+                                    anchors.fill: parent; radius: 10; color: "transparent"
+                                    border.color: Estilo.acento; border.width: 2
+                                    opacity: imagenIsla.elegida ? 1 : 0
+                                    scale: imagenIsla.elegida ? 1 : 1.08
+                                    Behavior on opacity { NumberAnimation { duration: Estilo.t(220); easing.type: Easing.OutCubic } }
+                                    Behavior on scale { NumberAnimation { duration: Estilo.t(380); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                                }
+                                Redondeada {
+                                    anchors { fill: parent; margins: 3 }
+                                    radio: 7; ruta: imagenIsla.filePath; ancho: 200
+                                    scale: zonaImagenIsla.pressed ? 0.94 : (zonaImagenIsla.containsMouse ? 1.04 : 1)
+                                    Behavior on scale { NumberAnimation { duration: Estilo.t(zonaImagenIsla.pressed ? 90 : 320); easing.type: zonaImagenIsla.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
+                                }
+                                MouseArea { id: zonaImagenIsla; anchors.fill: parent; hoverEnabled: true; onClicked: Estilo.poner("islaImagen", imagenIsla.filePath) }
                             }
                         }
                     }
@@ -652,14 +767,14 @@ PanelWindow {
                         }
                         // Tarjeta de Hokum en la posicion elegida
                         Rectangle {
-                            width: 150; height: 34; radius: 12; color: "#1b1b1b"
+                            width: 150; height: 34; radius: 12; color: Estilo.hundido
                             x: paginaNotif.lado === "left" ? 10 : paginaNotif.lado === "center" ? (parent.width - width) / 2 : parent.width - width - 10
                             y: paginaNotif.alto === "top" ? 38 : parent.height - height - 8
                             Behavior on x { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                             Behavior on y { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                             Column {
                                 anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                                Texto { text: "Discord"; color: "#888"; font.pixelSize: 10 }
+                                Texto { text: "Discord"; color: Estilo.texto2; font.pixelSize: 10 }
                                 Texto { text: "Nuevo mensaje"; font.pixelSize: 11 }
                             }
                         }
@@ -697,7 +812,7 @@ PanelWindow {
                                 id: textoFichas
                                 x: 12; y: 9
                                 Texto { text: "Apps que avisan" }
-                                Texto { text: "Toque una para callarla. Salen las abiertas y las ya calladas"; color: "#888"; font.pixelSize: 11 }
+                                Texto { text: "Toque una para callarla. Salen las abiertas y las ya calladas"; color: Estilo.texto2; font.pixelSize: 11 }
                             }
                             Flow {
                                 id: fichas
@@ -715,12 +830,12 @@ PanelWindow {
                                         id: ficha
                                         required property string modelData
                                         readonly property bool callada: Estilo.valor("musicaIgnorar").includes(modelData)
-                                        width: filaFicha.width + 16; height: 26; radius: 9; color: "#1b1b1b"
+                                        width: filaFicha.width + 16; height: 26; radius: 9; color: Estilo.hundido
                                         Row {
                                             id: filaFicha
                                             anchors.centerIn: parent; spacing: 5
-                                            Simbolo { text: ficha.callada ? "music_off" : "music_note"; font.pixelSize: 14; color: ficha.callada ? "#666" : "#ddd"; anchors.verticalCenter: parent.verticalCenter }
-                                            Texto { text: ficha.modelData; font.pixelSize: 12; font.strikeout: ficha.callada; color: ficha.callada ? "#666" : "#ddd"; anchors.verticalCenter: parent.verticalCenter }
+                                            Simbolo { text: ficha.callada ? "music_off" : "music_note"; font.pixelSize: 14; color: ficha.callada ? Estilo.texto3 : Estilo.texto; anchors.verticalCenter: parent.verticalCenter }
+                                            Texto { text: ficha.modelData; font.pixelSize: 12; font.strikeout: ficha.callada; color: ficha.callada ? Estilo.texto3 : Estilo.texto; anchors.verticalCenter: parent.verticalCenter }
                                         }
                                         MouseArea {
                                             anchors.fill: parent
@@ -731,9 +846,9 @@ PanelWindow {
                                         }
                                     }
                                 }
-                                Texto { visible: repFichas.count === 0; text: "Ponga algo a sonar y aparecerá aquí"; color: "#666"; font.pixelSize: 12 }
+                                Texto { visible: repFichas.count === 0; text: "Ponga algo a sonar y aparecerá aquí"; color: Estilo.texto3; font.pixelSize: 12 }
                             }
-                            Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: "#383838" }
+                            Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: Estilo.linea }
                         }
                         Interruptor { titulo: "No avisar si la app está al frente"; sub: "Si ya está mirando el reproductor, no hace falta"; encendido: Estilo.valor("musicaNoAlFrente"); onCambiar: v => Estilo.poner("musicaNoAlFrente", v) }
                         Interruptor { titulo: "Solo con carátula"; sub: "Ignora videos y sonidos sueltos sin portada"; encendido: Estilo.valor("musicaConCaratula"); onCambiar: v => Estilo.poner("musicaConCaratula", v) }
@@ -778,11 +893,11 @@ PanelWindow {
                                     spacing: 2
                                     Simbolo {
                                         text: "notifications_active"; font.pixelSize: 17
-                                        color: filaApp.r.interrumpe ? "#fff" : "#555"
+                                        color: filaApp.r.interrumpe ? Estilo.texto : Estilo.texto3
                                         MouseArea { anchors.fill: parent; anchors.margins: -5; onClicked: paginaNotif.ponerApp(filaApp.modelData, filaApp.r.modo, !filaApp.r.interrumpe) }
                                     }
                                     Simbolo {
-                                        text: "close"; font.pixelSize: 17; color: "#666"
+                                        text: "close"; font.pixelSize: 17; color: Estilo.texto3
                                         MouseArea { anchors.fill: parent; anchors.margins: -5; onClicked: paginaNotif.quitarApp(filaApp.modelData) }
                                     }
                                 }
@@ -792,24 +907,24 @@ PanelWindow {
                             visible: !paginaNotif.agregando
                             icono: "add"; titulo: "Agregar aplicación"; clicable: true
                             onPulsada: { paginaNotif.agregando = true; buscaApp.text = ""; buscaApp.forceActiveFocus(); }
-                            Simbolo { text: "chevron_right"; color: "#888" }
+                            Simbolo { text: "chevron_right"; color: Estilo.texto2 }
                         }
                         Item {
                             visible: paginaNotif.agregando
                             width: parent.width; height: visible ? sugerencias.y + sugerencias.height + 10 : 0
                             Rectangle {
-                                x: 12; y: 8; width: parent.width - 24; height: 28; radius: 8; color: "#1b1b1b"
-                                border.width: 1; border.color: buscaApp.activeFocus ? "#666" : "transparent"
+                                x: 12; y: 8; width: parent.width - 24; height: 28; radius: 8; color: Estilo.hundido
+                                border.width: 1; border.color: buscaApp.activeFocus ? Estilo.texto3 : "transparent"
                                 TextInput {
                                     id: buscaApp
                                     anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                                     verticalAlignment: TextInput.AlignVCenter
                                     clip: true
-                                    color: "#eee"; selectionColor: "#555"
+                                    color: Estilo.texto; selectionColor: Estilo.texto3
                                     font { family: Estilo.letra; pixelSize: 12 }
                                     onAccepted: paginaNotif.agregarApp(text)
                                     Keys.onEscapePressed: paginaNotif.agregando = false
-                                    Texto { visible: !parent.text; text: "Nombre de la app, como sale en la notificación"; color: "#666"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                    Texto { visible: !parent.text; text: "Nombre de la app, como sale en la notificación"; color: Estilo.texto3; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                                 }
                             }
                             Flow {
@@ -822,7 +937,7 @@ PanelWindow {
                                             .slice(0, 6).map(e => e.name)
                                     delegate: Rectangle {
                                         required property string modelData
-                                        width: tSug.implicitWidth + 18; height: 26; radius: 9; color: zSug.containsMouse ? "#3a3a3a" : "#1b1b1b"
+                                        width: tSug.implicitWidth + 18; height: 26; radius: 9; color: zSug.containsMouse ? Estilo.hover : Estilo.hundido
                                         Texto { id: tSug; anchors.centerIn: parent; text: modelData; font.pixelSize: 12 }
                                         MouseArea { id: zSug; anchors.fill: parent; hoverEnabled: true; onClicked: paginaNotif.agregarApp(modelData) }
                                     }
@@ -834,7 +949,7 @@ PanelWindow {
                         topPadding: 10
                         width: parent.width; wrapMode: Text.Wrap
                         text: "La campana deja pasar esa app aunque esté puesto No molestar. Ocultar la calla del todo."
-                        color: "#888"; font.pixelSize: 11
+                        color: Estilo.texto2; font.pixelSize: 11
                     }
                 }
             }
@@ -860,8 +975,8 @@ PanelWindow {
                                 spacing: 6
                                 Rectangle {
                                     width: 56; height: 56; radius: 17
-                                    color: miniGota.elegida ? "#2e2e2e" : zonaG.containsMouse ? "#262626" : "#00262626"
-                                    border.width: 2; border.color: miniGota.elegida ? "#ffffff" : "#00ffffff"
+                                    color: miniGota.elegida ? Estilo.tarjeta : zonaG.containsMouse ? Estilo.tarjeta : Estilo.nada
+                                    border.width: 2; border.color: miniGota.elegida ? Estilo.acento : Qt.alpha(Estilo.acento, 0)
                                     Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
                                     Behavior on border.color { ColorAnimation { duration: Estilo.t(200) } }
                                     scale: zonaG.pressed ? 0.92 : 1
@@ -872,22 +987,22 @@ PanelWindow {
                                         onClicked: miniGota.elegida ? dialogoGota.abrir(miniGota.index) : Estilo.poner("gotaActiva", miniGota.index)
                                     }
                                 }
-                                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: miniGota.modelData.nombre; font.pixelSize: 11; color: miniGota.elegida ? "#fff" : "#999" }
+                                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: miniGota.modelData.nombre; font.pixelSize: 11; color: miniGota.elegida ? Estilo.texto : Estilo.texto2 }
                             }
                         }
                         Column {
                             spacing: 6
                             Rectangle {
                                 width: 56; height: 56; radius: 17
-                                color: zonaNueva.containsMouse ? "#262626" : "#00262626"
-                                border.width: 1.5; border.color: "#555"
+                                color: zonaNueva.containsMouse ? Estilo.tarjeta : Estilo.nada
+                                border.width: 1.5; border.color: Estilo.texto3
                                 Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
                                 scale: zonaNueva.pressed ? 0.92 : 1
                                 Behavior on scale { NumberAnimation { duration: Estilo.t(zonaNueva.pressed ? 90 : 360); easing.type: zonaNueva.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(1.8) } }
-                                Simbolo { anchors.centerIn: parent; text: "add"; color: "#aaa"; font.pixelSize: 24 }
+                                Simbolo { anchors.centerIn: parent; text: "add"; color: Estilo.texto2; font.pixelSize: 24 }
                                 MouseArea { id: zonaNueva; anchors.fill: parent; hoverEnabled: true; onClicked: dialogoGota.abrir(-1) }
                             }
-                            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: "Nueva"; font.pixelSize: 11; color: "#999" }
+                            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: "Nueva"; font.pixelSize: 11; color: Estilo.texto2 }
                         }
                     }
                     Item { width: parent.width; height: 16 }
@@ -903,7 +1018,7 @@ PanelWindow {
                         }
                         Texto {
                             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 16 }
-                            text: Estilo.gota.nombre; font.pixelSize: 15; font.weight: Font.DemiBold; color: "#fff"
+                            text: Estilo.gota.nombre; font.pixelSize: 15; font.weight: Font.DemiBold; color: Estilo.texto
                         }
                     }
                     // Probar emociones
@@ -918,9 +1033,9 @@ PanelWindow {
                                     required property var modelData
                                     readonly property bool elegida: paginaBot.prueba === modelData[1]
                                     width: et.implicitWidth + 20; height: 26; radius: 8
-                                    color: elegida ? "#ffffff" : "#2e2e2e"
+                                    color: elegida ? Estilo.activo : Estilo.tarjeta
                                     Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
-                                    Texto { id: et; anchors.centerIn: parent; text: modelData[0]; font.pixelSize: 12; color: parent.elegida ? "#111" : "#ccc" }
+                                    Texto { id: et; anchors.centerIn: parent; text: modelData[0]; font.pixelSize: 12; color: parent.elegida ? Estilo.enActivo : Estilo.texto2 }
                                     MouseArea { anchors.fill: parent; onClicked: paginaBot.prueba = modelData[1] }
                                 }
                             }
@@ -987,7 +1102,7 @@ PanelWindow {
                                 required property var modelData
                                 readonly property bool elegido: Estilo.barra.rapidos.includes(modelData[0])
                                 width: filaChip.implicitWidth + 20; height: 30; radius: 10
-                                color: elegido ? "#ffffff" : "#1b1b1b"
+                                color: elegido ? Estilo.activo : Estilo.hundido
                                 Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                                 scale: zonaChip.pressed ? 0.94 : 1
                                 Behavior on scale { NumberAnimation { duration: Estilo.t(zonaChip.pressed ? 80 : 360); easing.type: zonaChip.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
@@ -996,13 +1111,13 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     spacing: 6
                                     Text {
-                                        text: chip.modelData[1]; color: chip.elegido ? "#111" : "#aaa"
+                                        text: chip.modelData[1]; color: chip.elegido ? Estilo.enActivo : Estilo.texto2
                                         font { family: "Material Symbols Rounded"; pixelSize: 16 }
                                         font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 20 }
                                         renderType: Text.NativeRendering
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Texto { text: chip.modelData[2]; color: chip.elegido ? "#111" : "#aaa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                    Texto { text: chip.modelData[2]; color: chip.elegido ? Estilo.enActivo : Estilo.texto2; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                                 }
                                 MouseArea {
                                     id: zonaChip
@@ -1093,7 +1208,7 @@ PanelWindow {
                         topPadding: 10
                         width: parent.width; wrapMode: Text.Wrap
                         text: ventana.errorAtajo || "Clic en un atajo y pulse la nueva combinación para cambiarlo. Escape cancela."
-                        color: ventana.errorAtajo ? "#ff6b6b" : "#888"; font.pixelSize: 11
+                        color: ventana.errorAtajo ? Estilo.peligro : Estilo.texto2; font.pixelSize: 11
                     }
                 }
             }
@@ -1117,15 +1232,15 @@ PanelWindow {
                         Rectangle {
                             anchors.fill: parent
                             radius: 10
-                            color: "#2e2e2e"
-                            border.width: 1; border.color: campoBuscar.activeFocus ? "#555" : "transparent"
-                            Simbolo { x: 11; anchors.verticalCenter: parent.verticalCenter; text: "search"; color: "#888"; font.pixelSize: 17 }
+                            color: Estilo.tarjeta
+                            border.width: 1; border.color: campoBuscar.activeFocus ? Estilo.texto3 : "transparent"
+                            Simbolo { x: 11; anchors.verticalCenter: parent.verticalCenter; text: "search"; color: Estilo.texto2; font.pixelSize: 17 }
                             TextInput {
                                 id: campoBuscar
                                 anchors { fill: parent; leftMargin: 36; rightMargin: 12 }
                                 verticalAlignment: TextInput.AlignVCenter
                                 clip: true
-                                color: "#eee"; selectionColor: "#555"
+                                color: Estilo.texto; selectionColor: Estilo.texto3
                                 font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
                                 onTextChanged: buscador.resultados = ventana.buscarAjustes(text)
                                 onAccepted: if (buscador.resultados.length) buscador.ir(buscador.resultados[0])
@@ -1134,7 +1249,7 @@ PanelWindow {
                                     visible: !campoBuscar.text
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Buscar un ajuste: esquinas, reloj, sonido…"
-                                    color: "#777"; font: campoBuscar.font
+                                    color: Estilo.texto3; font: campoBuscar.font
                                 }
                             }
                         }
@@ -1147,8 +1262,8 @@ PanelWindow {
                             width: parent.width
                             height: listaRes.implicitHeight + 8
                             radius: 12
-                            color: "#2a2a2a"
-                            border.width: 1; border.color: "#3a3a3a"
+                            color: Estilo.tarjeta
+                            border.width: 1; border.color: Estilo.borde
                             Column {
                                 id: listaRes
                                 x: 4; y: 4
@@ -1156,23 +1271,23 @@ PanelWindow {
                                 Texto {
                                     visible: buscador.resultados.length === 0
                                     leftPadding: 10; topPadding: 9; bottomPadding: 9
-                                    text: "Nada con ese nombre."; color: "#888"
+                                    text: "Nada con ese nombre."; color: Estilo.texto2
                                 }
                                 Repeater {
                                     model: buscador.resultados
                                     delegate: Rectangle {
                                         required property var modelData
                                         width: listaRes.width; height: 40; radius: 8
-                                        color: zonaRes.containsMouse ? "#3a3a3a" : "transparent"
+                                        color: zonaRes.containsMouse ? Estilo.hover : "transparent"
                                         Column {
                                             anchors { left: parent.left; leftMargin: 10; right: seccionRes.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
                                             Texto { text: modelData.titulo; width: parent.width; elide: Text.ElideRight }
-                                            Texto { visible: modelData.sub !== "" && modelData.fila; text: modelData.sub; color: "#888"; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
+                                            Texto { visible: modelData.sub !== "" && modelData.fila; text: modelData.sub; color: Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
                                         }
                                         Texto {
                                             id: seccionRes
                                             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                                            text: ventana.nombreSeccion(modelData.clave); color: "#888"; font.pixelSize: 11
+                                            text: ventana.nombreSeccion(modelData.clave); color: Estilo.texto2; font.pixelSize: 11
                                         }
                                         MouseArea { id: zonaRes; anchors.fill: parent; hoverEnabled: true; onClicked: buscador.ir(modelData) }
                                     }
@@ -1189,7 +1304,7 @@ PanelWindow {
                         width: parent.width
                         height: 220
                         radius: 12
-                        color: "#2e2e2e"
+                        color: Estilo.tarjeta
                         clip: true
 
                         // Debajo queda el fondo anterior; el nuevo aparece encima con un fundido
@@ -1226,7 +1341,7 @@ PanelWindow {
                             Text {
                                 anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
                                 text: Qt.formatTime(reloj.date, "h:mm")
-                                color: "#fff"
+                                color: Estilo.texto
                                 font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
                                 renderType: Text.NativeRendering
                             }
@@ -1241,7 +1356,7 @@ PanelWindow {
                             }
                             TextoCambiante {
                                 text: ventana.resolucion
-                                color: "#d0d0d0"
+                                color: Estilo.texto
                                 font { family: Estilo.letra; pixelSize: 11; weight: Font.Normal; letterSpacing: 0.06 }
                             }
                         }
@@ -1289,7 +1404,7 @@ PanelWindow {
                                     anchors.fill: parent
                                     radius: 9
                                     color: "transparent"
-                                    border.color: "#fff"
+                                    border.color: Estilo.acento
                                     border.width: 2
                                     opacity: miniatura.actual ? 1 : 0
                                     scale: miniatura.actual ? 1 : 1.08
@@ -1365,14 +1480,14 @@ PanelWindow {
                             delegate: Rectangle {
                                 required property var modelData
                                 width: filaEquipo.ancho; height: 48; radius: 10
-                                color: "#2e2e2e"
+                                color: Estilo.tarjeta
                                 Column {
                                     anchors { left: parent.left; right: parent.right; margins: 10; verticalCenter: parent.verticalCenter }
-                                    Texto { text: modelData[0]; color: "#888"; font.pixelSize: 11 }
+                                    Texto { text: modelData[0]; color: Estilo.texto2; font.pixelSize: 11 }
                                     TextoCambiante {
                                         width: parent.width; elide: Text.ElideRight
                                         text: paginaInicio.equipo[modelData[1]]
-                                        color: "#eee"; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
+                                        color: Estilo.texto; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
                                     }
                                 }
                             }
@@ -1451,7 +1566,7 @@ PanelWindow {
                 id: tarjetaGota
                 width: 420; height: columnaGota.implicitHeight
                 anchors.centerIn: parent
-                radius: 22; color: "#262628"; border.width: 1; border.color: "#353537"
+                radius: 22; color: Estilo.tarjeta; border.width: 1; border.color: Estilo.linea
                 opacity: dialogoGota.abierto ? 1 : 0
                 scale: dialogoGota.abierto ? 1 : 0.9
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(dialogoGota.abierto ? 220 : 140) } }
@@ -1466,10 +1581,10 @@ PanelWindow {
                         Texto { x: 20; anchors.verticalCenter: parent.verticalCenter; text: dialogoGota.indice < 0 ? "Nueva gota" : "Editar gota"; font.pixelSize: 15; font.weight: Font.DemiBold; color: "#fff" }
                         Simbolo {
                             anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
-                            text: "close"; color: "#999"; font.pixelSize: 20
+                            text: "close"; color: Estilo.texto2; font.pixelSize: 20
                             MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: dialogoGota.cerrar() }
                         }
-                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#353537" }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Estilo.linea }
                     }
                     Item {
                         width: parent.width; height: 136
@@ -1488,20 +1603,20 @@ PanelWindow {
                         }
                     }
                     Rectangle {
-                        x: 22; width: parent.width - 44; height: 40; radius: 11; color: "#1b1b1d"
-                        border.width: 1; border.color: nombreGota.activeFocus ? "#555" : "transparent"
+                        x: 22; width: parent.width - 44; height: 40; radius: 11; color: Estilo.hundido
+                        border.width: 1; border.color: nombreGota.activeFocus ? Estilo.texto3 : "transparent"
                         TextInput {
                             id: nombreGota
                             anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                             horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
                             clip: true; maximumLength: 18
-                            color: "#fff"; selectionColor: "#555"
+                            color: Estilo.texto; selectionColor: Estilo.texto3
                             font { family: Estilo.letra; pixelSize: 14 }
                             onAccepted: dialogoGota.guardar()
                         }
                         Texto {
                             anchors.centerIn: parent; visible: !nombreGota.text
-                            text: "Nombre"; color: "#666"; font.pixelSize: 14
+                            text: "Nombre"; color: Estilo.texto3; font.pixelSize: 14
                         }
                     }
                     Item { width: 1; height: 14 }
@@ -1515,7 +1630,7 @@ PanelWindow {
                                 required property string modelData
                                 readonly property bool elegida: dialogoGota.forma === modelData
                                 width: 46; height: 46; radius: 12
-                                color: elegida ? "#3a3a3c" : zonaF.containsMouse ? "#2f2f31" : "#002f2f31"
+                                color: elegida ? Estilo.hover : zonaF.containsMouse ? Estilo.hover : Estilo.nada
                                 Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
                                 FormaGota { anchors.centerIn: parent; width: 32; height: 32; forma: parent.modelData; color: dialogoGota.color }
                                 MouseArea { id: zonaF; anchors.fill: parent; hoverEnabled: true; onClicked: dialogoGota.forma = parent.modelData }
@@ -1534,13 +1649,13 @@ PanelWindow {
                                 width: 26; height: 26
                                 Rectangle {
                                     anchors.centerIn: parent; width: 32; height: 32; radius: 16
-                                    color: "transparent"; border.width: 2; border.color: "#ffffff"
+                                    color: "transparent"; border.width: 2; border.color: Estilo.acento
                                     opacity: parent.elegido ? 1 : 0
                                     Behavior on opacity { NumberAnimation { duration: Estilo.t(160) } }
                                 }
                                 Rectangle {
                                     anchors.fill: parent; radius: 13; color: parent.modelData
-                                    border.width: parent.modelData === "#0b0b0c" ? 1 : 0; border.color: "#555"
+                                    border.width: parent.modelData === "#0b0b0c" ? 1 : 0; border.color: Estilo.texto3
                                 }
                                 MouseArea { anchors.fill: parent; onClicked: dialogoGota.color = parent.modelData }
                             }
@@ -1552,22 +1667,22 @@ PanelWindow {
                         Column {
                             x: 22; anchors.verticalCenter: parent.verticalCenter
                             Texto { text: "Cambia de forma con las emociones" }
-                            Texto { text: "Apagado: solo cambian los ojos"; color: "#888"; font.pixelSize: 11 }
+                            Texto { text: "Apagado: solo cambian los ojos"; color: Estilo.texto2; font.pixelSize: 11 }
                         }
                         Rectangle {
                             anchors { right: parent.right; rightMargin: 22; verticalCenter: parent.verticalCenter }
                             width: 34; height: 20; radius: 10
-                            color: dialogoGota.cambia ? "#ffffff" : "#444"
+                            color: dialogoGota.cambia ? Estilo.acento : Estilo.apagado
                             Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                             Rectangle {
-                                y: 2; width: 16; height: 16; radius: 8; color: "#262628"
+                                y: 2; width: 16; height: 16; radius: 8; color: Estilo.tarjeta
                                 x: dialogoGota.cambia ? 16 : 2
                                 Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
                             }
                             MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: dialogoGota.cambia = !dialogoGota.cambia }
                         }
                     }
-                    Rectangle { width: parent.width; height: 1; color: "#353537" }
+                    Rectangle { width: parent.width; height: 1; color: Estilo.linea }
                     Item {
                         width: parent.width; height: 62
                         // Eliminar solo al editar, y nunca la ultima que queda
@@ -1581,7 +1696,7 @@ PanelWindow {
                             anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
                             spacing: 8
                             Boton { texto: "Cancelar"; onPulsado: dialogoGota.cerrar() }
-                            Boton { texto: dialogoGota.indice < 0 ? "Crear" : "Guardar"; fondo: "#ffffff"; colorTexto: "#000"; onPulsado: dialogoGota.guardar() }
+                            Boton { texto: dialogoGota.indice < 0 ? "Crear" : "Guardar"; fondo: Estilo.acento; colorTexto: Estilo.sobreAcento; onPulsado: dialogoGota.guardar() }
                         }
                     }
                 }
@@ -1591,11 +1706,11 @@ PanelWindow {
 
     // ---- Piezas de las paginas de ajustes (como las listas agrupadas de iOS) ----
     component Texto: Text {
-        color: "#eee"
+        color: Estilo.texto
         font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
     }
     component Encabezado: Texto {
-        color: "#888"
+        color: Estilo.texto2
         font { pixelSize: 13; weight: Font.Bold }
         topPadding: 14; bottomPadding: 8
     }
@@ -1612,7 +1727,8 @@ PanelWindow {
         width: parent ? parent.width : 0
         height: lista.implicitHeight
         radius: 12
-        color: "#2e2e2e"
+        color: Estilo.tarjeta
+        border.width: 1; border.color: Estilo.borde
         Column { id: lista; width: parent.width }
     }
     component Fila: Item {
@@ -1644,21 +1760,21 @@ PanelWindow {
             id: cajaIcono
             visible: filaBase.icono !== "" || filaBase.iconoEsApp
             x: 12; anchors.verticalCenter: parent.verticalCenter
-            width: 24; height: 24; radius: 7; color: "#3a3a3a"
+            width: 24; height: 24; radius: 7; color: Estilo.hover
             Simbolo { visible: !filaBase.iconoEsApp || !filaBase.icono; anchors.centerIn: parent; text: filaBase.iconoEsApp ? "notifications" : filaBase.icono; font.pixelSize: 15 }
             IconImage { visible: filaBase.iconoEsApp && filaBase.icono !== ""; anchors.centerIn: parent; implicitSize: 18; source: filaBase.icono ? Quickshell.iconPath(filaBase.icono, true) : "" }
         }
         Column {
             anchors { left: parent.left; leftMargin: cajaIcono.visible ? 46 : 12; verticalCenter: parent.verticalCenter; right: lado.left; rightMargin: 10 }
             Texto { text: titulo; width: parent.width; elide: Text.ElideRight }
-            Texto { visible: sub !== ""; text: sub; color: "#888"; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
+            Texto { visible: sub !== ""; text: sub; color: Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
         Item {
             id: lado
             anchors { right: parent.right; rightMargin: filaBase.margenDerecho; verticalCenter: parent.verticalCenter }
             width: childrenRect.width; height: childrenRect.height
         }
-        Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: "#383838" }
+        Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: Estilo.linea }
     }
     component Interruptor: Fila {
         id: inter
@@ -1666,10 +1782,10 @@ PanelWindow {
         signal cambiar(bool v)
         Rectangle {
             width: 34; height: 20; radius: 10
-            color: inter.encendido ? "#ffffff" : "#444"
+            color: inter.encendido ? Estilo.acento : Estilo.apagado
             Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
             Rectangle {
-                y: 2; width: 16; height: 16; radius: 8; color: Estilo.fondo
+                y: 2; width: 16; height: 16; radius: 8; color: inter.encendido ? Estilo.sobreAcento : Estilo.texto2
                 x: inter.encendido ? 16 : 2
                 Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
             }
@@ -1683,13 +1799,14 @@ PanelWindow {
         property var elegida
         signal elegir(var clave)
         Rectangle {
-            width: filaSeg.width + 4; height: 26; radius: 9; color: "#1b1b1b"
+            width: filaSeg.width + 4; height: 26; radius: 9; color: Estilo.hundido
             // pastilla blanca que se desliza a la opcion elegida
             Rectangle {
                 readonly property var hijo: repSeg.count, repSeg.itemAt(Math.max(0, seg.claves.indexOf(seg.elegida)))
                 visible: seg.claves.indexOf(seg.elegida) >= 0
                 x: hijo ? hijo.x + 2 : 2; width: hijo ? hijo.width : 0
-                y: 2; height: 22; radius: 7; color: "#ffffff"
+                y: 2; height: 22; radius: 7; color: Estilo.activo
+                border.width: 1; border.color: Estilo.activoBorde
                 Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                 Behavior on width { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
             }
@@ -1705,7 +1822,7 @@ PanelWindow {
                         text: modelData
                         leftPadding: 10; rightPadding: 10; topPadding: 4; bottomPadding: 4
                         font.pixelSize: 12
-                        color: seg.claves[index] === seg.elegida ? "#111" : "#aaa"
+                        color: seg.claves[index] === seg.elegida ? Estilo.enActivo : Estilo.texto2
                         Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                         MouseArea { anchors.fill: parent; onClicked: seg.elegir(seg.claves[index]) }
                     }
@@ -1726,11 +1843,11 @@ PanelWindow {
             spacing: 8
             Item {
                 width: 150; height: 20
-                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 4; radius: 2; color: "#444" }
-                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: perilla.x + 9; height: 4; radius: 2; color: "#ffffff" }
+                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 4; radius: 2; color: Estilo.apagado }
+                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: perilla.x + 9; height: 4; radius: 2; color: Estilo.acento }
                 Rectangle {
                     id: perilla
-                    width: 18; height: 18; radius: 9; color: "#ffffff"
+                    width: 18; height: 18; radius: 9; color: Estilo.texto
                     anchors.verticalCenter: parent.verticalCenter
                     x: (desl.vivo - desl.desde) / (desl.hasta - desl.desde) * (parent.width - width)
                     scale: zonaD.pressed ? 1.15 : 1
@@ -1745,7 +1862,7 @@ PanelWindow {
                     onReleased: desl.soltado(desl.vivo)
                 }
             }
-            Texto { width: 42; horizontalAlignment: Text.AlignRight; text: Math.round(desl.vivo) + desl.unidad; color: "#aaa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Texto { width: 42; horizontalAlignment: Text.AlignRight; text: Math.round(desl.vivo) + desl.unidad; color: Estilo.texto2; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
         }
     }
     // Editor de secciones de la barra lateral: a la izquierda una miniatura de la barra con
@@ -1776,7 +1893,7 @@ PanelWindow {
                 x: 14; y: 14; width: 180
                 height: ed.altoMini
                 Behavior on height { NumberAnimation { duration: Estilo.t(340); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
-                radius: 16; color: "#1f1f1f"; border.color: "#3a3a3a"
+                radius: 16; color: Estilo.hundido; border.color: Estilo.borde
                 Texto { x: 12; y: 10; text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font.weight: Font.DemiBold }
 
                 Repeater {
@@ -1786,7 +1903,7 @@ PanelWindow {
                         required property string modelData
                         readonly property bool activo: ed.activa(modelData)
                         x: 12; width: mini.width - 24; height: ed.altos[modelData]
-                        radius: 12; color: "#2e2e2e"
+                        radius: 12; color: Estilo.tarjeta
                         y: ed.yDe(modelData)
                         Behavior on y { enabled: !arrastre.active; NumberAnimation { duration: Estilo.t(340); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                         opacity: activo ? 1 : 0
@@ -1795,7 +1912,7 @@ PanelWindow {
                         z: arrastre.active ? 5 : 1
                         scale: arrastre.active ? 1.04 : 1
                         Behavior on scale { NumberAnimation { duration: Estilo.t(200); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-                        border.color: "#ffffff"; border.width: arrastre.active ? 2 : 0
+                        border.color: Estilo.acento; border.width: arrastre.active ? 2 : 0
 
                         DragHandler {
                             id: arrastre
@@ -1820,32 +1937,32 @@ PanelWindow {
                         Grid {
                             visible: bloque.modelData === "rapidos"
                             anchors { fill: parent; margins: 6 } columns: 2; spacing: 4
-                            Repeater { model: 4; Rectangle { required property int index; width: (parent.width - 4) / 2; height: 19; radius: 7; color: index < 2 ? "#ffffff" : "#3a3a3a" } }
+                            Repeater { model: 4; Rectangle { required property int index; width: (parent.width - 4) / 2; height: 19; radius: 7; color: index < 2 ? Estilo.activo : Estilo.hover } }
                         }
                         Column {
                             visible: bloque.modelData === "sonido"
                             anchors { fill: parent; margins: 7 } spacing: 6
-                            Repeater { model: [0.4, 0.45]; Rectangle { required property real modelData; width: parent.width; height: 12; radius: 6; color: "#1b1b1b"
-                                Rectangle { width: parent.width * modelData; height: 12; radius: 6; color: "#ffffff" } } }
+                            Repeater { model: [0.4, 0.45]; Rectangle { required property real modelData; width: parent.width; height: 12; radius: 6; color: Estilo.hundido
+                                Rectangle { width: parent.width * modelData; height: 12; radius: 6; color: Estilo.acento } } }
                         }
                         Row {
                             visible: bloque.modelData === "musica"
                             anchors { left: parent.left; leftMargin: 6; verticalCenter: parent.verticalCenter } spacing: 6
                             Rectangle { width: 28; height: 28; radius: 6; color: "#8a5cf6" }
                             Column { anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                                Rectangle { width: 70; height: 6; radius: 3; color: "#dddddd" }
-                                Rectangle { width: 44; height: 5; radius: 3; color: "#777777" } }
-                            Rectangle { width: 14; height: 14; radius: 7; color: "#ffffff"; anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle { width: 70; height: 6; radius: 3; color: Estilo.texto }
+                                Rectangle { width: 44; height: 5; radius: 3; color: Estilo.texto3 } }
+                            Rectangle { width: 14; height: 14; radius: 7; color: Estilo.acento; anchors.verticalCenter: parent.verticalCenter }
                         }
                         Grid {
                             visible: bloque.modelData === "calendario"
                             anchors { fill: parent; margins: 8 } columns: 7; spacing: 3
-                            Repeater { model: 28; Rectangle { required property int index; width: (parent.width - 18) / 7; height: 7; radius: 2; color: index === 18 ? "#ffffff" : "#555555" } }
+                            Repeater { model: 28; Rectangle { required property int index; width: (parent.width - 18) / 7; height: 7; radius: 2; color: index === 18 ? Estilo.acento : Estilo.texto3 } }
                         }
                         Row {
                             visible: bloque.modelData === "energia"
                             anchors.centerIn: parent; spacing: 14
-                            Repeater { model: 4; Rectangle { required property int index; width: 14; height: 14; radius: 7; color: index === 3 ? "#ff6b6b" : "#444444" } }
+                            Repeater { model: 4; Rectangle { required property int index; width: 14; height: 14; radius: 7; color: index === 3 ? Estilo.peligro : Estilo.apagado } }
                         }
                     }
                 }
@@ -1855,7 +1972,7 @@ PanelWindow {
         Column {
             width: ed.width - 208 - ed.spacing
             spacing: 8
-            Texto { width: parent.width; wrapMode: Text.Wrap; text: "Arrastre los bloques en la vista previa para cambiar su orden."; color: "#888"; font.pixelSize: 12 }
+            Texto { width: parent.width; wrapMode: Text.Wrap; text: "Arrastre los bloques en la vista previa para cambiar su orden."; color: Estilo.texto2; font.pixelSize: 12 }
             Grupo {
                 Repeater {
                     model: ["rapidos", "sonido", "musica", "calendario", "energia"]
@@ -1874,14 +1991,14 @@ PanelWindow {
         font { family: "Material Symbols Rounded"; pixelSize: 18 }
         font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
         renderType: Text.NativeRendering
-        color: "#ffffff"
+        color: Estilo.texto
     }
     // Boton de pastilla (dialogos)
     component Boton: Rectangle {
         id: bot
         property string texto
-        property color fondo: "#3a3a3c"
-        property color colorTexto: "#fff"
+        property color fondo: Estilo.hover
+        property color colorTexto: Estilo.texto
         signal pulsado()
         width: tb.implicitWidth + 32; height: 34; radius: 17
         color: fondo
@@ -1897,15 +2014,15 @@ PanelWindow {
         property string texto
         signal guardar(string t)
         Rectangle {
-            width: 160; height: 26; radius: 8; color: "#1b1b1b"
-            border.width: 1; border.color: entrada.activeFocus ? "#666" : "transparent"
+            width: 160; height: 26; radius: 8; color: Estilo.hundido
+            border.width: 1; border.color: entrada.activeFocus ? Estilo.texto3 : "transparent"
             TextInput {
                 id: entrada
                 anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
                 verticalAlignment: TextInput.AlignVCenter
                 clip: true
                 text: campo.texto
-                color: "#eee"; selectionColor: "#555"
+                color: Estilo.texto; selectionColor: Estilo.texto3
                 font { family: Estilo.letra; pixelSize: 12 }
                 maximumLength: 18
                 onEditingFinished: if (text.trim() && text.trim() !== campo.texto) campo.guardar(text.trim())
@@ -1924,14 +2041,14 @@ PanelWindow {
                 model: (ventana.atajos[fa.clave] || "").replace(/^Mod\b/, "Super").split("+").filter(s => s)
                 delegate: Rectangle {
                     required property string modelData
-                    width: k.implicitWidth + 12; height: 20; radius: 6; color: "#1b1b1b"; border.color: "#444"
-                    Texto { id: k; anchors.centerIn: parent; text: modelData === "Period" ? "." : modelData === "Slash" ? "/" : modelData; font.pixelSize: 11; color: "#ddd" }
+                    width: k.implicitWidth + 12; height: 20; radius: 6; color: Estilo.hundido; border.color: Estilo.apagado
+                    Texto { id: k; anchors.centerIn: parent; text: modelData === "Period" ? "." : modelData === "Slash" ? "/" : modelData; font.pixelSize: 11; color: Estilo.texto }
                 }
             }
         }
         Texto {
             visible: fa.esperando
-            text: "Pulse la combinación…"; color: "#fff"; font.pixelSize: 12
+            text: "Pulse la combinación…"; color: Estilo.texto; font.pixelSize: 12
             SequentialAnimation on opacity { running: fa.esperando; loops: Animation.Infinite; NumberAnimation { to: 0.4; duration: 500 } NumberAnimation { to: 1; duration: 500 } }
         }
         clicable: true
@@ -2026,20 +2143,20 @@ PanelWindow {
         width: (accesos.width - accesos.spacing) / 2
         height: 52
         radius: 12
-        color: zonaA.containsMouse ? "#363636" : "#2e2e2e"
+        color: zonaA.containsMouse ? Estilo.hover : Estilo.tarjeta
         Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
         scale: zonaA.pressed ? 0.96 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zonaA.pressed ? 90 : 420); easing.type: zonaA.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
-        Simbolo { x: 13; anchors.verticalCenter: parent.verticalCenter; text: acceso.icono; color: "#ddd"; font.pixelSize: 20 }
+        Simbolo { x: 13; anchors.verticalCenter: parent.verticalCenter; text: acceso.icono; color: Estilo.texto; font.pixelSize: 20 }
         Column {
             anchors { left: parent.left; leftMargin: 44; right: flecha.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
             Texto { text: acceso.titulo; width: parent.width; elide: Text.ElideRight }
-            TextoCambiante { text: acceso.detalle; width: parent.width; elide: Text.ElideRight; color: "#888"; font { family: Estilo.letra; pixelSize: 11; letterSpacing: 0.06 } }
+            TextoCambiante { text: acceso.detalle; width: parent.width; elide: Text.ElideRight; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 11; letterSpacing: 0.06 } }
         }
         Simbolo {
             id: flecha
             anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            text: "chevron_right"; color: "#666"; font.pixelSize: 18
+            text: "chevron_right"; color: Estilo.texto3; font.pixelSize: 18
             transform: Translate { x: zonaA.containsMouse ? 2 : 0; Behavior on x { NumberAnimation { duration: Estilo.t(200); easing.type: Easing.OutCubic } } }
         }
         MouseArea { id: zonaA; anchors.fill: parent; hoverEnabled: true; onClicked: acceso.pulsado() }

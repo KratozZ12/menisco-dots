@@ -66,7 +66,7 @@ PanelWindow {
                 // Vidrio de fondo
                 c.beginPath();
                 c.roundedRect(0, 0, w, h, r, r);
-                c.fillStyle = Estilo.valor("fondoNegro") ? "rgba(0,0,0,0.92)" : "rgba(36,36,36,0.92)";
+                c.fillStyle = Qt.alpha(Estilo.fondo, 0.92);
                 c.fill();
                 c.save();
                 c.clip();
@@ -81,7 +81,7 @@ PanelWindow {
                     c.lineTo(borde + Math.sin(y / 6 + t / 380) * amp + Math.sin(y / 3.5 - t / 290) * amp * 0.35, y);
                 c.lineTo(0, h);
                 c.closePath();
-                c.fillStyle = osd.mudo ? "#8a8a8a" : "#f2f2f2";
+                c.fillStyle = osd.mudo ? "#8a8a8a" : Estilo.acento;
                 c.fill();
                 c.restore();
             }
@@ -92,7 +92,7 @@ PanelWindow {
             id: icono
             anchors { left: parent.left; leftMargin: 13; verticalCenter: parent.verticalCenter }
             text: osd.mudo || osd.visto < 0.005 ? "volume_off" : osd.visto < 0.5 ? "volume_down" : "volume_up"
-            color: osd.visto * capsula.width > x + width * 0.7 ? "#1c1c1c" : "#ffffff"
+            color: osd.visto * capsula.width > x + width * 0.7 ? Estilo.sobreAcento : Estilo.texto
             Behavior on color { ColorAnimation { duration: Estilo.t(320); easing.type: Easing.InOutCubic } }
             font { family: "Material Symbols Rounded"; pixelSize: 18 }
             font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
@@ -101,7 +101,7 @@ PanelWindow {
         Text {
             anchors { right: parent.right; rightMargin: 15; verticalCenter: parent.verticalCenter; verticalCenterOffset: 1 }
             text: osd.mudo ? "" : Math.round(osd.visto * 100)
-            color: osd.visto * capsula.width > x + width * 0.5 ? "#1c1c1c" : "#ffffff"
+            color: osd.visto * capsula.width > x + width * 0.5 ? Estilo.sobreAcento : Estilo.texto
             Behavior on color { ColorAnimation { duration: Estilo.t(320); easing.type: Easing.InOutCubic } }
             font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
             font.features: { "tnum": 1 }

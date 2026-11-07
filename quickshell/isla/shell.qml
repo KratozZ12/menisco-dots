@@ -138,7 +138,6 @@ ShellRoot {
         }
     }
     Timer { interval: 1000; repeat: true; running: raiz.grabando; onTriggered: raiz.segundosGrabando++ }
-    property real origenLanzadorX: 0      // del boton de cuadricula del dock al centro de la pantalla
 
     function abrirAjustes() { lanzadorAbierto = false; barraAbierta = false; if (!ajustes.abierta) monitorActivo.running = true; }
 
@@ -146,8 +145,10 @@ ShellRoot {
     IpcHandler {
         target: "lanzador"
         function toggle(): void { raiz.lanzadorAbierto = !raiz.lanzadorAbierto }
+        // Para probar sin teclado: ... ipc call lanzador escribir "kit"
+        function escribir(texto: string): void { raiz.lanzadorAbierto = true; lanzador.escribir(texto) }
     }
-    Lanzador { raiz: raiz }
+    Lanzador { id: lanzador; raiz: raiz }
 
     // Super+A abre y cierra la barra lateral (centro de control).
     IpcHandler {
@@ -156,6 +157,7 @@ ShellRoot {
     }
     Barra { raiz: raiz; ajustes: ajustes }
     BotonBarra { raiz: raiz }
+    Bandeja {}
     BordeBarra { raiz: raiz }
     BotonMenisco { raiz: raiz; ajustes: ajustes }
 
@@ -194,6 +196,35 @@ ShellRoot {
     }
 
     Ajustes { id: ajustes; raiz: raiz }
+
+    // Super+Shift+/ abre y cierra la tabla de atajos.
+    IpcHandler {
+        target: "atajos"
+        function toggle(): void { atajos.alternar() }
+    }
+    Atajos { id: atajos }
+
+    // Super+Shift+E abre el cuadro para salir de niri.
+    IpcHandler {
+        target: "salir"
+        function toggle(): void { salir.alternar() }
+    }
+    Salir { id: salir }
+
+    // Super+Shift+S, la isla, la barra y el lanzador abren el modo captura.
+    // qs -p ~/.config/quickshell/isla ipc call captura abrir zona|ventana|pantalla
+    IpcHandler {
+        target: "captura"
+        function abrir(modo: string): void { captura.abrir(modo) }
+        function cerrar(): void { captura.cerrar() }
+        function capturar(): void { captura.capturar() }
+        function modo(m: string): void { captura.ponerModo(m) }
+        function forma(f: string): void { captura.ponerForma(f) }
+        function menu(): void { captura.menuFormas = !captura.menuFormas }
+        // Para probar sin raton: ... ipc call captura zona 400 200 800 450
+        function zona(x: real, y: real, w: real, h: real): void { captura.sx = x; captura.sy = y; captura.sw = w; captura.sh = h; }
+    }
+    Captura { id: captura }
 
     // Sombra detras de los ajustes: grande y suave, sin desenfoque, para que la ventana se
     // despegue de lo de atras. Sigue la misma entrada que el panel (crece y sube con rebote).

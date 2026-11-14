@@ -288,14 +288,29 @@ blur {
     noise 0      // sin grano
 }
 
+// Vista general sin sombra bajo cada escritorio: con el fondo transparente la sombra se
+// veia a traves y dejaba un cuadro marcado donde van las ventanas.
+overview {
+    workspace-shadow {
+        off
+    }
+}
+
 // Fondo de pantalla. awww recuerda solo el ultimo fondo elegido en los ajustes.
 spawn-at-startup "awww-daemon"
+// Cuenta nueva sin fondo guardado: pone el primero de ~/Imágenes/Wallpapers.
+spawn-sh-at-startup "sleep 1; awww query | grep -q image: || awww img \"$(ls -d $HOME/Imágenes/Wallpapers/* | head -1)\""
 // Historial del portapapeles (lo muestra la isla en Acciones > Portapapeles).
 spawn-sh-at-startup "wl-paste --watch cliphist store"
 spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
 layer-rule {
     match namespace="^awww-daemon$"
     place-within-backdrop true   // el desenfoque y el liquid glass lo usan de fondo
+}
+// Fondo borroso de Menisco: solo existe con la vista general abierta, detras de los escritorios.
+layer-rule {
+    match namespace="^menisco-fondo-vista$"
+    place-within-backdrop true
 }
 // Dock de Quickshell: vidrio esmerilado (en Lniri, vidrio.kdl le suma el liquid glass).
 layer-rule {
@@ -343,6 +358,12 @@ animations {
 
     // Slow down all animations by this factor. Values below 1 speed them up instead.
     // slowdown 3.0
+
+    // Cambiar de espacio (arriba/abajo): acelera y frena por igual, sin rebote.
+    workspace-switch {
+        duration-ms 700
+        curve "cubic-bezier" 0.65 0.0 0.35 1.0
+    }
 }
 
 // Window rules let you adjust behavior for individual windows.
@@ -413,7 +434,8 @@ binds {
     Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     Mod+A hotkey-overlay-title="Barra lateral de Menisco" { spawn-sh "qs -p $HOME/.config/quickshell/isla ipc call barra toggle"; }
     Mod+D hotkey-overlay-title="Lanzador de Menisco" { spawn-sh "qs -p $HOME/.config/quickshell/isla ipc call lanzador toggle"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
+    // Bloqueo de Menisco; si Quickshell no esta corriendo, swaylock de respaldo.
+    Super+Alt+L hotkey-overlay-title="Bloquear pantalla" { spawn-sh "qs -p $HOME/.config/quickshell/isla ipc call bloqueo bloquear || swaylock"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
@@ -644,6 +666,8 @@ binds {
     // Move the focused window between the floating and the tiling layout.
     Mod+V       { toggle-window-floating; }
     Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    // Cambia el escritorio actual entre fila (scroll) y flotante. Lo lleva Menisco.
+    Super+Alt+F hotkey-overlay-title="Escritorio flotante o en fila" { spawn-sh "qs -p $HOME/.config/quickshell/isla ipc call ventanas modo"; }
 
     // Toggle tabbed column display mode.
     // Windows in this column will appear as vertical tabs,
@@ -685,6 +709,12 @@ binds {
 }
 
 // Monitores
+// Menisco: tres escritorios que siempre existen, aunque esten vacios (el minimapa los muestra).
+// Si se abre un cuarto, niri lo crea y lo quita como siempre.
+workspace "uno"
+workspace "dos"
+workspace "tres"
+
 output "HDMI-A-1" {
     mode "1920x1080@143.999"
     position x=0 y=0
@@ -694,3 +724,6 @@ output "DP-2" {
     position x=1920 y=0
     focus-at-startup
 }
+
+// Modo juego de Menisco (vacio cuando esta apagado). Va al final para ganarle a lo de arriba.
+include "juego.kdl"

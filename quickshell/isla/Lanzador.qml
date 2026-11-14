@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Bluetooth
+import Quickshell.Services.Pipewire
 
 // Lanzador (Super+D): una pildora en el centro de la pantalla, con la Gota dentro. Al abrirse no
 // muestra nada mas; al escribir, la misma pildora crece hacia abajo con los resultados dentro,
@@ -38,7 +39,7 @@ PanelWindow {
 
     onAbiertaChanged: {
         if (abierta) {
-            consulta = ""; buscador.text = ""; elegido = 0; confirmar = ""; encontrados = [];
+            consulta = ""; buscador.text = ""; elegido = 0; confirmar = ""; encontrados = []; leerRed.running = true;
             buscador.forceActiveFocus();
         }
     }
@@ -132,16 +133,79 @@ PanelWindow {
         try { const r = Function("return (" + t.replace(/\^/g, "**") + ")")(); return Number.isFinite(r) ? Math.round(r * 1e6) / 1e6 : null; }
         catch (e) { return null; }
     }
+    // ---- Acciones y ajustes rapidos ----
+    // id = color propio (Estilo.tonos). claves = otras palabras con las que se encuentra.
+    // interruptor: Enter lo cambia sin cerrar; encendido() dice como esta. avanzado: pagina de la
+    // barra lateral que abre "Opciones avanzadas". peligro: pide Enter dos veces.
+    property bool wifiOn: false
+    property string redNombre: ""
+    Process {
+        id: leerRed
+        command: ["sh", "-c", "nmcli -t radio wifi; nmcli -t -f NAME,TYPE connection show --active | grep -v ':loopback$' | head -1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const l = text.trim().split("\n");
+                lanz.wifiOn = l[0] === "enabled";
+                const c = (l[1] || "").split(":");
+                lanz.redNombre = !l[1] ? "Sin conexión" : c[1] && c[1].includes("ethernet") ? "Cable conectado" : c[0];
+            }
+        }
+    }
+    readonly property var salida: Pipewire.defaultAudioSink
+    readonly property var entrada: Pipewire.defaultAudioSource
+    PwObjectTracker { objects: [lanz.salida, lanz.entrada] }
+    function mmss(s) { return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
     readonly property var acciones: [
-        { titulo: "Apagar", icono: "power_settings_new", rojo: true, peligro: true, fn: () => ejecutar(["systemctl", "poweroff"]) },
-        { titulo: "Reiniciar", icono: "restart_alt", peligro: true, fn: () => ejecutar(["systemctl", "reboot"]) },
-        { titulo: "Bloquear pantalla", icono: "lock", fn: () => ejecutar(["swaylock"]) },
-        { titulo: "Cerrar sesión", icono: "logout", fn: () => ejecutar(["niri", "msg", "action", "quit"]) },
-        { titulo: "Bluetooth", icono: "bluetooth", interruptor: "bt", fn: () => { const a = Bluetooth.defaultAdapter; Estilo.bluetooth(a, !(a && a.enabled)); } },
-        { titulo: "No molestar", icono: "dark_mode", interruptor: "dnd", fn: () => Estilo.ponerNoMolestar(!lanz.noMolestar) },
-        { titulo: "Captura de pantalla", icono: "screenshot_region", fn: () => ejecutar(["sh", "-c", "sleep 0.4; qs -p '" + Estilo.carpeta + "' ipc call captura abrir zona"]) },
-        { titulo: "Ajustes de Menisco", icono: "tune", fn: () => raiz.abrirAjustes() }
+        { id: "bt", titulo: "Bluetooth", icono: "bluetooth", claves: "bt inalambrico audifonos auriculares bocina", interruptor: true, avanzado: "bt",
+          encendido: () => Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false,
+          sub: () => { const a = Bluetooth.defaultAdapter, d = Bluetooth.devices.values.filter(x => x.connected);
+                       return !(a && a.enabled) ? "Apagado" : d.length ? d.map(x => x.name).join(", ") : "Encendido, sin dispositivos"; },
+          fn: () => { const a = Bluetooth.defaultAdapter; Estilo.bluetooth(a, !(a && a.enabled)); } },
+        { id: "wifi", titulo: "Wi-Fi", icono: "wifi", claves: "wifi wi-fi internet red redes conexion wlan inalambrica ethernet cable", interruptor: true, avanzado: "red",
+          encendido: () => lanz.wifiOn, sub: () => lanz.redNombre,
+          fn: () => { ejecutar(["nmcli", "radio", "wifi", lanz.wifiOn ? "off" : "on"]); lanz.wifiOn = !lanz.wifiOn; } },
+        { id: "dnd", titulo: "No molestar", icono: "dark_mode", claves: "silencio notificaciones dnd concentracion avisos", interruptor: true,
+          encendido: () => lanz.noMolestar, sub: () => lanz.noMolestar ? "Las notificaciones esperan" : "Apagado",
+          fn: () => Estilo.ponerNoMolestar(!lanz.noMolestar) },
+        { id: "cafe", titulo: "Modo café", icono: "coffee", claves: "cafe cafeina despierto no dormir suspension pantalla", interruptor: true,
+          encendido: () => raiz.cafe, sub: () => raiz.cafe ? "El equipo no se suspende" : "Apagado", fn: () => raiz.alternarCafe() },
+        { id: "juego", titulo: "Modo juego", icono: "sports_esports", claves: "juego juegos gaming jugar rendimiento", interruptor: true,
+          encendido: () => raiz.modoJuego, sub: () => raiz.modoJuego ? "Sin animaciones ni avisos" : "Apagado", fn: () => raiz.alternarModoJuego() },
+        { id: "sonido", titulo: "Silenciar sonido", icono: "volume_off", claves: "silenciar mute volumen sonido audio callar bocinas", interruptor: true,
+          encendido: () => !!(lanz.salida && lanz.salida.audio && lanz.salida.audio.muted),
+          sub: () => lanz.salida && lanz.salida.audio ? (lanz.salida.audio.muted ? "Silenciado" : "Volumen " + Math.round(lanz.salida.audio.volume * 100) + " %") : "",
+          fn: () => { if (lanz.salida && lanz.salida.audio) lanz.salida.audio.muted = !lanz.salida.audio.muted; } },
+        { id: "mic", titulo: "Micrófono", icono: "mic", claves: "mic micro microfono silenciar micro voz", interruptor: true,
+          encendido: () => !!(lanz.entrada && lanz.entrada.audio && !lanz.entrada.audio.muted),
+          sub: () => lanz.entrada && lanz.entrada.audio ? (lanz.entrada.audio.muted ? "Silenciado" : "Escuchando") : "",
+          fn: () => { if (lanz.entrada && lanz.entrada.audio) lanz.entrada.audio.muted = !lanz.entrada.audio.muted; } },
+        { id: "cronometro", titulo: "Cronómetro", icono: "timer_play", claves: "cronometro stopwatch contar tiempo",
+          sub: () => raiz.cronometroInicio > 0 ? "Corriendo · " + lanz.mmss(raiz.cronometroSegundos) + " · Enter lo detiene" : "Cuenta hacia arriba en la isla",
+          fn: () => raiz.alternarCronometro() },
+        { id: "grabar", titulo: "Grabar pantalla", icono: "videocam", claves: "grabar grabacion record video pantalla",
+          sub: () => raiz.grabando ? "Grabando · Enter la detiene" : "Con sonido", fn: () => raiz.alternarGrabacion() },
+        { id: "captura", titulo: "Captura de pantalla", icono: "screenshot_region", claves: "captura screenshot pantallazo recorte imprimir",
+          fn: () => ejecutar(["sh", "-c", "sleep 0.4; qs -p '" + Estilo.carpeta + "' ipc call captura abrir zona"]) },
+        { id: "color", titulo: "Tomar color", icono: "colorize", claves: "color gotero cuentagotas picker hex",
+          sub: () => "Se copia el código del color", fn: () => ejecutar(["sh", "-c", "sleep 0.4; c=$(niri msg pick-color | grep -o '#[0-9a-fA-F]\\{6\\}'); [ -n \"$c\" ] && wl-copy \"$c\""]) },
+        { id: "portapapeles", titulo: "Portapapeles", icono: "content_paste", claves: "portapapeles clipboard copiado pegar historial",
+          fn: () => ejecutar(["sh", "-c", "m=$(niri msg -j focused-output | jq -r .name); q='qs -p " + Estilo.carpeta + "'; $q ipc call gota_$m pestana acciones; $q ipc call gota_$m vista portapapeles"]) },
+        { id: "fondo", titulo: "Siguiente fondo", icono: "wallpaper", claves: "fondo wallpaper fondo de pantalla imagen", fn: () => ejecutar(Estilo.comandoSiguienteFondo) },
+        { id: "ajustes", titulo: "Ajustes de Menisco", icono: "tune", claves: "ajustes configuracion preferencias menisco opciones", fn: () => raiz.abrirAjustes() },
+        { id: "bloquear", titulo: "Bloquear pantalla", icono: "lock", claves: "bloquear lock candado", fn: () => raiz.bloquear() },
+        { id: "suspender", titulo: "Suspender", icono: "bedtime", claves: "suspender dormir suspend reposo", fn: () => ejecutar(["systemctl", "suspend"]) },
+        { id: "salir", titulo: "Cerrar sesión", icono: "logout", claves: "cerrar sesion salir logout", fn: () => raiz.pedirSalir() },
+        { id: "reiniciar", titulo: "Reiniciar", icono: "restart_alt", claves: "reiniciar reboot restart", peligro: true, fn: () => ejecutar(["systemctl", "reboot"]) },
+        { id: "apagar", titulo: "Apagar", icono: "power_settings_new", claves: "apagar poweroff shutdown", peligro: true, rojo: true, fn: () => ejecutar(["systemctl", "poweroff"]) },
+        { id: "papelera", titulo: "Vaciar papelera", icono: "delete", claves: "papelera trash basura vaciar", peligro: true, fn: () => ejecutar(["gio", "trash", "--empty"]) }
     ]
+    // 100: el titulo empieza asi; 90: una palabra clave empieza asi; 60: aparece en algun lado.
+    function puntuarAccion(a, k) {
+        const t = sinAcentos(a.titulo), c = sinAcentos(a.claves || "");
+        if (t.startsWith(k)) return 100;
+        if (c.split(" ").some(w => w.startsWith(k)) || (" " + c).includes(" " + k)) return 90;
+        return t.includes(k) || c.includes(k) ? 60 : 0;
+    }
     readonly property var resultados: {
         const t = consulta.trim(), tl = t.toLowerCase(), r = [];
         if (!t) return r;
@@ -156,14 +220,27 @@ PanelWindow {
             const seg = Math.round(n * (u === "s" ? 1 : u === "h" ? 3600 : 60));
             r.push({ tipo: "timer", titulo: "Temporizador de " + tm[1] + " " + ({ s: "s", m: "min", h: "h" })[u], sub: "Cuenta regresiva en la isla", segundos: seg });
         }
+        // "temporizador" a secas: las duraciones de siempre
+        if (!tm && /^(tempo|timer|alarm|cuenta reg)/.test(sinAcentos(tl)) && raiz.temporizadorRestante <= 0)
+            for (const n of [1, 5, 10, 25]) r.push({ tipo: "timer", titulo: "Temporizador de " + n + " min", sub: "Cuenta regresiva en la isla · escriba \"temporizador 7 min\" para otra", segundos: n * 60 });
         if (raiz.temporizadorRestante > 0 && /^(cancelar|parar|detener|temporizador|timer)/.test(tl))
             r.push({ tipo: "timerFin", titulo: "Cancelar temporizador", sub: "Quedan " + Math.ceil(raiz.temporizadorRestante / 60) + " min" });
         const c = calcular(t);
         if (c !== null) r.push({ tipo: "calc", titulo: c.toLocaleString(Qt.locale("es_MX"), "f", Number.isInteger(c) ? 0 : Math.min(6, String(c).split(".")[1].length)), sub: t + " =", valor: String(c) });
-        for (const x of buscarApps(sinAcentos(t)).slice(0, 4))
+        const k = sinAcentos(t);
+        const acc = acciones.map(a => ({ a: a, p: puntuarAccion(a, k) })).filter(x => x.p).sort((a, b) => b.p - a.p).slice(0, 3);
+        const accion = x => ({ tipo: "accion", titulo: x.a.titulo, sub: x.a.sub ? x.a.sub() : "", accion: x.a });
+        for (const x of acc.filter(x => x.p >= 90)) r.push(accion(x));        // lo que se busco por su nombre, primero
+        // "tema", "jade", "tema rubi": cambia el color de Menisco
+        for (const c of Object.keys(Estilo.temas)) {
+            const n = sinAcentos(Estilo.temas[c].nombre);
+            if ((k.length >= 3 && n.startsWith(k)) || (k.startsWith("tema") && (k.length <= 5 || n.startsWith(k.slice(5).trim()))))
+                r.push({ tipo: "accion", titulo: "Tema " + Estilo.temas[c].nombre, sub: c === Estilo.valor("tema") ? "Es el actual" : "Color de todo Menisco",
+                         accion: { id: "tema", icono: "palette", fn: () => Estilo.poner("tema", c) } });
+        }
+        for (const x of buscarApps(k).slice(0, 4))
             r.push({ tipo: "app", titulo: x.e.name, sub: x.sub, entrada: x.e });
-        for (const a of acciones.filter(a => a.titulo.toLowerCase().includes(tl)).slice(0, 2))
-            r.push({ tipo: "accion", titulo: a.titulo, sub: "", accion: a });
+        for (const x of acc.filter(x => x.p < 90)) r.push(accion(x));
         if (tl.length >= 2)
             for (const e of buscarEmojis(sinAcentos(tl), 2)) r.push({ tipo: "emoji", titulo: e[0], sub: e[1].split(" ")[0] });
         for (const f of encontrados)
@@ -329,16 +406,22 @@ PanelWindow {
         property int orden
         readonly property string tipo: datos ? datos.tipo : ""
         readonly property bool conInterruptor: tipo === "accion" && !!datos.accion.interruptor
-        readonly property bool encendido: conInterruptor && (datos.accion.interruptor === "bt" ? (Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false) : lanz.noMolestar)
+        readonly property bool encendido: conInterruptor && datos.accion.encendido()
         readonly property bool rojo: tipo === "accion" && !!datos.accion.rojo
+        // Cada ajuste con su color: burbuja del icono, interruptor encendido y filo de la elegida.
+        readonly property bool conTono: tipo === "accion"
+        readonly property color tono: conTono ? Estilo.tono(datos.accion.id) : "transparent"
+        readonly property bool claro: marcada && !conTono    // las demas elegidas usan la pastilla del tema
+        readonly property string avanzado: conTono && datos.accion.avanzado ? datos.accion.avanzado : ""
         readonly property string titulo: !datos ? "" : lanz.confirmar === datos.titulo ? datos.titulo + ": pulse Enter otra vez" : tipo === "emoji" ? datos.sub : datos.titulo
 
         width: lista.width
         height: grande ? 70 : 42
         radius: grande ? 18 : 14
-        color: marcada ? Estilo.activo : zona.containsMouse ? Estilo.hover : Estilo.nada
-        border.width: 1; border.color: marcada ? Estilo.activoBorde : "transparent"
+        color: marcada ? (conTono ? Qt.alpha(tono, 0.10) : Estilo.activo) : zona.containsMouse ? Estilo.realce : Estilo.nada
+        border.width: 1; border.color: marcada ? (conTono ? Qt.alpha(tono, 0.5) : Estilo.activoBorde) : "transparent"
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+        Behavior on border.color { ColorAnimation { duration: Estilo.t(140) } }
         Behavior on height { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
 
         // Entrada al aparecer: baja un poco y se asienta, cada una un instante despues que la anterior.
@@ -373,12 +456,12 @@ PanelWindow {
             Rectangle {
                 anchors.fill: parent; visible: t.tipo !== "app"
                 radius: t.grande ? 14 : 8
-                color: t.marcada ? Qt.alpha(Estilo.iconoActivo, 0.12) : Estilo.tarjeta
+                color: t.conTono ? Qt.alpha(t.tono, t.marcada ? 0.22 : 0.15) : t.marcada ? Qt.alpha(Estilo.iconoActivo, 0.12) : Estilo.tarjeta
                 Text { anchors.centerIn: parent; visible: t.tipo === "emoji"; text: t.datos ? t.datos.titulo : ""; font.pixelSize: t.grande ? 28 : 16 }
                 Simbolo {
                     anchors.centerIn: parent; visible: t.tipo !== "emoji"
                     font.pixelSize: t.grande ? 26 : 17
-                    color: t.rojo ? Estilo.peligro : t.marcada ? Estilo.iconoActivo : Estilo.texto
+                    color: t.conTono ? t.tono : t.rojo ? Estilo.peligro : t.marcada ? Estilo.iconoActivo : Estilo.texto
                     text: t.tipo === "accion" ? t.datos.accion.icono
                         : ({ archivo: "description", web: "travel_explore", calc: "calculate", timer: "timer", timerFin: "timer_off" })[t.tipo] || ""
                 }
@@ -387,17 +470,17 @@ PanelWindow {
 
         Column {
             anchors { left: icono.visible ? icono.right : parent.left; leftMargin: icono.visible ? 12 : 22
-                      right: lado.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                      right: avanzadas.visible ? avanzadas.left : lado.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
             spacing: 1
             Texto {   // en la calculadora grande, la cuenta va arriba del resultado
                 visible: t.grande && t.tipo === "calc"
-                text: t.datos ? t.datos.sub : ""; color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
+                text: t.datos ? t.datos.sub : ""; color: t.claro ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
             }
             Texto {
                 width: parent.width
                 text: t.titulo
                 elide: Text.ElideRight
-                color: t.rojo ? Estilo.peligro : t.marcada ? Estilo.enActivo : Estilo.texto
+                color: t.rojo ? Estilo.peligro : t.claro ? Estilo.enActivo : Estilo.texto
                 font.pixelSize: t.grande ? (t.tipo === "calc" ? 28 : 17) : 13
                 font.weight: t.grande ? Font.DemiBold : Font.Normal
                 font.features: { "tnum": 1 }
@@ -406,10 +489,23 @@ PanelWindow {
                 visible: t.grande && t.tipo !== "calc" && t.datos && t.datos.sub !== "" && t.tipo !== "emoji"
                 width: parent.width; elide: Text.ElideRight
                 text: t.datos ? t.datos.sub : ""
-                color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
+                color: t.claro ? Qt.alpha(Estilo.enActivo, 0.6) : Estilo.texto2; font.pixelSize: 12
             }
         }
 
+        // "Opciones avanzadas": abre la barra lateral en la pagina de ese ajuste (Bluetooth, Red).
+        Rectangle {
+            id: avanzadas
+            z: 1                       // por encima de la zona de clic de toda la fila
+            visible: t.avanzado !== "" && (t.grande || t.marcada)
+            anchors { right: lado.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
+            width: tAv.implicitWidth + 14; height: 22; radius: 7
+            color: zAv.containsMouse ? Qt.alpha(t.tono, 0.18) : "transparent"
+            border.width: 1; border.color: Qt.alpha(t.tono, zAv.containsMouse ? 0.7 : 0.4)
+            Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+            Texto { id: tAv; anchors.centerIn: parent; text: "Opciones avanzadas"; font.pixelSize: 11; color: Qt.lighter(t.tono, 1.35) }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: zAv; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; onClicked: lanz.raiz.abrirBarraEn(t.avanzado) }
+        }
         // A la derecha: interruptor, teclas (en la grande) o el tipo de resultado
         Item {
             id: lado
@@ -419,11 +515,11 @@ PanelWindow {
             Rectangle {
                 visible: t.conInterruptor
                 width: 34; height: 20; radius: 10; anchors.verticalCenter: parent.verticalCenter
-                color: t.encendido ? Estilo.acento : Estilo.apagado
+                color: t.encendido ? t.tono : Estilo.apagado
                 Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                 Rectangle {
                     width: 16; height: 16; radius: 8; y: 2
-                    color: t.encendido ? Estilo.sobreAcento : Estilo.texto2
+                    color: t.encendido ? "#ffffff" : Estilo.texto2
                     x: t.encendido ? 16 : 2
                     Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
                 }
@@ -434,7 +530,7 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 6
                 Tecla { texto: "Enter"; tenue: !t.marcada }
-                Texto { text: lanz.verbos[t.tipo] || ""; font.pixelSize: 11; color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; anchors.verticalCenter: parent.verticalCenter }
+                Texto { text: lanz.verbos[t.tipo] || ""; font.pixelSize: 11; color: t.claro ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; anchors.verticalCenter: parent.verticalCenter }
             }
             Texto {
                 id: etiqueta
@@ -442,11 +538,11 @@ PanelWindow {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 width: Math.min(200, implicitWidth); elide: Text.ElideMiddle
                 text: t.tipo === "archivo" ? t.datos.sub : lanz.etiquetas[t.tipo] || ""
-                color: t.marcada ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; font.pixelSize: 11
+                color: t.claro ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; font.pixelSize: 11
             }
         }
 
-        MouseArea { id: zona; anchors.fill: parent; hoverEnabled: true; onClicked: lanz.activar(t.datos); onEntered: lanz.elegido = t.orden }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zona; anchors.fill: parent; hoverEnabled: true; onClicked: lanz.activar(t.datos); onEntered: lanz.elegido = t.orden }
     }
 
     component Tecla: Rectangle {

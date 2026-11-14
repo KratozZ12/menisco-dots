@@ -16,15 +16,21 @@ PanelWindow {
 
     visible: SystemTray.items.values.length > 0
     anchors { top: true; right: !izquierda; left: izquierda }
-    margins { top: 4; right: separacion; left: separacion }
+    // Sin margen arriba (niri no aplica uno que cambia antes de mostrarse): la pildora baja por dentro.
+    margins { right: separacion; left: separacion }
+    mask: Region { item: pastilla }
+    // La oreja del marco (BotonBarra) se ensancha para guardarla.
+    Binding { target: Estilo; property: "anchoBandeja"; value: bandeja.visible ? bandeja.implicitWidth : 0 }
     implicitWidth: fila.implicitWidth + 8
-    implicitHeight: 34
+    implicitHeight: 34 + 4 + Estilo.grosorMarco
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "bandeja"
+    Gelatina { objetivo: bandeja.contentItem; origenY: 0 }   // se va con la vista general
 
     Rectangle {
-        anchors.fill: parent
+        id: pastilla
+        anchors { fill: parent; topMargin: 4 + Estilo.grosorMarco }
         radius: height / 2
         color: Estilo.fondo
 
@@ -39,14 +45,14 @@ PanelWindow {
                     id: icono
                     required property var modelData
                     width: 26; height: 26; radius: 13
-                    color: zona.containsMouse || (menu.visible && menu.item === modelData) ? Estilo.hover : Estilo.nada
+                    color: zona.containsMouse || (menu.visible && menu.item === modelData) ? Estilo.realce : Estilo.nada
                     Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                     scale: zona.pressed ? 0.86 : 1
                     Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 420); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
 
                     IconImage { anchors.centerIn: parent; implicitSize: 18; source: icono.modelData.icon }
 
-                    MouseArea {
+                    MouseArea { cursorShape: Qt.PointingHandCursor
                         id: zona
                         anchors.fill: parent
                         hoverEnabled: true
@@ -123,7 +129,7 @@ PanelWindow {
                 // Cabecera: nombre de la app, o "‹ submenu" para volver un nivel.
                 Rectangle {
                     width: columna.width; height: 24; radius: 9
-                    color: volver.containsMouse && menu.pila.length ? Estilo.hover : Estilo.nada
+                    color: volver.containsMouse && menu.pila.length ? Estilo.realce : Estilo.nada
                     Text {
                         id: flecha
                         visible: menu.pila.length > 0
@@ -140,7 +146,7 @@ PanelWindow {
                         elide: Text.ElideRight
                         font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
                     }
-                    MouseArea { id: volver; anchors.fill: parent; hoverEnabled: true; enabled: menu.pila.length > 0; onClicked: menu.pila = menu.pila.slice(0, -1) }
+                    MouseArea { cursorShape: Qt.PointingHandCursor; id: volver; anchors.fill: parent; hoverEnabled: true; enabled: menu.pila.length > 0; onClicked: menu.pila = menu.pila.slice(0, -1) }
                 }
 
                 Repeater {
@@ -152,7 +158,7 @@ PanelWindow {
                         width: columna.width
                         height: separador ? 9 : 32
                         radius: 9
-                        color: !separador && opcion.containsMouse && modelData.enabled ? Estilo.hover : Estilo.nada
+                        color: !separador && opcion.containsMouse && modelData.enabled ? Estilo.realce : Estilo.nada
                         Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                         scale: opcion.pressed ? 0.96 : 1
                         Behavior on scale { NumberAnimation { duration: Estilo.t(140); easing.type: Easing.OutCubic } }
@@ -179,7 +185,7 @@ PanelWindow {
                             renderType: Text.NativeRendering
                         }
 
-                        MouseArea {
+                        MouseArea { cursorShape: Qt.PointingHandCursor
                             id: opcion
                             anchors.fill: parent
                             hoverEnabled: true

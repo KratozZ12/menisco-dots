@@ -15,6 +15,7 @@ poner() {   # poner <origen> <destino>
 }
 
 poner "$AQUI/niri/config.kdl"     "$CFG/niri/config.kdl"
+: > "$CFG/niri/juego.kdl"   # el modo juego escribe aqui; la config lo incluye y no puede faltar
 poner "$AQUI/quickshell/isla"     "$CFG/quickshell/isla"
 poner "$AQUI/hokum/config.kdl"    "$CFG/hokum/config.kdl"
 mkdir -p "$CFG/hokum/themes"

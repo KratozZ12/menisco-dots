@@ -15,6 +15,7 @@ Uso:
   menisco-niri.py vidrio '{"refraccion":70,...}'
   menisco-niri.py atajo lanzador Mod+Space
   menisco-niri.py tabla                        # atajos para la tabla de Super+Shift+/
+  menisco-niri.py juego on|off                 # modo juego: sin animaciones, sombras ni vidrio
 """
 import json
 import os
@@ -235,6 +236,7 @@ TABLA = [
     ("Ventanas", "Maximizar columna", ["maximize-column;"]),
     ("Ventanas", "Pantalla completa", ["fullscreen-window;"]),
     ("Ventanas", "Flotante o en mosaico", ["toggle-window-floating;"]),
+    ("Ventanas", "Escritorio flotante o en fila", ['"ventanas" "modo"']),
     ("Ventanas", "Cambiar ancho", ["switch-preset-column-width;"]),
     ("Ventanas", "Juntar o separar columna", ["consume-or-expel-window-left;", "consume-or-expel-window-right;"]),
     ("Moverse", "Foco izquierda o derecha", ["focus-column-left;", "focus-column-right;"]),
@@ -276,7 +278,45 @@ def tabla():
     print(json.dumps(r, ensure_ascii=False))
 
 
+JUEGO = os.path.expanduser("~/.config/niri/juego.kdl")
+# Lo que el modo juego pone encima de la config (config.kdl lo incluye al final, asi gana).
+JUEGO_KDL = """// Modo juego de Menisco: lo escribe menisco-niri.py juego on y lo vacia juego off.
+animations {
+    off
+}
+layout {
+    shadow {
+        off
+    }
+}
+layer-rule {
+    match namespace="^dock$"
+    background-effect {
+        blur false
+    }
+}
+"""
+
+
+def juego(estado):
+    """on: apaga animaciones, sombras y desenfoque de niri y el liquid glass de Lniri.
+    off: lo devuelve todo; el vidrio solo si estaba encendido al entrar."""
+    vidrio_kdl = os.path.join(LNIRI, "vidrio.kdl")
+    marca = os.path.join(LNIRI, "vidrio-antes-de-jugar")
+    if estado == "on":
+        if os.path.getsize(vidrio_kdl) > 0:
+            open(marca, "w").close()
+            open(vidrio_kdl, "w").close()
+        guardar_validando(JUEGO, JUEGO_KDL, NIRI)
+    else:
+        if os.path.exists(marca):
+            with open(vidrio_kdl, "w", encoding="utf-8") as fh:
+                fh.write(leer(os.path.join(LNIRI, "vidrio-activo.kdl")))
+            os.remove(marca)
+        guardar_validando(JUEGO, "", NIRI)
+
+
 if __name__ == "__main__":
     orden, *resto = sys.argv[1:]
     {"esquinas": esquinas, "espacio": espacio, "borde": borde, "salida": salida,
-     "vidrio": vidrio, "atajo": atajo, "atajos": atajos, "tabla": tabla}[orden](*resto)
+     "vidrio": vidrio, "atajo": atajo, "atajos": atajos, "tabla": tabla, "juego": juego}[orden](*resto)

@@ -30,23 +30,30 @@ PanelWindow {
     anchors.top: true
     implicitWidth: 720
     implicitHeight: 400
-    exclusiveZone: 42
+    exclusiveZone: 42 + Estilo.grosorMarco
     color: "transparent"
     visible: raiz.islaVisible
     WlrLayershell.namespace: "isla"
+    Gelatina { objetivo: win.contentItem; origenY: 0 }   // se va con la vista general
     // Solo pide el teclado mientras se escribe la nota rapida o se habla con la Gota.
     WlrLayershell.keyboardFocus: expandida && (conGota || (pestana === "acciones" && vistaAcciones === "nota")) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     property bool conGota: false                      // conversacion con la Gota en vez de las pestanas
     property string vistaAcciones: "botones"          // botones | nota | portapapeles
-    mask: Region { x: forma.x0 - win.hombro; y: 0; width: forma.ancho + win.hombro * 2; height: forma.alto }
+    // Con marco, la forma baja lo que mide el borde pero la ventana sigue pegada arriba: el cursor
+    // empujado contra el borde de la pantalla tambien la abre.
+    // En la vista general esta escondida: sin mascara no se abre al pasar por arriba.
+    mask: Region { x: forma.x0 - win.hombro; y: 0; width: Estilo.vistaGeneral ? 0 : forma.ancho + win.hombro * 2; height: forma.alto + Estilo.grosorMarco }
 
     // ---------------- Estado ----------------
     property bool fijada: false                      // abierta con clic: no se cierra al salir el cursor
     property bool encima: false
     readonly property bool expandida: fijada || encima
+    onFijadaChanged: raiz.islasFijadas += fijada ? 1 : -1
+    Connections { target: win.raiz; function onClicFuera() { win.conGota = false; win.fijada = false; win.encima = false; } }
     property string pestana: "acciones"
     property var aviso: null                         // { tipo, ... } mientras se muestra un aviso
     property var colaAvisos: []
+    property bool calendario: false                  // clic en la hora con la isla abierta
 
     // Con la isla abierta los avisos esperan en fila y salen al cerrarla.
     // Interruptor de Ajustes > Notificaciones para cada tipo (temporizador y color siempre salen: los pide usted).
@@ -55,8 +62,14 @@ PanelWindow {
     function avisar(a) {
         const clave = interruptorAviso[a.tipo];
         if (clave && (!Estilo.valor(clave) || Estilo.noMolestar)) return;
+        // Solo cuenta la cancion de ahora: la nueva reemplaza a la que esperaba o a la que se ve.
+        if (a.tipo === "musica") {
+            colaAvisos = colaAvisos.filter(x => x.tipo !== "musica");
+            if (aviso?.tipo === "musica") { aviso = a; finAviso.restart(); return; }
+        }
         colaAvisos = colaAvisos.concat([a]);
-        if (!aviso && !expandida) siguienteAviso();
+        // Mientras la isla termina de cerrarse (reanudar) espera: reanudar lo saca al acabar.
+        if (!aviso && !expandida && !reanudar.running) siguienteAviso();
     }
     function siguienteAviso() {
         if (!colaAvisos.length) { aviso = null; return; }
@@ -80,7 +93,8 @@ PanelWindow {
         } else {
             // Si no esta trabajando ni esperando un "Hazlo", al cerrar se vuelve a las pestanas.
             if (!Cerebro.ocupada && Cerebro.estado !== "plan") conGota = false;
-            if (colaAvisos.length) reanudar.restart();
+            calendario = false;
+            reanudar.restart();   // siempre: tambien frena los avisos que lleguen durante el cierre
         }
     }
     Timer { id: reanudar; interval: 450; onTriggered: if (!win.expandida && !win.aviso) win.siguienteAviso() }
@@ -89,7 +103,7 @@ PanelWindow {
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [360, 42, 20]
         : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [420, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
-             temperatura: [390, 42, 20], temporizador: [380, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
+             temperatura: [390, 42, 20], temporizador: [380, 42, 20], modo: [320, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
     // ---------------- Forma ----------------
     Item {
@@ -106,7 +120,7 @@ PanelWindow {
         }
         Behavior on esquina { NumberAnimation { duration: Estilo.t(400) } }
         readonly property real x0: (win.width - ancho) / 2
-        anchors.fill: parent
+        anchors { fill: parent; topMargin: Estilo.grosorMarco }   // sale del borde de arriba del marco
         // 0 = la forma elegida en Ajustes, 1 = la clasica. Abierta siempre es la clasica: al abrirse
         // se transforma poco a poco, al mismo ritmo que crece.
         property real aClasica: win.expandida ? 1 : 0
@@ -141,6 +155,16 @@ PanelWindow {
             }
         }
 
+        // Franja del marco sobre la isla: el cursor pegado al borde de arriba cuenta como encima.
+        Item {
+            x: forma.x0; y: -Estilo.grosorMarco; width: forma.ancho; height: Estilo.grosorMarco
+            HoverHandler { id: hoverFranja; onHoveredChanged: forma.cursorCambio() }
+        }
+        function cursorCambio() {
+            if (hoverIsla.hovered || hoverFranja.hovered) { salir.stop(); if (Estilo.valor("islaCursor")) entrar.restart(); }
+            else { entrar.stop(); salir.restart(); }
+        }
+
         // Todo el contenido, recortado a la forma
         Item {
             id: dentro
@@ -148,10 +172,8 @@ PanelWindow {
             clip: true
 
             HoverHandler {
-                onHoveredChanged: {
-                    if (hovered) { salir.stop(); if (Estilo.valor("islaCursor")) entrar.restart(); }
-                    else { entrar.stop(); salir.restart(); }
-                }
+                id: hoverIsla
+                onHoveredChanged: forma.cursorCambio()
             }
             Timer { id: entrar; interval: ({ corta: 120, normal: 260, larga: 550 })[Estilo.valor("islaEspera")] ?? 260; onTriggered: win.encima = true }
             Timer { id: salir; interval: 420; onTriggered: win.encima = false }
@@ -159,8 +181,8 @@ PanelWindow {
                 onTapped: {
                     if (win.aviso && win.aviso.tipo === "captura") { Quickshell.execDetached(["xdg-open", win.aviso.ruta]); win.siguienteAviso(); return; }
                     if (win.aviso && (win.aviso.tipo === "gota" || win.aviso.tipo === "fallo")) { win.conGota = true; win.fijada = true; return; }
-                    win.fijada = !win.fijada;
-                    if (!win.fijada) win.encima = false;
+                    // Un clic dentro la deja abierta; se cierra con un clic fuera (shell.clicFuera) o Esc.
+                    win.fijada = true;
                 }
             }
 
@@ -259,8 +281,39 @@ PanelWindow {
                     }
                 }
 
-                Text {
+                // Con la isla abierta la hora es un boton: abre y cierra el calendario.
+                Rectangle {
                     anchors.centerIn: parent
+                    width: hora.implicitWidth + (win.expandida ? 40 : 0); height: 28; radius: 14
+                    color: zonaHora.containsMouse || win.calendario ? Estilo.realce : Estilo.nada
+                    opacity: win.expandida ? 1 : 0
+                    Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+                    Simbolo {
+                        anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        text: "expand_more"; font.pixelSize: 16; color: Estilo.texto2
+                        rotation: win.calendario ? 180 : 0
+                        Behavior on rotation { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                    }
+                    MouseArea {
+                        id: zonaHora
+                        anchors.fill: parent
+                        enabled: win.expandida
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        // Sin fijar, el clic solo la fija (la hora queda justo donde uno pulsa para fijar la isla).
+                        onClicked: {
+                            if (!win.fijada) { win.fijada = true; return; }
+                            win.calendario = !win.calendario;
+                            if (win.calendario) win.conGota = false;
+                        }
+                    }
+                }
+                Text {
+                    id: hora
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: win.expandida ? -9 : 0
+                    Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: Estilo.t(200) } }
                     anchors.verticalCenterOffset: 1
                     text: Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
                     color: Estilo.texto
@@ -288,9 +341,16 @@ PanelWindow {
                     Simbolo { text: "timer"; color: "#ff9f0a"; font.pixelSize: 17; anchors.verticalCenter: parent.verticalCenter }
                     Texto { text: win.mmss(win.raiz.temporizadorRestante); color: "#ff9f0a"; font.weight: Font.DemiBold }
                 }
+                Row {   // cronometro (desde el lanzador), en el mismo sitio; el temporizador tiene prioridad
+                    visible: !win.raiz.grabando && win.raiz.temporizadorRestante <= 0 && win.raiz.cronometroInicio > 0
+                    anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+                    spacing: 6
+                    Simbolo { text: "timer_play"; color: Estilo.tono("cronometro"); font.pixelSize: 17; anchors.verticalCenter: parent.verticalCenter }
+                    Texto { text: win.mmss(win.raiz.cronometroSegundos); color: Estilo.tono("cronometro"); font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
+                }
                 Visualizador {
                     // En la pestana Musica se esconde: ahi ya se ve lo que suena.
-                    visible: opacity > 0.01 && Estilo.valor("islaVisualizador") && !win.raiz.grabando && win.raiz.temporizadorRestante <= 0
+                    visible: opacity > 0.01 && Estilo.valor("islaVisualizador") && !Estilo.juego && !win.raiz.grabando && win.raiz.temporizadorRestante <= 0 && win.raiz.cronometroInicio <= 0
                     opacity: win.expandida && win.pestana === "musica" && Estilo.valor("ocultarVisualizador") ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
                     anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
@@ -308,7 +368,7 @@ PanelWindow {
                 Loader {
                     anchors.fill: parent
                     sourceComponent: capaAviso.a ? ({ gota: avGota, fallo: avFallo, musica: avMusica, bt: avBt, captura: avCaptura, color: avColor,
-                                                     temperatura: avTemp, temporizador: avTimer, bateria: avBateria, salida: avSalida })[capaAviso.a.tipo] ?? null : null
+                                                     temperatura: avTemp, temporizador: avTimer, modo: avModo, bateria: avBateria, salida: avSalida })[capaAviso.a.tipo] ?? null : null
                 }
             }
 
@@ -322,7 +382,7 @@ PanelWindow {
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(win.expandida ? 260 : 120) } }
 
                 // El boton solo sale en Acciones; en Musica y Rendimiento la pagina ocupa todo el ancho.
-                readonly property bool conBoton: win.conGota || (win.pestana === "acciones" && Estilo.valor("botEnPaginas"))
+                readonly property bool conBoton: !win.calendario && (win.conGota || (win.pestana === "acciones" && Estilo.valor("botEnPaginas")))
                 BotonAsistente {
                     id: botonAsistente
                     y: 2
@@ -344,7 +404,7 @@ PanelWindow {
                 Column {
                     width: cuerpo.width
                     spacing: 10
-                    opacity: win.conGota ? 0 : 1
+                    opacity: win.conGota || win.calendario ? 0 : 1
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(win.conGota ? 140 : 260) } }
 
@@ -365,6 +425,8 @@ PanelWindow {
                         PaginaRendimiento { anchors.fill: parent; activa: win.pestana === "rendimiento" }
                     }
                 }
+
+                PaginaCalendario { anchors.fill: parent; activa: win.calendario }
             }
         }
     }
@@ -418,14 +480,14 @@ PanelWindow {
     }
 
     // Color de la caratula para el tinte. ColorQuantizer solo lee archivos locales: las
-    // caratulas de internet (Spotify) se bajan antes a /tmp.
+    // caratulas de internet (Spotify) se bajan antes a Estilo.tmp.
     readonly property string arte: musica && Estilo.valor("musicaTinte") ? musica.trackArtUrl : ""
     property string arteLocal: ""
     onArteChanged: {
         if (!arte) arteLocal = "";
         else if (arte.startsWith("file://")) arteLocal = arte;
         else {
-            const destino = "/tmp/menisco-arte-" + Qt.md5(arte);
+            const destino = Estilo.tmp + "/menisco-arte-" + Qt.md5(arte);
             bajarArte.command = ["sh", "-c", "[ -s \"$2\" ] || curl -sfL --max-time 8 -o \"$2\" \"$1\"", "sh", arte, destino];
             bajarArte.destino = destino;
             bajarArte.running = true;
@@ -535,6 +597,15 @@ PanelWindow {
     Connections {
         target: win.raiz
         function onTemporizadorTerminado() { win.avisar({ tipo: "temporizador", ms: 5000 }); }
+        // Super+Alt+F: sale en la isla del monitor de ese escritorio. Pulsar de nuevo reemplaza el
+        // aviso en vez de ponerlo en fila.
+        function onModoCambiado(flotante, salida, numero) {
+            if (win.screen && salida && win.screen.name !== salida) return;
+            const a = { tipo: "modo", flotante: flotante, numero: numero, ms: 1500 };
+            win.colaAvisos = win.colaAvisos.filter(x => x.tipo !== "modo");
+            if (win.aviso?.tipo === "modo") { win.aviso = a; finAviso.interval = 1500; finAviso.restart(); }
+            else win.avisar(a);
+        }
     }
 
     // ---------------- Avisos (contenido) ----------------
@@ -563,9 +634,12 @@ PanelWindow {
         function abrir(): void { win.conGota = true; win.fijada = true; }
         function pestana(p: string): void { win.conGota = false; win.pestana = p; win.fijada = true; }
         function vista(v: string): void { win.vistaAcciones = v; }
+        // Para probar: ... ipc call gota_HDMI-A-1 calendario   (otra vez lo cierra)
+        function calendario(): void { win.conGota = false; win.fijada = true; win.calendario = !win.calendario; }
         function cerrar(): void { win.conGota = false; win.fijada = false; win.encima = false; }
         function preguntar(texto: string): void { abrir(); Cerebro.preguntar(texto); }
         function avisoBt(nombre: string, bateria: int): void { win.avisar({ tipo: "bt", nombre: nombre, bateria: bateria }); }
+        function avisoMusica(titulo: string, artista: string): void { win.avisar({ tipo: "musica", titulo: titulo, artista: artista, arte: "" }); }
     }
     Connections {
         target: Cerebro
@@ -679,6 +753,19 @@ PanelWindow {
             Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Salida"; color: Estilo.texto2; font.pixelSize: 12 }
         }
     }
+    // Modo del escritorio: pastilla blanca con icono negro si flota, gris si va en fila.
+    Component {
+        id: avModo
+        Item {
+            Rectangle {
+                x: 12; width: 28; height: 28; radius: 14; anchors.verticalCenter: parent.verticalCenter
+                color: capaAviso.a.flotante ? Estilo.texto : Estilo.realce
+                Simbolo { anchors.centerIn: parent; text: capaAviso.a.flotante ? "web_asset" : "view_column"; font.pixelSize: 18; color: capaAviso.a.flotante ? Estilo.fondo : Estilo.texto }
+            }
+            Texto { x: 52; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.flotante ? "Flotante" : "En fila"; font.weight: Font.DemiBold; font.pixelSize: 15 }
+            Texto { anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter } visible: capaAviso.a.numero > 0; text: "Escritorio " + capaAviso.a.numero; color: Estilo.texto2; font.pixelSize: 12 }
+        }
+    }
     Component {
         id: avTimer
         Item {
@@ -688,6 +775,97 @@ PanelWindow {
     }
 
     // ---------------- Paginas de la isla expandida ----------------
+    // Calendario (clic en la hora): hoy en grande a la izquierda, el mes a la derecha.
+    // Las flechas cambian de mes y "Hoy" vuelve al actual. Sin eventos por ahora.
+    component PaginaCalendario: Item {
+        id: pc
+        property bool activa: false
+        opacity: activa ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Estilo.t(activa ? 260 : 120) } }
+        onActivaChanged: if (activa) desfase = 0
+        property int desfase: 0                     // meses desde el actual
+        readonly property date hoy: reloj.date
+        readonly property date mes: new Date(hoy.getFullYear(), hoy.getMonth() + desfase, 1)
+        readonly property bool lunes: Estilo.barra?.semanaLunes ?? true
+        readonly property int primerDia: (mes.getDay() + (lunes ? 6 : 0)) % 7
+        readonly property int dias: new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate()
+        function nombre(d, f) { const s = Qt.locale("es_ES").toString(d, f); return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        Rectangle {
+            id: hoyGrande
+            width: 150; height: parent.height - 6
+            radius: 24; color: Estilo.tarjeta
+            Column {
+                anchors.centerIn: parent
+                spacing: 2
+                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.hoy.getDate(); font.pixelSize: 56; font.weight: Font.Light; font.features: { "tnum": 1 } }
+                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.nombre(pc.hoy, "dddd"); font.pixelSize: 15; font.weight: Font.DemiBold }
+                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.nombre(pc.hoy, "MMMM"); color: Estilo.texto2; font.pixelSize: 12 }
+            }
+        }
+
+        Item {
+            anchors { left: hoyGrande.right; leftMargin: 18; right: parent.right; top: parent.top; bottom: parent.bottom }
+            Item {
+                id: cabeceraMes
+                width: parent.width; height: 30
+                Texto { anchors.verticalCenter: parent.verticalCenter; x: 6; text: pc.nombre(pc.mes, "MMMM yyyy"); font.pixelSize: 16; font.weight: Font.DemiBold }
+                Row {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    spacing: 4
+                    BotonMes { icono: "chevron_left"; onPulsado: pc.desfase-- }
+                    BotonMes { texto: "Hoy"; apagado: pc.desfase === 0; onPulsado: pc.desfase = 0 }
+                    BotonMes { icono: "chevron_right"; onPulsado: pc.desfase++ }
+                }
+            }
+            Grid {
+                id: rejillaMes
+                anchors { top: cabeceraMes.bottom; topMargin: 6; left: parent.left; right: parent.right }
+                columns: 7
+                Repeater {
+                    model: pc.lunes ? ["L", "M", "X", "J", "V", "S", "D"] : ["D", "L", "M", "X", "J", "V", "S"]
+                    Texto { required property string modelData; required property int index; width: rejillaMes.width / 7; height: 24; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                            text: modelData; color: (pc.lunes ? index >= 5 : index === 0 || index === 6) ? Estilo.texto3 : Estilo.texto2; font.pixelSize: 11; font.weight: Font.Bold }
+                }
+                // 42 casillas fijas: el modelo no cambia al pasar de mes, solo lo que dice cada una.
+                Repeater {
+                    model: 42
+                    delegate: Item {
+                        required property int index
+                        readonly property int dia: index - pc.primerDia + 1
+                        readonly property bool valido: dia > 0 && dia <= pc.dias
+                        readonly property bool esHoy: valido && pc.desfase === 0 && dia === pc.hoy.getDate()
+                        readonly property bool finde: pc.lunes ? index % 7 >= 5 : index % 7 === 0 || index % 7 === 6
+                        width: rejillaMes.width / 7; height: 34
+                        Rectangle { anchors.centerIn: parent; width: 30; height: 30; radius: 15; color: Estilo.texto; visible: parent.esHoy }
+                        Texto {
+                            anchors.centerIn: parent; visible: parent.valido; text: parent.dia
+                            font.pixelSize: 13; font.features: { "tnum": 1 }
+                            font.weight: parent.esHoy ? Font.DemiBold : Font.Normal
+                            color: parent.esHoy ? Estilo.fondo : parent.finde ? Estilo.texto2 : Estilo.texto
+                        }
+                    }
+                }
+            }
+        }
+    }
+    component BotonMes: Rectangle {
+        id: bm
+        property string icono: ""
+        property string texto: ""
+        property bool apagado: false
+        signal pulsado()
+        width: texto ? etiqueta.implicitWidth + 18 : 28; height: 26; radius: 13
+        color: zonaBm.containsMouse && !apagado ? Estilo.realce : Estilo.hundido
+        opacity: apagado ? 0.45 : 1
+        scale: zonaBm.pressed ? 0.92 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(140); easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
+        Simbolo { anchors.centerIn: parent; visible: !!bm.icono; text: bm.icono; font.pixelSize: 18; color: Estilo.texto }
+        Texto { id: etiqueta; anchors.centerIn: parent; visible: !!bm.texto; text: bm.texto; font.pixelSize: 12; font.weight: Font.DemiBold }
+        MouseArea { id: zonaBm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (!bm.apagado) bm.pulsado() }
+    }
     component PaginaMusica: Item {
         id: pm
         property bool activa
@@ -791,10 +969,10 @@ PanelWindow {
                             required property var modelData
                             readonly property bool elegido: modelData === pm.r
                             width: tc.implicitWidth + 18; height: 20; radius: 8
-                            color: elegido ? "#ffffff" : "#26ffffff"
+                            color: elegido ? "#ffffff" : zReprod.containsMouse ? "#40ffffff" : "#26ffffff"
                             Behavior on color { ColorAnimation { duration: Estilo.t(180) } }
                             Texto { id: tc; anchors.centerIn: parent; text: modelData.identity; font.pixelSize: 10; color: parent.elegido ? Estilo.enActivo : Estilo.texto }
-                            MouseArea { anchors.fill: parent; onClicked: win.elegido = modelData }
+                            MouseArea { cursorShape: Qt.PointingHandCursor; id: zReprod; hoverEnabled: true; anchors.fill: parent; onClicked: win.elegido = modelData }
                         }
                     }
                 }
@@ -824,7 +1002,7 @@ PanelWindow {
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(160) } }
                         Behavior on scale { NumberAnimation { duration: Estilo.t(220); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
                     }
-                    MouseArea {
+                    MouseArea { cursorShape: Qt.PointingHandCursor
                         id: zonaBarra
                         anchors.fill: parent; anchors.margins: -4
                         enabled: pm.r && pm.r.canSeek && barraTiempo.largo > 0
@@ -865,7 +1043,7 @@ PanelWindow {
                             readonly property real valor: pm.flujos.length && pm.flujos[0].audio ? Math.min(1, pm.flujos[0].audio.volume) : 0
                             Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 4; radius: 2; color: "#26ffffff" }
                             Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * volApp.valor; height: 4; radius: 2; color: "#ffffff" }
-                            MouseArea {
+                            MouseArea { cursorShape: Qt.PointingHandCursor
                                 anchors.fill: parent; anchors.margins: -4
                                 function poner(m) { const v = Math.max(0, Math.min(1, (m.x - 4) / volApp.width)); for (const n of pm.flujos) if (n.audio) n.audio.volume = v; }
                                 onPressed: m => poner(m)
@@ -883,7 +1061,7 @@ PanelWindow {
                                 anchors.centerIn: parent; font.pixelSize: 17
                                 text: parent.nombre.includes("bluez") ? "headphones" : parent.nombre.includes("hdmi") ? "tv" : "speaker"
                             }
-                            MouseArea { id: zonaSalida; anchors.fill: parent; hoverEnabled: true; onClicked: pm.siguienteSalida() }
+                            MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaSalida; anchors.fill: parent; hoverEnabled: true; onClicked: pm.siguienteSalida() }
                         }
                     }
                 }
@@ -959,11 +1137,7 @@ PanelWindow {
         // Siguiente fondo de la carpeta, en orden.
         Process {
             id: siguienteFondo
-            command: ["sh", "-c", "d=\"$HOME/Imágenes/Wallpapers\"; a=$(awww query | sed -n 's/.*image: //p' | head -1); " +
-                "ls \"$d\" | grep -iE '\\.(jpe?g|png|webp)$' > /tmp/menisco-fondos.txt; " +
-                "n=$(grep -nxF \"$(basename \"$a\")\" /tmp/menisco-fondos.txt | cut -d: -f1); " +
-                "s=$(sed -n \"$(( ${n:-0} + 1 ))p\" /tmp/menisco-fondos.txt); [ -z \"$s\" ] && s=$(head -1 /tmp/menisco-fondos.txt); " +
-                "awww img \"$d/$s\" --transition-type grow --transition-fps 144"]
+            command: Estilo.comandoSiguienteFondo
         }
 
         // ---- Botones ----
@@ -1021,11 +1195,11 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: tTm.implicitWidth + 18; height: 26; radius: 13
                                 color: zc2.containsMouse ? Estilo.apagado : Estilo.hundido
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                                Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                                 scale: zc2.pressed ? 0.9 : 1
                                 Behavior on scale { NumberAnimation { duration: Estilo.t(zc2.pressed ? 80 : 360); easing.type: zc2.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
                                 Texto { id: tTm; anchors.centerIn: parent; text: modelData[0]; font.pixelSize: 11 }
-                                MouseArea { id: zc2; anchors.fill: parent; hoverEnabled: true
+                                MouseArea { cursorShape: Qt.PointingHandCursor; id: zc2; anchors.fill: parent; hoverEnabled: true
                                     onClicked: modelData[1] > 0 ? win.raiz.iniciarTemporizador(modelData[1]) : win.raiz.cancelarTemporizador() }
                             }
                         }
@@ -1035,7 +1209,7 @@ PanelWindow {
                 BotonIcono { icono: "content_paste"; onPulsado: win.vistaAcciones = "portapapeles" }
                 BotonIcono { icono: "edit_note"; onPulsado: { win.fijada = true; win.vistaAcciones = "nota"; } }
                 BotonIcono { icono: "wallpaper"; onPulsado: siguienteFondo.running = true }
-                BotonIcono { icono: "lock"; onPulsado: { win.fijada = false; win.encima = false; pa.hacer(["swaylock"]); } }
+                BotonIcono { icono: "lock"; onPulsado: { win.fijada = false; win.encima = false; win.raiz.bloquear(); } }
             }
         }
 
@@ -1074,12 +1248,12 @@ PanelWindow {
         }
 
         // ---- Portapapeles: los ultimos 6 de cliphist; un clic los vuelve a copiar ----
-        // Las imagenes se sacan a /tmp/menisco-clip-<id> para mostrar la miniatura.
+        // Las imagenes se sacan a Estilo.tmp/menisco-clip-<id> para mostrar la miniatura.
         property var historial: []
         Process {
             id: leerHistorial
-            command: ["sh", "-c", "rm -f /tmp/menisco-clip-*; cliphist list | head -6 | while IFS=\"$(printf '\\t')\" read -r id t; do " +
-                "case \"$t\" in \"[[ binary data\"*) cliphist decode \"$id\" > /tmp/menisco-clip-$id;; esac; printf '%s\\t%s\\n' \"$id\" \"$t\"; done"]
+            command: ["sh", "-c", "rm -f $XDG_RUNTIME_DIR/menisco-clip-*; cliphist list | head -6 | while IFS=\"$(printf '\\t')\" read -r id t; do " +
+                "case \"$t\" in \"[[ binary data\"*) cliphist decode \"$id\" > $XDG_RUNTIME_DIR/menisco-clip-$id;; esac; printf '%s\\t%s\\n' \"$id\" \"$t\"; done"]
             stdout: StdioCollector {
                 onStreamFinished: pa.historial = text.trim().split("\n").filter(l => l).map(l => {
                     const i = l.indexOf("\t");
@@ -1102,8 +1276,8 @@ PanelWindow {
                     delegate: Rectangle {
                         required property var modelData
                         width: parent.width; height: 32; radius: 10
-                        color: zpp.containsMouse ? Estilo.tarjeta : Estilo.nada
-                        Behavior on color { ColorAnimation { duration: 120 } }
+                        color: zpp.containsMouse ? Estilo.realce : Estilo.nada
+                        Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                         Simbolo { visible: !modelData.imagen; x: 8; anchors.verticalCenter: parent.verticalCenter; text: "content_paste"; font.pixelSize: 16; color: Estilo.texto2 }
                         ClippingRectangle {
                             id: miniatura
@@ -1112,14 +1286,14 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             Image {
                                 anchors.fill: parent
-                                source: modelData.imagen ? "file:///tmp/menisco-clip-" + modelData.id : ""
+                                source: modelData.imagen ? "file://" + Estilo.tmp + "/menisco-clip-" + modelData.id : ""
                                 sourceSize.height: 52
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true; cache: false
                             }
                         }
                         Texto { x: modelData.imagen ? 64 : 32; width: parent.width - x - 8; anchors.verticalCenter: parent.verticalCenter; text: modelData.texto; elide: Text.ElideRight; font.pixelSize: 12; textFormat: Text.PlainText }
-                        MouseArea { id: zpp; anchors.fill: parent; hoverEnabled: true
+                        MouseArea { cursorShape: Qt.PointingHandCursor; id: zpp; anchors.fill: parent; hoverEnabled: true
                             onClicked: { pa.hacer(["sh", "-c", "cliphist decode " + modelData.id + " | wl-copy"]); win.vistaAcciones = "botones"; } }
                     }
                 }
@@ -1136,7 +1310,7 @@ PanelWindow {
         property bool ultimo: false
         signal pulsado()
         width: parent.width / 4; height: parent.height
-        color: zs.containsMouse ? Estilo.hover : Estilo.nada
+        color: zs.containsMouse ? Estilo.realce : Estilo.nada
         Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
         Column {
             anchors.centerIn: parent
@@ -1148,7 +1322,7 @@ PanelWindow {
         }
         // Raya que separa del siguiente, del color de la isla
         Rectangle { visible: !seg.ultimo; anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: 1; color: Estilo.fondo }
-        MouseArea { id: zs; anchors.fill: parent; hoverEnabled: true; onClicked: seg.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zs; anchors.fill: parent; hoverEnabled: true; onClicked: seg.pulsado() }
     }
     component Interruptor: Rectangle {
         id: itr
@@ -1157,7 +1331,7 @@ PanelWindow {
         property bool encendido: false
         signal pulsado()
         width: (parent.width - 10) / 2; height: 52; radius: 18
-        color: encendido ? Estilo.activo : (zi.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        color: encendido ? Estilo.activo : (zi.containsMouse ? Estilo.realce : Estilo.tarjeta)
         border.width: 1; border.color: encendido ? Estilo.activoBorde : Estilo.linea
         Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
         scale: zi.pressed ? 0.96 : 1
@@ -1176,19 +1350,19 @@ PanelWindow {
                 color: itr.encendido ? Estilo.activo : Estilo.texto2
             }
         }
-        MouseArea { id: zi; anchors.fill: parent; hoverEnabled: true; onClicked: itr.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zi; anchors.fill: parent; hoverEnabled: true; onClicked: itr.pulsado() }
     }
     component BotonIcono: Rectangle {
         id: bi
         property string icono
         signal pulsado()
         width: 46; height: 46; radius: 16
-        color: zbi.containsMouse ? Estilo.hover : Estilo.tarjeta
+        color: zbi.containsMouse ? Estilo.realce : Estilo.tarjeta
         Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
         scale: zbi.pressed ? 0.9 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zbi.pressed ? 80 : 400); easing.type: zbi.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
         Simbolo { anchors.centerIn: parent; text: bi.icono; font.pixelSize: 20 }
-        MouseArea { id: zbi; anchors.fill: parent; hoverEnabled: true; onClicked: bi.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zbi; anchors.fill: parent; hoverEnabled: true; onClicked: bi.pulsado() }
     }
 
     component Volver: Item {
@@ -1256,8 +1430,8 @@ PanelWindow {
                         readonly property var entrada: DesktopEntries.heuristicLookup(modelData[0])
                         readonly property string nombre: modelData[0] === "qs" ? "Menisco" : entrada ? entrada.name : modelData[0].charAt(0).toUpperCase() + modelData[0].slice(1)
                         width: parent.width; height: 30; radius: 10
-                        color: zonaP.containsMouse ? Estilo.tarjeta : Estilo.nada
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        color: zonaP.containsMouse ? Estilo.realce : Estilo.nada
+                        Behavior on color { ColorAnimation { duration: Estilo.t(150) } }
                         Image {
                             id: icoP
                             x: 6; width: 20; height: 20; anchors.verticalCenter: parent.verticalCenter
@@ -1270,7 +1444,7 @@ PanelWindow {
                             Rectangle {
                                 height: 6; radius: 3
                                 width: parent.width * Math.min(1, modelData[1] / 25)
-                                Behavior on width { NumberAnimation { duration: 900; easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                                Behavior on width { NumberAnimation { duration: Estilo.t(900); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
                                 gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: "#9a9a9a" } GradientStop { position: 1; color: "#ffffff" } }
                             }
                         }
@@ -1453,10 +1627,10 @@ PanelWindow {
                 id: enviar
                 anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter }
                 width: 28; height: 28; radius: 9
-                color: campo.text && !Cerebro.ocupada ? Estilo.acento : Estilo.hover
+                color: campo.text && !Cerebro.ocupada ? (zEnviar.containsMouse ? Estilo.aclarar(Estilo.acento) : Estilo.acento) : Estilo.hover
                 Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
                 Simbolo { anchors.centerIn: parent; text: "arrow_upward"; font.pixelSize: 18; color: campo.text && !Cerebro.ocupada ? Estilo.sobreAcento : Estilo.texto3 }
-                MouseArea { anchors.fill: parent; onClicked: campo.accepted() }
+                MouseArea { cursorShape: Qt.PointingHandCursor; id: zEnviar; hoverEnabled: true; anchors.fill: parent; onClicked: campo.accepted() }
             }
         }
     }
@@ -1468,9 +1642,9 @@ PanelWindow {
         property bool blanco: false
         signal pulsado()
         width: filaBt.implicitWidth + 22; height: 28; radius: 9
-        color: blanco ? Estilo.activo : (zbt.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        color: blanco ? Estilo.activo : (zbt.containsMouse ? Estilo.realce : Estilo.tarjeta)
         border.width: 1; border.color: blanco ? Estilo.activoBorde : Estilo.linea
-        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         scale: zbt.pressed ? 0.93 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zbt.pressed ? 80 : 380); easing.type: zbt.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
         Row {
@@ -1480,7 +1654,7 @@ PanelWindow {
             Simbolo { visible: bt.icono !== ""; text: bt.icono; font.pixelSize: 15; color: bt.blanco ? Estilo.iconoActivo : Estilo.texto; anchors.verticalCenter: parent.verticalCenter }
             Texto { text: bt.texto; font.pixelSize: 12; color: bt.blanco ? Estilo.enActivo : Estilo.texto; anchors.verticalCenter: parent.verticalCenter }
         }
-        MouseArea { id: zbt; anchors.fill: parent; hoverEnabled: true; onClicked: bt.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zbt; anchors.fill: parent; hoverEnabled: true; onClicked: bt.pulsado() }
     }
 
     // ---------------- Piezas ----------------
@@ -1502,9 +1676,9 @@ PanelWindow {
         width: tc.implicitWidth + 18; height: 22; radius: 8
         color: blanco ? Estilo.activo : (zc.containsMouse ? Estilo.apagado : Estilo.hover)
         border.width: 1; border.color: blanco ? Estilo.activoBorde : Estilo.linea
-        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         Texto { id: tc; anchors.centerIn: parent; text: chip.texto; font.pixelSize: 11; color: chip.blanco ? Estilo.enActivo : Estilo.texto }
-        MouseArea { id: zc; anchors.fill: parent; hoverEnabled: true; onClicked: chip.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zc; anchors.fill: parent; hoverEnabled: true; onClicked: chip.pulsado() }
     }
     component BotonRedondo: Rectangle {
         id: br
@@ -1514,13 +1688,13 @@ PanelWindow {
         property bool tenue: false
         signal pulsado()
         width: grande ? 44 : 32; height: width; radius: width / 2
-        color: blanco ? Estilo.activo : (zb.containsMouse ? Estilo.hover : Estilo.nada)
+        color: blanco ? Estilo.activo : (zb.containsMouse ? Estilo.realce : Estilo.nada)
         border.width: 1; border.color: blanco ? Estilo.activoBorde : Estilo.linea
-        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         scale: zb.pressed ? 0.86 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zb.pressed ? 80 : 400); easing.type: zb.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
         Simbolo { anchors.centerIn: parent; text: br.icono; font.pixelSize: br.grande ? 26 : 20; color: br.blanco ? Estilo.iconoActivo : br.tenue ? Estilo.texto3 : Estilo.texto }
-        MouseArea { id: zb; anchors.fill: parent; hoverEnabled: true; onClicked: br.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zb; anchors.fill: parent; hoverEnabled: true; onClicked: br.pulsado() }
     }
     // Selector con pastilla que se desliza (pestanas y perfil de energia)
     component Selector: Rectangle {
@@ -1549,14 +1723,19 @@ PanelWindow {
                     required property var modelData
                     readonly property bool on: modelData[2] === sel.elegida
                     width: (sel.width - 6) / sel.opciones.length; height: 26
+                    Rectangle {
+                        anchors.fill: parent; radius: height / 2
+                        color: !on && zs.containsMouse ? Estilo.realce : Estilo.nada
+                        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                    }
                     Row {
                         anchors.centerIn: parent; spacing: 5
                         Simbolo { text: modelData[0]; font.pixelSize: 15; color: on ? (sel.pinta ? "#111111" : Estilo.enActivo) : (zs.containsMouse ? Estilo.texto : Estilo.texto2); anchors.verticalCenter: parent.verticalCenter
-                            Behavior on color { ColorAnimation { duration: 200 } } }
+                            Behavior on color { ColorAnimation { duration: Estilo.t(200) } } }
                         Texto { text: modelData[1]; font.pixelSize: 12; color: on ? (sel.pinta ? "#111111" : Estilo.enActivo) : (zs.containsMouse ? Estilo.texto : Estilo.texto2); anchors.verticalCenter: parent.verticalCenter
-                            Behavior on color { ColorAnimation { duration: 200 } } }
+                            Behavior on color { ColorAnimation { duration: Estilo.t(200) } } }
                     }
-                    MouseArea { id: zs; anchors.fill: parent; hoverEnabled: true; onClicked: sel.elegir(modelData[2]) }
+                    MouseArea { cursorShape: Qt.PointingHandCursor; id: zs; anchors.fill: parent; hoverEnabled: true; onClicked: sel.elegir(modelData[2]) }
                 }
             }
         }
@@ -1568,7 +1747,7 @@ PanelWindow {
         property real maximo
         property string etiqueta
         property real visto: valor
-        Behavior on visto { NumberAnimation { duration: 1000; easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+        Behavior on visto { NumberAnimation { duration: Estilo.t(1000); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
         width: 96; height: 96
         Shape {
             anchors.fill: parent
@@ -1610,8 +1789,8 @@ PanelWindow {
         property string unidad
         property var hist: []
         height: 76; radius: 15
-        color: zt.containsMouse ? Estilo.hover : Estilo.tarjeta
-        Behavior on color { ColorAnimation { duration: 200 } }
+        color: zt.containsMouse ? Estilo.realce : Estilo.tarjeta
+        Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
         transform: Translate { y: zt.containsMouse ? -2 : 0; Behavior on y { NumberAnimation { duration: Estilo.t(380); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } } }
         Row { x: 10; y: 8; spacing: 4
             Simbolo { text: tar.icono; font.pixelSize: 13; color: Estilo.texto2; anchors.verticalCenter: parent.verticalCenter }

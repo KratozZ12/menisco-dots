@@ -18,7 +18,7 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 ## Qué trae
 
 ### Colores
-Cinco temas en negro, que se eligen en **Ajustes > Apariencia > Color**: Ónix, Champán, Medianoche, Rubí y Jade. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema.
+Diez temas oscuros, que se eligen en **Ajustes > Apariencia > Color**: Ónix, Champán, Medianoche, Rubí, Jade, Fósforo (terminal ámbar), Aurora, Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema.
 
 ### La isla
 Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la del panel.
@@ -40,7 +40,7 @@ Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No
 
 **Vista expandida.** Al pasar el cursor (o fija con un clic) crece hacia abajo con tres pestañas:
 - **Música:** carátula grande (un clic lleva a la app), la isla teñida con el color del disco, barra de progreso que se arrastra, pastillas para elegir reproductor si suena más de uno, volumen de esa app, salida de audio (audífonos, bocinas, HDMI) y **letra sincronizada** abajo, que sube línea por línea con una ola, al estilo de Apple Music. La letra se busca en [LRCLIB](https://lrclib.net) y, si no está, en NetEase (`letra.sh`).
-- **Acciones:** puede llevar una imagen de fondo que se funde hacia abajo (**Ajustes > Isla**, de `~/Imágenes/Wallpapers`). Captura de zona o de pantalla completa, grabar pantalla (`wf-recorder`), tomar un color de la pantalla, temporizador (1, 5, 10 o 25 min), historial del portapapeles, modo juego (esconde el dock, silencia avisos, perfil de rendimiento), micrófono, bloquear, siguiente fondo y una nota rápida.
+- **Acciones:** puede llevar una imagen de fondo que se funde hacia abajo (**Ajustes > Isla**, de `~/Imágenes/Wallpapers`). Captura de zona o de pantalla completa, grabar pantalla (`wf-recorder`), tomar un color de la pantalla, temporizador (1, 5, 10 o 25 min), historial del portapapeles, modo juego (ver abajo), micrófono, bloquear, siguiente fondo y una nota rápida.
 - **Rendimiento:** consumo en vatios, uso y temperatura de la CPU y la GPU NVIDIA, perfil de energía y los programas que más gastan (`rendimiento.py`, solo corre mientras se ve).
 
 ### Asistente
@@ -76,6 +76,7 @@ Se le habla dentro de la isla, en el mismo marco que las pestañas: «acomoda mi
 - Las apps abiertas que no están ancladas aparecen solas y el dock crece con animación.
 - **Clic derecho:** Anclar al dock / Quitar del dock / Abrir / Cerrar. Las ancladas se guardan en `~/.config/quickshell/isla/dock.json`.
 - Botón de cuadrícula que abre el lanzador (se aclara al pasar el cursor; no usa la lupa).
+- **Material** (vidrio, sólido, ahumado, escarcha, tinte, contorno, Material You) y **forma** (redondeada, cápsula, biselada, octágono, ola, líquida, recta) en **Ajustes > Dock**. Sin vidrio y con el marco de pantalla encendido, el dock puede ir **pegado** al borde y fundirse con el marco.
 
 ### Lanzador (`Super+D` o el botón del dock)
 Una píldora en el centro de la pantalla, con el asistente dentro. Al abrirse no muestra nada más; al escribir, la misma píldora crece hacia abajo con los resultados, el primero en grande. A igualdad, salen primero las apps que más abre.
@@ -89,6 +90,21 @@ Una píldora en el centro de la pantalla, con el asistente dentro. Al abrirse no
   - **Web:** buscar en el navegador.
 - El asistente reacciona a la búsqueda: piensa con varios resultados, se alegra con uno, se confunde si no hay nada.
 - Flechas o `Tab` para moverse, `Enter` para abrir, `Escape` o un clic fuera para cerrar.
+
+### Escritorio
+- **Clic derecho en el fondo:** el fondo actual y los dos siguientes (clic para ponerlo), accesos rápidos (siguiente fondo, escritorio flotante, No molestar, modo juego, bloquear), atajos a las secciones de Ajustes y un botón grande de Ajustes.
+- **Tres escritorios fijos** (`workspace "uno"`, `"dos"`, `"tres"` en la config de niri): existen aunque estén vacíos.
+- **Escritorio flotante** (`Super+Alt+F`): las ventanas de ese escritorio dejan la fila y flotan; las nuevas también. La isla lo avisa.
+- **Marco de pantalla** opcional (**Ajustes > Ventanas**): una orilla fina del color del tema alrededor de la pantalla, con la isla y los botones de las esquinas fundidos en ella.
+
+### Vista general (`Super+O`)
+La isla, el dock y los botones se encogen y se desvanecen; detrás de los escritorios queda el fondo desenfocado, y arriba a la izquierda sale un minimapa con cada escritorio y sus ventanas (clic para ir a una).
+
+### Modo juego
+Desde la isla, el lanzador o el clic derecho del escritorio. Pone el perfil de rendimiento, No molestar y evita que se suspenda; además **quita todas las animaciones y efectos**: Menisco pasa a instantáneo, niri apaga sus animaciones, sombras y desenfoque (escribe `~/.config/niri/juego.kdl`, que la config incluye al final) y el liquid glass de Lniri se apaga. El dock se queda. Al salir, todo vuelve como estaba, y si se cierra sesión con el modo puesto, Menisco lo limpia al arrancar.
+
+### Pantalla de bloqueo (`Super+Alt+L`)
+Fondo desenfocado, reloj grande, la Gota que reacciona a lo que se escribe (cada tecla le cambia forma y color), carátula y letra de lo que suena. Al desbloquear, la pantalla sube como una hoja de vidrio.
 
 ### Modo captura (`Super+Shift+S`)
 La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve y se estira por las esquinas), **Ventana** (de una lista: niri no dice dónde está cada ventana) o **Pantalla**. La zona puede tener **forma**: rectángulo, círculo, triángulo, corazón o lazo a mano; lo de fuera queda transparente en la imagen. Opciones de incluir el cursor y abrir en `swappy` para anotar. Se guarda en `~/Pictures/Screenshots`, se copia y la isla muestra la miniatura. `ImprPant` sigue con la captura de niri, por si Quickshell no está corriendo.
@@ -181,6 +197,8 @@ Compila niri 26.04 con los archivos de [TattvaOrg/Lniri](https://github.com/Tatt
 | `Super+Shift+S` | modo captura |
 | `Super+Shift+/` | tabla de atajos |
 | `Super+Shift+E` | salir de niri |
+| `Super+Alt+L` | bloquear |
+| `Super+Alt+F` | escritorio flotante o en fila |
 
 El resto son los atajos de fábrica de niri.
 

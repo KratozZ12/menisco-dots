@@ -24,7 +24,7 @@ Item {
     // Con "Luz que gira" apagado todo se queda quieto (giro, luces, latido y chispas).
     // Tampoco se anima mientras no se ve (isla cerrada u otra pestana): una animacion infinita
     // invisible sigue despertando al dibujado en cada cuadro.
-    readonly property bool animar: Estilo.valor("botLuz") && boton.visible
+    readonly property bool animar: Estilo.valor("botLuz") && boton.visible && !Estilo.juego
     property real giro: 0
     NumberAnimation on giro { running: boton.animar; from: 0; to: 360; duration: 5000; loops: Animation.Infinite }
 
@@ -198,7 +198,7 @@ Item {
     }
 
     HoverHandler { id: sobre; cursorShape: Qt.PointingHandCursor }
-    MouseArea {
+    MouseArea { cursorShape: Qt.PointingHandCursor
         id: zona
         anchors.fill: parent
         onClicked: { ondaAnim.restart(); saltito.restart(); cara.parpadear(); boton.pulsado(); }

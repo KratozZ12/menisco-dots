@@ -56,6 +56,9 @@ PanelWindow {
     Behavior on aparecer { NumberAnimation { duration: Estilo.t(220); easing.type: Easing.OutCubic } }
     property real subida: abierta ? 1 : 0
     Behavior on subida { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+    // 1 mientras se arrastra la zona: la barra, la pista y el menu se apartan para no estorbar.
+    property real oculta: arrastre.pressed ? 1 : 0
+    Behavior on oculta { NumberAnimation { duration: Estilo.t(arrastre.pressed ? 140 : 320); easing.type: arrastre.pressed ? Easing.OutQuad : Easing.OutCubic } }
 
     // Marco: la caja que se ve. Sigue a la zona al arrastrar; al cambiar de modo viaja con rebote
     // (a toda la pantalla en Pantalla, al centro y a nada en Ventana).
@@ -83,8 +86,8 @@ PanelWindow {
         if (f === "lazo") { sx = 0; sy = 0; sw = 0; sh = 0; lazo = []; }   // el lazo se dibuja de cero
     }
 
-    readonly property string foto: "/tmp/menisco-captura.png"
-    readonly property string fotoCursor: "/tmp/menisco-captura-cursor.png"
+    readonly property string foto: Estilo.tmp + "/menisco-captura.png"
+    readonly property string fotoCursor: Estilo.tmp + "/menisco-captura-cursor.png"
 
     function abrir(m) {
         if (abierta) return;
@@ -158,6 +161,7 @@ PanelWindow {
         Keys.onEscapePressed: cap.menuFormas ? cap.menuFormas = false : cap.cerrar()
         Keys.onReturnPressed: cap.capturar()
         Keys.onEnterPressed: cap.capturar()
+        Keys.onSpacePressed: cap.capturar()
     }
 
     // La pantalla congelada
@@ -193,6 +197,7 @@ PanelWindow {
     // Arrastrar: fuera de la zona empieza una nueva, dentro la mueve, en una esquina la estira.
     // Con el lazo, fuera de la zona se dibuja a mano.
     MouseArea {
+        id: arrastre
         anchors.fill: parent
         enabled: cap.modo === "zona"
         cursorShape: Qt.CrossCursor
@@ -273,11 +278,11 @@ PanelWindow {
     Rectangle {
         visible: cap.modo === "zona" && !cap.hayZona
         anchors.centerIn: parent
-        opacity: cap.aparecer; scale: 0.9 + 0.1 * cap.subida
+        opacity: cap.aparecer * (1 - cap.oculta); scale: 0.9 + 0.1 * cap.subida
         width: pista.implicitWidth + 28; height: 34; radius: 12
         color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
         Texto { id: pista; anchors.centerIn: parent
-            text: (cap.forma === "lazo" ? "Dibuje la forma con el ratón" : "Arrastre para elegir una zona") + " · Enter captura todo · Esc cancela" }
+            text: (cap.forma === "lazo" ? "Dibuje la forma con el ratón" : "Arrastre para elegir una zona") + " · Espacio captura todo · Esc cancela" }
     }
 
     // Lista de ventanas (modo Ventana): entra creciendo desde el centro, con rebote.
@@ -301,7 +306,7 @@ PanelWindow {
                     required property var modelData
                     required property int index
                     width: listaV.width; height: 40; radius: 10
-                    color: zonaV.containsMouse ? Estilo.hover : Estilo.nada
+                    color: zonaV.containsMouse ? Estilo.realce : Estilo.nada
                     Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                     // cada fila llega un poco despues que la anterior
                     opacity: Math.max(0, Math.min(1, cajaVentanas.entra * 3 - index * 0.35))
@@ -314,7 +319,7 @@ PanelWindow {
                         source: Quickshell.iconPath(DesktopEntries.applications.values.find(d => d.id.toLowerCase() === modelData.app.toLowerCase() || (d.startupClass || "").toLowerCase() === modelData.app.toLowerCase())?.icon ?? modelData.app, "application-x-executable")
                     }
                     Texto { anchors { left: iconoV.right; leftMargin: 10; right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } text: modelData.titulo; elide: Text.ElideRight }
-                    MouseArea { id: zonaV; anchors.fill: parent; hoverEnabled: true; onClicked: cap.capturarVentana(modelData.id) }
+                    MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaV; anchors.fill: parent; hoverEnabled: true; onClicked: cap.capturarVentana(modelData.id) }
                 }
             }
         }
@@ -324,8 +329,8 @@ PanelWindow {
     Rectangle {
         id: barra
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 28 }
-        opacity: Math.min(1, cap.aparecer * 1.5)
-        transform: Translate { y: (1 - cap.subida) * 70 }
+        opacity: Math.min(1, cap.aparecer * 1.5) * (1 - cap.oculta)
+        transform: Translate { y: (1 - cap.subida) * 70 + cap.oculta * 18 }
         width: filaBarra.implicitWidth + 14; height: 46; radius: 16
         color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
         Behavior on width { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
@@ -355,6 +360,11 @@ PanelWindow {
                             required property var modelData
                             readonly property bool on: cap.modo === modelData[0]
                             width: filaModo.implicitWidth + 20; height: 30
+                            Rectangle {
+                                anchors.fill: parent; radius: 15
+                                color: !on && zonaModo.containsMouse ? Estilo.realce : Estilo.nada
+                                Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                            }
                             Row {
                                 id: filaModo
                                 anchors.centerIn: parent; spacing: 6
@@ -365,7 +375,7 @@ PanelWindow {
                                 Texto { text: modelData[2]; color: on ? Estilo.enActivo : Estilo.texto; anchors.verticalCenter: parent.verticalCenter
                                     Behavior on color { ColorAnimation { duration: Estilo.t(200) } } }
                             }
-                            MouseArea { id: zonaModo; anchors.fill: parent; onClicked: cap.ponerModo(modelData[0]) }
+                            MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaModo; anchors.fill: parent; hoverEnabled: true; onClicked: cap.ponerModo(modelData[0]) }
                         }
                     }
                 }
@@ -392,18 +402,18 @@ PanelWindow {
                     id: filaCap
                     anchors.centerIn: parent; spacing: 7
                     Texto { text: "Capturar"; font.weight: Font.DemiBold; color: Estilo.sobreAcento }
-                    Texto { text: "Enter"; font.pixelSize: 11; color: Qt.alpha(Estilo.sobreAcento, 0.55); anchors.verticalCenter: parent.verticalCenter }
+                    Texto { text: "Espacio"; font.pixelSize: 11; color: Qt.alpha(Estilo.sobreAcento, 0.55); anchors.verticalCenter: parent.verticalCenter }
                 }
-                MouseArea { id: zonaCap; anchors.fill: parent; hoverEnabled: true; onClicked: cap.capturar() }
+                MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaCap; anchors.fill: parent; hoverEnabled: true; onClicked: cap.capturar() }
             }
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 34; height: 34; radius: 11
-                color: zonaX.containsMouse ? Estilo.hover : Estilo.nada
+                color: zonaX.containsMouse ? Estilo.realce : Estilo.nada
                 scale: zonaX.pressed ? 0.85 : 1
                 Behavior on scale { NumberAnimation { duration: Estilo.t(zonaX.pressed ? 80 : 300); easing.type: zonaX.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
                 Simbolo { anchors.centerIn: parent; text: "close"; color: Estilo.texto }
-                MouseArea { id: zonaX; anchors.fill: parent; hoverEnabled: true; onClicked: cap.cerrar() }
+                MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaX; anchors.fill: parent; hoverEnabled: true; onClicked: cap.cerrar() }
             }
         }
     }
@@ -420,7 +430,7 @@ PanelWindow {
         y: barra.y - height - 10
         width: filaFormas.implicitWidth + 12; height: 64; radius: 16
         color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
-        opacity: Math.min(1, entra * 1.5)
+        opacity: Math.min(1, entra * 1.5) * (1 - cap.oculta)
         transformOrigin: Item.Bottom
         scale: 0.7 + 0.3 * entra
         MouseArea { anchors.fill: parent }
@@ -435,7 +445,7 @@ PanelWindow {
                     required property int index
                     readonly property bool on: cap.forma === modelData[0]
                     width: 70; height: 52; radius: 11
-                    color: on ? Estilo.activo : zonaF.containsMouse ? Estilo.hover : Estilo.nada
+                    color: on ? Estilo.activo : zonaF.containsMouse ? Estilo.realce : Estilo.nada
                     border.width: 1; border.color: on ? Estilo.activoBorde : "transparent"
                     Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
                     // en cascada: cada forma aparece un poco despues que la anterior
@@ -447,7 +457,7 @@ PanelWindow {
                         Simbolo { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[1]; font.pixelSize: 20; color: on ? Estilo.iconoActivo : Estilo.texto }
                         Texto { anchors.horizontalCenter: parent.horizontalCenter; text: modelData[2]; font.pixelSize: 11; color: on ? Estilo.enActivo : Estilo.texto }
                     }
-                    MouseArea { id: zonaF; anchors.fill: parent; hoverEnabled: true; onClicked: cap.ponerForma(modelData[0]) }
+                    MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaF; anchors.fill: parent; hoverEnabled: true; onClicked: cap.ponerForma(modelData[0]) }
                 }
             }
         }
@@ -462,7 +472,7 @@ PanelWindow {
         signal pulsada()
         anchors.verticalCenter: parent.verticalCenter
         width: filaOp.implicitWidth + 18; height: 34; radius: 11
-        color: encendida ? Estilo.activo : zonaOp.containsMouse ? Estilo.hover : Estilo.nada
+        color: encendida ? Estilo.activo : zonaOp.containsMouse ? Estilo.realce : Estilo.nada
         border.width: 1; border.color: encendida ? Estilo.activoBorde : "transparent"
         Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
         scale: zonaOp.pressed ? 0.88 : 1
@@ -478,7 +488,7 @@ PanelWindow {
                 Behavior on rotation { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.OutBack } }
             }
         }
-        MouseArea { id: zonaOp; anchors.fill: parent; hoverEnabled: true; onClicked: op.pulsada() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaOp; anchors.fill: parent; hoverEnabled: true; onClicked: op.pulsada() }
     }
     component Texto: Text {
         color: Estilo.texto

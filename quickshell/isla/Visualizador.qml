@@ -27,7 +27,7 @@ Item {
     implicitHeight: alto + 4
 
     Process {
-        running: true
+        running: !Estilo.juego              // en modo juego cava no escucha
         command: ["cava", "-p", Quickshell.env("HOME") + "/.config/quickshell/isla/cava.conf"]
         stdout: SplitParser {
             onRead: linea => {

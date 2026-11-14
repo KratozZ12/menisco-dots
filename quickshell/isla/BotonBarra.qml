@@ -14,19 +14,33 @@ PanelWindow {
     // En el mismo lado que la barra; se oculta si asi se elige en los ajustes.
     visible: Estilo.barra.boton
     anchors { top: true; right: Estilo.barra.lado !== "izquierda"; left: Estilo.barra.lado === "izquierda" }
-    margins { top: 4; right: 10; left: 10 }
-    implicitWidth: 34
-    implicitHeight: 34
+    // La ventana empieza en la esquina de la pantalla (sin margenes: niri no aplica un margen
+    // que cambia antes de mostrarse) y el boton va dentro, a 10 px del borde. Con marco dibuja
+    // ademas la oreja del marco. Solo el boton recibe clics.
+    readonly property bool conMarco: Estilo.grosorMarco > 0 && !raiz.modoJuego
+    implicitWidth: conMarco ? oreja.width : 44
+    implicitHeight: conMarco ? oreja.height : 38
+    mask: Region { item: fondo }
+
+    Oreja {
+        id: oreja
+        visible: boton.conMarco
+        espejo: Estilo.barra.lado !== "izquierda"
+        ancho: 54 + (Estilo.anchoBandeja > 0 ? Estilo.anchoBandeja + 8 : 0)   // la bandeja va en la misma oreja
+    }
     exclusionMode: ExclusionMode.Ignore   // la isla ya reserva esta franja
     color: "transparent"
     WlrLayershell.namespace: "boton-barra"
+    Gelatina { objetivo: boton.contentItem; origenY: 0 }   // se va con la vista general
 
     Rectangle {
         id: fondo
-        anchors.fill: parent
+        x: oreja.espejo ? boton.width - 44 : 10
+        y: 4 + Estilo.grosorMarco
+        width: 34; height: 34
         radius: 12
         // Abierta: blanco con el destello oscuro, como los botones encendidos de Menisco.
-        color: boton.abierta ? Estilo.activo : zona.containsMouse ? Estilo.hover : Estilo.fondo
+        color: boton.abierta ? Estilo.activo : zona.containsMouse ? Estilo.realce : Estilo.fondo
         Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
         scale: zona.pressed ? 0.86 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 420); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
@@ -56,7 +70,7 @@ PanelWindow {
             }
         }
 
-        MouseArea {
+        MouseArea { cursorShape: Qt.PointingHandCursor
             id: zona
             anchors.fill: parent
             hoverEnabled: true

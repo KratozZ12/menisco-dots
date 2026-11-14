@@ -1,5 +1,6 @@
 // Tipografia SF Pro (Estilo.letra); iconos Material Symbols Rounded; grises de Menisco.
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -29,6 +30,14 @@ PanelWindow {
     // La ventana es mas grande que el panel (holgura a cada lado): cuando el rebote lo agranda
     // un poco, no choca con los bordes de la ventana ni se ve cortado.
     readonly property int holgura: 24
+    // Con el marco encendido la barra sale de el: su lado de fuera es el borde del marco, con
+    // hombros arriba y abajo, y entra deslizandose desde detras del borde (el recorte la tapa ahi).
+    // "tapa" es la parte del panel que queda escondida detras del borde para que el rebote no deje
+    // un hueco entre el panel y el marco.
+    readonly property real g: Estilo.grosorMarco
+    readonly property bool enMarco: g > 0
+    readonly property real tapa: enMarco ? 40 : 0
+    readonly property real hombro: 14
     implicitWidth: cfg.ancho + holgura * 2
     // Alto fijo (toda la pantalla): si la ventana cambiara de alto con cada pagina, niri tendria
     // que reconfigurarla en cada cuadro de la animacion y se veia a saltos. Solo el panel cambia;
@@ -110,6 +119,28 @@ PanelWindow {
     SystemClock { id: reloj; precision: SystemClock.Minutes }
 
     // ---- Panel ----
+    // Hombros del marco: curvas que funden el panel con el borde arriba y abajo.
+    Repeater {
+        model: barra.enMarco ? [0, 1] : []
+        Shape {
+            required property int modelData        // 0 arriba, 1 abajo
+            readonly property real s: barra.hombro
+            width: s; height: s
+            x: barra.derecha ? barra.width - barra.g - s : barra.g
+            y: modelData === 0 ? panel.y - s : panel.y + panel.height
+            opacity: Math.min(1, panel.mostrar * 3)
+            preferredRendererType: Shape.CurveRenderer
+            transform: Scale { xScale: barra.derecha ? 1 : -1; yScale: modelData === 0 ? 1 : -1; origin.x: s / 2; origin.y: s / 2 }
+            ShapePath {
+                fillColor: Estilo.fondo; strokeWidth: -1
+                PathSvg { path: `M${barra.hombro} 0Q${barra.hombro} ${barra.hombro} 0 ${barra.hombro}H${barra.hombro}Z` }
+            }
+        }
+    }
+    Item {
+        id: recorte
+        anchors { fill: parent; rightMargin: barra.derecha ? barra.g : 0; leftMargin: barra.derecha ? 0 : barra.g }
+        clip: barra.enMarco
     Rectangle {
         id: panel
         // Alto = pagina visible + botones de energia (solo en inicio); se anima al cambiar de pagina.
@@ -117,17 +148,23 @@ PanelWindow {
         property real alto: 28 + altoPagina
         // Solo al cambiar de pagina: al abrir, el alto ya debe ser el final (si no, se ve crecer).
         Behavior on alto { enabled: panel.mostrar > 0.99; NumberAnimation { duration: Estilo.t(300); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
-        width: barra.cfg.ancho
+        width: barra.cfg.ancho + barra.tapa
         height: Math.min(alto, parent.height - barra.holgura * 2)
-        x: barra.derecha ? parent.width - width - (barra.holgura - 14) : barra.holgura - 14
-        // Arriba: bajo la isla. Abajo: sobre el dock. Centro: al medio.
-        y: barra.cfg.altura === "arriba" ? 56
+        x: barra.enMarco ? (barra.derecha ? parent.width - barra.cfg.ancho : -barra.tapa)
+         : barra.derecha ? parent.width - width - (barra.holgura - 14) : barra.holgura - 14
+        // Arriba: bajo la isla (con marco, bajo la esquina). Abajo: sobre el dock. Centro: al medio.
+        y: barra.cfg.altura === "arriba" ? (barra.enMarco ? 78 : 56)
          : barra.cfg.altura === "abajo" ? parent.height - height - 96
          : (parent.height - height) / 2
-        radius: 24
+        radius: barra.enMarco ? 0 : 24
+        // Con marco: solo redondas las esquinas de dentro.
+        topLeftRadius: barra.enMarco && !barra.derecha ? 0 : 24
+        bottomLeftRadius: barra.enMarco && !barra.derecha ? 0 : 24
+        topRightRadius: barra.enMarco && barra.derecha ? 0 : 24
+        bottomRightRadius: barra.enMarco && barra.derecha ? 0 : 24
         color: Estilo.fondo
         border.color: Estilo.borde
-        border.width: 1
+        border.width: barra.enMarco ? 0 : 1
         clip: true
         // Apertura: llega desde la derecha recorriendo solo 48 px, crece desde 0.92 con el
         // borde derecho como eje, y aparece con fundido; el rebote cabe en la holgura de la ventana.
@@ -139,16 +176,16 @@ PanelWindow {
             // Cierre: arranca de inmediato y frena al final; el fundido acompana todo el recorrido.
             Transition { from: "abierta"; NumberAnimation { property: "mostrar"; duration: Estilo.t(300); easing.type: Easing.OutCubic } }
         ]
-        opacity: barra.abierta ? Math.min(1, mostrar * 2.2) : mostrar
+        opacity: barra.enMarco ? (mostrar > 0.01 ? 1 : 0) : barra.abierta ? Math.min(1, mostrar * 2.2) : mostrar
         transformOrigin: barra.derecha ? Item.Right : Item.Left
-        scale: 0.92 + 0.08 * mostrar
-        transform: Translate { x: (1 - panel.mostrar) * 48 * (barra.derecha ? 1 : -1) }
+        scale: barra.enMarco ? 1 : 0.92 + 0.08 * mostrar
+        transform: Translate { x: (1 - panel.mostrar) * (barra.enMarco ? barra.cfg.ancho + 10 : 48) * (barra.derecha ? 1 : -1) }
         focus: barra.abierta
         Keys.onEscapePressed: barra.pagina === "inicio" ? barra.cerrar() : barra.ir("inicio")
 
         // Paginas: entran deslizandose desde el lado hacia el que se navega.
         Item {
-            anchors { fill: parent; margins: 14 }
+            anchors { fill: parent; margins: 14; rightMargin: 14 + (barra.derecha ? barra.tapa : 0); leftMargin: 14 + (barra.derecha ? 0 : barra.tapa) }
 
             Pagina {
                 id: pInicio
@@ -186,6 +223,7 @@ PanelWindow {
                 Volver { text: "Bluetooth" }
                 Rapido {
                     width: parent.width
+                    tono: Estilo.tono("bt")
                     icono: "bluetooth"; titulo: activa ? "Encendido" : "Apagado"; detalle: ""
                     activa: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
                     onPulsado: Estilo.bluetooth(Bluetooth.defaultAdapter, !activa)
@@ -193,16 +231,9 @@ PanelWindow {
                 Encabezado { text: "Mis dispositivos"; visible: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled }
                 Repeater {
                     model: Bluetooth.devices.values.filter(d => d.paired && Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled)
-                    delegate: FilaLista {
+                    delegate: FilaBt {
                         required property var modelData
-                        icono: modelData.icon && modelData.icon.includes("headset") || modelData.icon === "audio-headphones" ? "headphones"
-                             : modelData.icon && modelData.icon.includes("audio") ? "speaker" : "devices_other"
-                        titulo: modelData.name
-                        detalle: modelData.pairing ? "Emparejando…"
-                               : modelData.connected ? "Conectado" + (modelData.batteryAvailable ? " · " + Math.round(modelData.battery * 100) + " %" : "")
-                               : "Toque para conectar"
-                        marcada: modelData.connected
-                        onPulsada: modelData.connected ? modelData.disconnect() : modelData.connect()
+                        dispositivo: modelData
                     }
                 }
                 Encabezado { text: "Buscando cerca…"; visible: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled }
@@ -300,6 +331,7 @@ PanelWindow {
         }
 
     }
+    }
 
     // ---- Secciones de la pagina principal (se ordenan y ocultan desde los ajustes) ----
     // Que hace cada boton rapido; los ids son los que se eligen en los ajustes.
@@ -344,6 +376,7 @@ PanelWindow {
                     width: botones.ancho
                     icono: info.icono || ""; titulo: info.titulo || ""; detalle: info.detalle || ""
                     activa: !!info.activa; flecha: !!info.flecha
+                    tono: Estilo.tono(modelData)
                     onPulsado: if (info.fn) info.fn()
                 }
             }
@@ -435,8 +468,8 @@ PanelWindow {
                                 const id = modelData.id;
                                 if ((id === "reiniciar" || id === "apagar") && barra.confirmar !== id) { barra.confirmar = id; return; }
                                 barra.cerrar();
-                                if (id === "bloquear") barra.ejecutar(["swaylock"]);
-                                else if (id === "salir") barra.ejecutar(["niri", "msg", "action", "quit"]);
+                                if (id === "bloquear") barra.raiz.bloquear();
+                                else if (id === "salir") barra.raiz.pedirSalir();
                                 else if (id === "reiniciar") barra.ejecutar(["systemctl", "reboot"]);
                                 else barra.ejecutar(["systemctl", "poweroff"]);
                             }
@@ -496,13 +529,13 @@ PanelWindow {
         property bool rojo: false
         signal pulsado()
         width: chico ? 32 : 40; height: width; radius: width / 2
-        color: blanco ? Estilo.activo : (zonaR.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        color: blanco ? Estilo.activo : (zonaR.containsMouse ? Estilo.realce : Estilo.tarjeta)
         border.width: 1; border.color: blanco ? Estilo.activoBorde : Estilo.linea
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         scale: zonaR.pressed ? 0.88 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zonaR.pressed ? 80 : 380); easing.type: zonaR.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
         Simbolo { anchors.centerIn: parent; text: red.icono; color: red.blanco ? Estilo.iconoActivo : red.rojo ? Estilo.peligro : Estilo.texto; font.pixelSize: red.chico ? 20 : 19 }
-        MouseArea { id: zonaR; anchors.fill: parent; hoverEnabled: true; onClicked: red.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaR; anchors.fill: parent; hoverEnabled: true; onClicked: red.pulsado() }
     }
     component Rapido: Rectangle {
         id: rap
@@ -511,23 +544,25 @@ PanelWindow {
         property string detalle
         property bool activa
         property bool flecha: false
+        property color tono: "transparent"   // encendido, el icono toma el color de su ajuste
         signal pulsado()
         property real relleno: activa ? 1 : 0
         Behavior on relleno { NumberAnimation { duration: Estilo.t(260) } }
         height: 56; radius: 16
-        color: activa ? Estilo.activo : (zonaQ.containsMouse ? Estilo.hover : Estilo.tarjeta)
+        color: activa ? Estilo.activo : (zonaQ.containsMouse ? Estilo.realce : Estilo.tarjeta)
         border.width: 1; border.color: activa ? Estilo.activoBorde : Estilo.linea
         Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
         scale: zonaQ.pressed ? 0.95 : 1
         Behavior on scale { NumberAnimation { duration: Estilo.t(zonaQ.pressed ? 90 : 420); easing.type: zonaQ.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
-        Simbolo { id: iq; x: 12; anchors.verticalCenter: parent.verticalCenter; text: rap.icono; relleno: rap.relleno; color: rap.activa ? Estilo.iconoActivo : Estilo.texto }
+        Simbolo { id: iq; x: 12; anchors.verticalCenter: parent.verticalCenter; text: rap.icono; relleno: rap.relleno; color: rap.activa ? (rap.tono.a > 0 ? rap.tono : Estilo.iconoActivo) : Estilo.texto
+            Behavior on color { ColorAnimation { duration: Estilo.t(260) } } }
         Column {
             anchors { left: iq.right; leftMargin: 9; right: parent.right; rightMargin: rap.flecha ? 26 : 8; verticalCenter: parent.verticalCenter }
             Texto { text: rap.titulo; color: rap.activa ? Estilo.enActivo : Estilo.texto; font.weight: Font.DemiBold; width: parent.width; elide: Text.ElideRight }
             Texto { visible: rap.detalle !== ""; text: rap.detalle; color: rap.activa ? Qt.alpha(Estilo.enActivo, 0.65) : Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
         Simbolo { visible: rap.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 16; color: rap.activa ? Qt.alpha(Estilo.enActivo, 0.65) : Estilo.texto2 }
-        MouseArea { id: zonaQ; anchors.fill: parent; hoverEnabled: true; onClicked: rap.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaQ; anchors.fill: parent; hoverEnabled: true; onClicked: rap.pulsado() }
     }
     component Nivel: Rectangle {
         id: niv
@@ -542,14 +577,16 @@ PanelWindow {
         onValorChanged: if (!zonaN.pressed) vivo = valor
         width: parent.width; height: 40; radius: 14; color: Estilo.tarjeta
         Simbolo { id: inv; visible: niv.icono !== ""; x: 10; anchors.verticalCenter: parent.verticalCenter; text: niv.icono; font.pixelSize: 19; color: Estilo.texto
-            MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: niv.icono_pulsado() } }
+            scale: zIcoN.containsMouse ? 1.15 : 1
+            Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: zIcoN; hoverEnabled: true; anchors.fill: parent; anchors.margins: -6; onClicked: niv.icono_pulsado() } }
         Texto { id: etq; visible: niv.etiqueta !== ""; x: 12; width: 76; anchors.verticalCenter: parent.verticalCenter; text: niv.etiqueta; font.pixelSize: 12; elide: Text.ElideRight }
         Rectangle {
             id: pista
             anchors { left: niv.etiqueta ? etq.right : inv.right; leftMargin: 10; right: valorTxt.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
             height: 20; radius: 10; color: Estilo.hundido
             Rectangle { height: parent.height; radius: 10; color: Estilo.acento; width: Math.max(height, parent.width * niv.vivo) }
-            MouseArea {
+            MouseArea { cursorShape: Qt.PointingHandCursor
                 id: zonaN
                 anchors.fill: parent
                 function mover(m) { niv.vivo = Math.max(0, Math.min(1, m.x / width)); niv.cambiar(niv.vivo); }
@@ -558,8 +595,130 @@ PanelWindow {
             }
         }
         Texto { id: valorTxt; anchors { right: niv.flecha ? fl.left : parent.right; rightMargin: niv.flecha ? 2 : 10; verticalCenter: parent.verticalCenter } width: 28; horizontalAlignment: Text.AlignRight; text: Math.round(niv.vivo * 100); color: Estilo.texto2; font.pixelSize: 11; font.features: { "tnum": 1 } }
-        Simbolo { id: fl; visible: niv.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 18; color: Estilo.texto2
-            MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: niv.flecha_pulsada() } }
+        Simbolo { id: fl; visible: niv.flecha; anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "chevron_right"; font.pixelSize: 18; color: zFlechaN.containsMouse ? Estilo.texto : Estilo.texto2
+            MouseArea { cursorShape: Qt.PointingHandCursor; id: zFlechaN; hoverEnabled: true; anchors.fill: parent; anchors.margins: -6; onClicked: niv.flecha_pulsada() } }
+    }
+    // Dispositivo Bluetooth con su estado: conectando y desconectando llevan una ruedita al lado,
+    // al conectar el icono se llena de azul y suelta dos ondas, y si falla se tine de rojo con
+    // "Reintentar". Falla = pasa de Conectando a Desconectado, o 15 s sin conectar.
+    component FilaBt: Rectangle {
+        id: fb
+        property var dispositivo
+        readonly property color azul: Estilo.tono("bt")
+        readonly property color rojo: Estilo.peligro
+        readonly property int st: dispositivo ? dispositivo.state : BluetoothDeviceState.Disconnected
+        readonly property bool conectando: st === BluetoothDeviceState.Connecting || (intentando && st !== BluetoothDeviceState.Connected)
+        readonly property bool desconectando: st === BluetoothDeviceState.Disconnecting
+        readonly property bool conectado: st === BluetoothDeviceState.Connected
+        property bool intentando: false
+        property bool fallo: false
+        property int antes: st
+        onStChanged: {
+            if (st === BluetoothDeviceState.Connected) { intentando = false; fallo = false; espera.stop(); if (antes !== BluetoothDeviceState.Connected) ondas.restart(); }
+            else if (st === BluetoothDeviceState.Disconnected && antes === BluetoothDeviceState.Connecting) { intentando = false; fallo = true; espera.stop(); }
+            antes = st;
+        }
+        Timer { id: espera; interval: 15000; onTriggered: { if (!fb.conectado) { fb.intentando = false; fb.fallo = true; } } }
+        function pulsar() {
+            if (conectado) { dispositivo.disconnect(); return; }
+            fallo = false; intentando = true; espera.restart(); dispositivo.connect();
+        }
+        readonly property color tinte: fallo ? rojo : (conectado || conectando) ? azul : "transparent"
+
+        width: parent ? parent.width : 0; height: 48; radius: 12
+        color: fb.tinte.a > 0 ? Qt.alpha(fb.tinte, conectado ? 0.12 : 0.08) : (zonaB.containsMouse ? Estilo.realce : Estilo.nada)
+        Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
+        border.width: 1; border.color: (conectado || fallo) ? Qt.alpha(fb.tinte, 0.35) : "transparent"
+        Behavior on border.color { ColorAnimation { duration: Estilo.t(260) } }
+        opacity: desconectando ? 0.6 : 1
+        Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+
+        // Icono en su burbuja: azul lleno conectado, con dos ondas al conectar.
+        Item {
+            id: burbuja
+            x: 9; width: 30; height: 30; anchors.verticalCenter: parent.verticalCenter
+            Repeater {
+                model: 2
+                Rectangle {
+                    id: onda
+                    required property int index
+                    anchors.centerIn: parent; width: 30; height: 30; radius: 10
+                    color: "transparent"; border.width: 2; border.color: fb.azul; opacity: 0
+                    SequentialAnimation {
+                        id: animOnda
+                        PauseAnimation { duration: onda.index * 260 }
+                        ParallelAnimation {
+                            NumberAnimation { target: onda; property: "scale"; from: 1; to: 1.7; duration: Estilo.t(700); easing.type: Easing.OutCubic }
+                            NumberAnimation { target: onda; property: "opacity"; from: 0.7; to: 0; duration: Estilo.t(700); easing.type: Easing.OutCubic }
+                        }
+                    }
+                    Connections { target: ondas; function onStarted() { animOnda.restart(); } }
+                }
+            }
+            Timer { id: ondas; interval: 1; signal started(); onTriggered: started() }
+            Rectangle {
+                anchors.fill: parent; radius: 10
+                color: fb.conectado ? fb.azul : fb.tinte.a > 0 ? Qt.alpha(fb.tinte, 0.18) : Estilo.tarjeta
+                Behavior on color { ColorAnimation { duration: Estilo.t(320) } }
+                scale: fb.conectado ? 1 : 0.94
+                Behavior on scale { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.4) } }
+            }
+            Simbolo {
+                anchors.centerIn: parent; font.pixelSize: 18
+                text: fb.fallo ? "error" : fb.dispositivo && fb.dispositivo.icon && (fb.dispositivo.icon.includes("headset") || fb.dispositivo.icon === "audio-headphones") ? "headphones"
+                    : fb.dispositivo && fb.dispositivo.icon && fb.dispositivo.icon.includes("audio") ? "speaker" : "devices_other"
+                color: fb.conectado ? "#ffffff" : fb.tinte.a > 0 ? fb.tinte : Estilo.texto
+                Behavior on color { ColorAnimation { duration: Estilo.t(320) } }
+            }
+        }
+        Column {
+            anchors { left: burbuja.right; leftMargin: 10; right: lado.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+            Texto { text: fb.dispositivo ? fb.dispositivo.name : ""; width: parent.width; elide: Text.ElideRight }
+            Texto {
+                width: parent.width; elide: Text.ElideRight; font.pixelSize: 11
+                text: fb.fallo ? "No se pudo conectar"
+                    : fb.dispositivo && fb.dispositivo.pairing ? "Emparejando…"
+                    : fb.desconectando ? "Desconectando…"
+                    : fb.conectando ? "Conectando…"
+                    : fb.conectado ? "Conectado" + (fb.dispositivo.batteryAvailable ? " · " + Math.round(fb.dispositivo.battery * 100) + " %" : "")
+                    : "Toque para conectar"
+                color: fb.fallo ? Qt.lighter(fb.rojo, 1.15) : (fb.conectado || fb.conectando) ? Qt.lighter(fb.azul, 1.3) : Estilo.texto2
+                Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
+            }
+        }
+        // Al lado: ruedita mientras conecta o desconecta, la marca al estar conectado, "Reintentar" si fallo.
+        Item {
+            id: lado
+            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+            width: fb.fallo ? reintentar.implicitWidth : 20; height: 20
+            Ruedita { anchors.centerIn: parent; visible: fb.conectando || fb.desconectando; tinta: fb.desconectando ? Estilo.texto2 : fb.azul }
+            Simbolo {
+                anchors.centerIn: parent; text: "check"; font.pixelSize: 18; color: fb.azul
+                opacity: fb.conectado ? 1 : 0; scale: fb.conectado ? 1 : 0.4
+                Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+                Behavior on scale { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
+            }
+            Texto { id: reintentar; anchors.centerIn: parent; visible: fb.fallo; text: "Reintentar"; font.pixelSize: 11; font.weight: Font.DemiBold; color: Qt.lighter(fb.rojo, 1.15) }
+        }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaB; anchors.fill: parent; hoverEnabled: true; onClicked: fb.pulsar() }
+    }
+    // Ruedita de espera al estilo de Apple: ocho rayitas que se apagan en circulo.
+    component Ruedita: Item {
+        id: rd
+        property color tinta: Estilo.texto
+        width: 18; height: 18
+        property int paso: 0
+        Timer { running: rd.visible; repeat: true; interval: 90; onTriggered: rd.paso = (rd.paso + 1) % 8 }
+        Repeater {
+            model: 8
+            Rectangle {
+                required property int index
+                x: rd.width / 2 - 1; y: 0; width: 2; height: 5; radius: 1
+                color: rd.tinta
+                opacity: 0.25 + 0.75 * (((index - rd.paso + 8) % 8) === 0 ? 1 : Math.max(0, 1 - ((rd.paso - index + 8) % 8) / 7))
+                transform: Rotation { origin.x: 1; origin.y: rd.height / 2; angle: index * 45 }
+            }
+        }
     }
     component FilaLista: Rectangle {
         id: fl2
@@ -570,7 +729,7 @@ PanelWindow {
         property bool tenue: false
         signal pulsada()
         width: parent ? parent.width : 0; height: detalle ? 48 : 40; radius: 12
-        color: marcada ? Estilo.tarjeta : (zonaL.containsMouse ? Estilo.tarjeta : Estilo.nada)
+        color: marcada ? Estilo.tarjeta : (zonaL.containsMouse ? Estilo.realce : Estilo.nada)
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         opacity: tenue ? 0.75 : 1
         Simbolo { id: il; x: 10; anchors.verticalCenter: parent.verticalCenter; text: fl2.icono; font.pixelSize: 19; color: Estilo.texto }
@@ -580,7 +739,7 @@ PanelWindow {
             Texto { visible: fl2.detalle !== ""; text: fl2.detalle; color: Estilo.texto2; font.pixelSize: 11; width: parent.width; elide: Text.ElideRight }
         }
         Simbolo { visible: fl2.marcada; anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "check"; font.pixelSize: 18; color: Estilo.acento }
-        MouseArea { id: zonaL; anchors.fill: parent; hoverEnabled: true; onClicked: fl2.pulsada() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaL; anchors.fill: parent; hoverEnabled: true; onClicked: fl2.pulsada() }
     }
     component Calendario: Rectangle {
         id: cal

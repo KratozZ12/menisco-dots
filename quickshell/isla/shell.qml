@@ -21,22 +21,28 @@ ShellRoot {
     // ---- Notificaciones: las recibe Hokum (niri lo arranca). La isla solo muestra sus propios
     // avisos (cancion, audifonos, capturas, temperatura, temporizador, color). ----
 
-    // ---- Modo juego: rendimiento maximo, No molestar, sin dock y sin suspender ----
+    // ---- Modo juego: rendimiento maximo, No molestar, sin suspender, sin animaciones ni efectos ----
+    // (Menisco con duraciones en cero via Estilo.juego; niri sin animaciones, sombras ni vidrio via juego.kdl)
     // Al apagarlo, todo vuelve a como estaba antes de encenderlo.
     property bool modoJuego: false
     property var antesDeJugar: null
+    onModoJuegoChanged: Estilo.juego = modoJuego
+    // Si la sesion se cerro en modo juego, niri seguiria sin animaciones: al arrancar se limpia.
+    Component.onCompleted: Estilo.niri(["juego", "off"])
     function alternarModoJuego() {
         if (!modoJuego) {
             antesDeJugar = { perfil: perfilActual, dnd: Estilo.noMolestar, cafe: ajustes.cafe };
             Quickshell.execDetached(["powerprofilesctl", "set", "performance"]);
             Estilo.ponerNoMolestar(true);
             ajustes.cafe = true;
+            Estilo.niri(["juego", "on"]);
             modoJuego = true;
         } else {
             const a = antesDeJugar || { perfil: "balanced", dnd: false, cafe: false };
             Quickshell.execDetached(["powerprofilesctl", "set", a.perfil]);
             Estilo.ponerNoMolestar(a.dnd);
             ajustes.cafe = a.cafe;
+            Estilo.niri(["juego", "off"]);
             modoJuego = false;
         }
     }
@@ -83,6 +89,84 @@ ShellRoot {
         }
     }
 
+    // ---- Modo flotante por escritorio (Super+Alt+F, IPC "ventanas modo") ----
+    // niri solo sabe soltar ventanas de una en una. Menisco recuerda que escritorios van flotantes
+    // y suelta ahi cada ventana nueva; las que usted vuelva a encajar con Super+V se quedan asi.
+    // Se olvida al cerrar sesion.
+    property var flotantes: []          // ids de escritorio de niri
+    property int escritorioActivo: -1
+    property var escritorios: []        // los de niri, para saber numero y monitor del activo
+    readonly property bool flotanteAqui: flotantes.includes(escritorioActivo)
+    property var ventanas: ({})         // id de ventana -> ventana de niri (la del minimapa tambien)
+    signal modoCambiado(bool flotante, string salida, int numero)
+    function alternarFlotante() {
+        const ws = escritorioActivo;
+        if (ws < 0) return;
+        const flota = !flotantes.includes(ws);
+        flotantes = flota ? flotantes.concat([ws]) : flotantes.filter(f => f !== ws);
+        for (const id in ventanas)
+            if (ventanas[id].workspace_id === ws && ventanas[id].is_floating !== flota)
+                Quickshell.execDetached(["niri", "msg", "action", flota ? "move-window-to-floating" : "move-window-to-tiling", "--id", id]);
+        const w = escritorios.find(e => e.id === ws);
+        modoCambiado(flota, w?.output ?? "", w?.idx ?? 0);
+    }
+    Process {
+        running: true
+        command: ["niri", "msg", "-j", "event-stream"]
+        stdout: SplitParser {
+            onRead: linea => {
+                let e;
+                try { e = JSON.parse(linea); } catch (x) { return; }
+                if (e.WorkspacesChanged) {
+                    const lista = e.WorkspacesChanged.workspaces;
+                    raiz.escritorios = lista;
+                    raiz.escritorioActivo = lista.find(w => w.is_focused)?.id ?? -1;
+                    raiz.flotantes = raiz.flotantes.filter(f => lista.some(w => w.id === f));
+                } else if (e.WorkspaceActivated?.focused) {
+                    raiz.escritorioActivo = e.WorkspaceActivated.id;
+                } else if (e.WindowsChanged) {
+                    const v = {};
+                    for (const w of e.WindowsChanged.windows) v[w.id] = w;
+                    raiz.ventanas = v;
+                } else if (e.WindowOpenedOrChanged) {
+                    // Se reasigna una copia para que el minimapa se entere del cambio.
+                    const w = e.WindowOpenedOrChanged.window;
+                    if (!(w.id in raiz.ventanas) && !w.is_floating && raiz.flotantes.includes(w.workspace_id))
+                        Quickshell.execDetached(["niri", "msg", "action", "move-window-to-floating", "--id", String(w.id)]);
+                    const v = Object.assign({}, raiz.ventanas, { [w.id]: w });
+                    if (w.is_focused) for (const id in v) if (+id !== w.id && v[id].is_focused) v[id] = Object.assign({}, v[id], { is_focused: false });
+                    raiz.ventanas = v;
+                } else if (e.WindowClosed) {
+                    const v = Object.assign({}, raiz.ventanas);
+                    delete v[e.WindowClosed.id];
+                    raiz.ventanas = v;
+                } else if (e.WindowLayoutsChanged) {
+                    const v = Object.assign({}, raiz.ventanas);
+                    for (const [id, l] of e.WindowLayoutsChanged.changes) if (v[id]) v[id] = Object.assign({}, v[id], { layout: l });
+                    raiz.ventanas = v;
+                } else if ("WindowFocusChanged" in e) {
+                    const f = e.WindowFocusChanged.id;
+                    if (f === null) return;   // la vista general quita el foco: el minimapa marca la ultima
+                    const v = {};
+                    for (const id in raiz.ventanas) v[id] = Object.assign({}, raiz.ventanas[id], { is_focused: +id === f });
+                    raiz.ventanas = v;
+                } else if (e.OverviewOpenedOrClosed) {
+                    Estilo.vistaGeneral = e.OverviewOpenedOrClosed.is_open;
+                    if (Estilo.vistaGeneral) raiz.barraAbierta = false;
+                }
+            }
+        }
+    }
+    // qs -p ~/.config/quickshell/isla ipc call juego alternar
+    IpcHandler {
+        target: "juego"
+        function alternar(): void { raiz.alternarModoJuego() }
+    }
+    IpcHandler {
+        target: "ventanas"
+        function modo(): void { raiz.alternarFlotante() }
+    }
+
     property string perfilActual: "balanced"
     Process { running: true; command: ["powerprofilesctl", "get"]; stdout: StdioCollector { onStreamFinished: raiz.perfilActual = text.trim() } }
 
@@ -92,6 +176,14 @@ ShellRoot {
     property int temporizadorRestante: 0
     function iniciarTemporizador(segundos) { temporizadorFin = Date.now() + segundos * 1000; temporizadorRestante = segundos; }
     function cancelarTemporizador() { temporizadorFin = 0; temporizadorRestante = 0; }
+    // ---- Cronometro (lanzador: "cronometro"); corre en la isla donde va el temporizador ----
+    property real cronometroInicio: 0
+    property int cronometroSegundos: 0
+    function alternarCronometro() { cronometroInicio = cronometroInicio > 0 ? 0 : Date.now(); cronometroSegundos = 0; }
+    Timer { interval: 250; repeat: true; running: raiz.cronometroInicio > 0; onTriggered: raiz.cronometroSegundos = Math.floor((Date.now() - raiz.cronometroInicio) / 1000) }
+    // Modo cafe vive en Ajustes; el lanzador lo lee y lo cambia por aqui.
+    readonly property bool cafe: ajustes.cafe
+    function alternarCafe() { ajustes.cafe = !ajustes.cafe }
     Timer {
         interval: 250; repeat: true; running: raiz.temporizadorFin > 0
         onTriggered: {
@@ -139,7 +231,39 @@ ShellRoot {
     }
     Timer { interval: 1000; repeat: true; running: raiz.grabando; onTriggered: raiz.segundosGrabando++ }
 
+    // ---- Clic fuera: cierra la isla fijada y la barra lateral ----
+    // Capa transparente en Top, siempre puesta pero sin recibir nada (mascara vacia) hasta que algo
+    // esta abierto: asi queda debajo de la isla y los botones, que se crean despues. El clic que
+    // cierra no llega a la ventana de abajo.
+    // ponytail: el dock se recrea al cambiar de material y queda encima: un clic en el dock no cierra.
+    property int islasFijadas: 0
+    signal clicFuera()
+    readonly property bool hayAlgoAbierto: islasFijadas > 0 || barraAbierta
+    Variants {
+        model: Quickshell.screens
+        PanelWindow {
+            id: fuera
+            required property var modelData
+            screen: modelData
+            anchors { top: true; bottom: true; left: true; right: true }
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.namespace: "menisco-fuera"
+            property Region lleno: Region { item: zonaFuera }
+            property Region vacio: Region {}
+            mask: raiz.hayAlgoAbierto ? lleno : vacio
+            MouseArea {
+                id: zonaFuera
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                onPressed: { raiz.barraAbierta = false; raiz.clicFuera(); }
+            }
+        }
+    }
+
     function abrirAjustes() { lanzadorAbierto = false; barraAbierta = false; if (!ajustes.abierta) monitorActivo.running = true; }
+    function abrirAjustesEn(seccion) { ajustes.seccion = seccion; abrirAjustes(); }
 
     // Super+D y el boton del dock llaman a esto.
     IpcHandler {
@@ -154,8 +278,11 @@ ShellRoot {
     IpcHandler {
         target: "barra"
         function toggle(): void { raiz.barraAbierta = !raiz.barraAbierta }
+        function abrirEn(pagina: string): void { raiz.abrirBarraEn(pagina) }
     }
-    Barra { raiz: raiz; ajustes: ajustes }
+    // Abre la barra lateral ya en una pagina (bt, red, sonido); la usa "Opciones avanzadas" del lanzador.
+    function abrirBarraEn(p) { lanzadorAbierto = false; barraAbierta = true; barra.ir(p); }
+    Barra { id: barra; raiz: raiz; ajustes: ajustes }
     BotonBarra { raiz: raiz }
     Bandeja {}
     BordeBarra { raiz: raiz }
@@ -210,6 +337,25 @@ ShellRoot {
         function toggle(): void { salir.alternar() }
     }
     Salir { id: salir }
+    // Clic derecho en el fondo. Para probar: ... ipc call escritorio menu 400 300 | cerrar
+    MenuEscritorio { id: menuEscritorio; raiz: raiz }
+    VistaGeneral { raiz: raizShell }   // acompana a la vista general de niri
+    IpcHandler {
+        target: "escritorio"
+        function menu(x: real, y: real): void { menuEscritorio.abrir(Quickshell.screens[0], x, y) }
+        function cerrar(): void { menuEscritorio.abierto = false }
+    }
+    // Pantalla de bloqueo propia (Bloqueo.qml). "ensayo" la muestra sin bloquear, para probarla.
+    Bloqueo { id: bloqueo }
+    function bloquear() { lanzadorAbierto = false; barraAbierta = false; bloqueo.bloquear(); }
+    IpcHandler {
+        target: "bloqueo"
+        function bloquear(): void { raiz.bloquear() }
+        function ensayo(): void { bloqueo.ensayar() }
+        function ensayoSalida(): void { bloqueo.ensayarSalida() }
+    }
+    // La barra y el lanzador piden salir con la ventana de Menisco, no con el aviso de niri.
+    function pedirSalir() { lanzadorAbierto = false; barraAbierta = false; if (!salir.abierta) salir.alternar(); }
 
     // Super+Shift+S, la isla, la barra y el lanzador abren el modo captura.
     // qs -p ~/.config/quickshell/isla ipc call captura abrir zona|ventana|pantalla
@@ -261,7 +407,12 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        Dock { required property var modelData; screen: modelData; shell: raiz; visible: !raiz.modoJuego }
+        Marco { required property var modelData; screen: modelData; visible: Estilo.valor("marco") && !raiz.modoJuego }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        Dock { required property var modelData; screen: modelData; shell: raiz; visible: !oculto }
     }
 
     // Uno solo: sin pantalla fija, niri lo muestra en el monitor que se esta usando.

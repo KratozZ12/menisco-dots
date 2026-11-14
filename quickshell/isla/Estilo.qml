@@ -10,18 +10,21 @@ Singleton {
     id: estilo
 
     readonly property string carpeta: Quickshell.env("HOME") + "/.config/quickshell/isla"
+    // Archivos temporales: /run/user/<uid>, privado de cada usuario. En /tmp un archivo de otra cuenta no se puede sobrescribir.
+    readonly property string tmp: Quickshell.env("XDG_RUNTIME_DIR")
 
     property var datos: ({})
     readonly property var porDefecto: ({
         velocidad: "normal",            // lenta | normal | rapida
         rebote: "suave",                // nada | suave | mucho
-        tema: "champan",               // onix | champan | medianoche | rubi | jade
+        tema: "champan",               // ver ordenTemas
         letra: "SF Pro",                // SF Pro | Inter
-        esquinas: 20, espacio: 16, borde: 40,
+        esquinas: 20, espacio: 16, borde: 40, marco: false, dockPegado: true,
         islaAsistente: true, islaVisualizador: true, reloj12: false, segundos: false,
         personalidad: "normal",         // tranquilo | normal | inquieto
         reaccionMusica: true,
         // Isla: como se abre y que avisos muestra (los avisos se ajustan en Notificaciones)
+        dockMaterial: "vidrio", dockForma: "redondeada",   // vidrio | solido | ahumado | escarcha | tinte | contorno | materialyou
         islaForma: "clasica", islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
           // clasica | biselada | octagono | ola | liquida | recta | pildora
         islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
@@ -80,8 +83,9 @@ Singleton {
     }
 
     // ---- Movimiento ----
-    // t(ms): duracion ajustada a la velocidad elegida.
-    readonly property real factorTiempo: ({ lenta: 1.45, normal: 1, rapida: 0.7 })[valor("velocidad")] ?? 1
+    // t(ms): duracion ajustada a la velocidad elegida. En modo juego todo es instantaneo.
+    property bool juego: false                      // lo pone shell.qml (modoJuego)
+    readonly property real factorTiempo: juego ? 0 : ({ lenta: 1.45, normal: 1, rapida: 0.7 })[valor("velocidad")] ?? 1
     function t(ms) { return ms * factorTiempo; }
     // o(x): sobrepaso de Easing.OutBack segun el rebote elegido (0 = sin rebote).
     readonly property real factorRebote: ({ nada: 0, suave: 1, mucho: 1.7 })[valor("rebote")] ?? 1
@@ -92,7 +96,7 @@ Singleton {
         : [0.3, 1 + 0.55 * factorRebote, 0.5, 1, 1, 1]
 
     // ---- Color ----
-    // Cinco temas en negro. Las piezas leen solo estos nombres, nunca un gris escrito a mano:
+    // Diez temas oscuros. Las piezas leen solo estos nombres, nunca un gris escrito a mano:
     // fondo (paneles), tarjeta (bloques dentro del panel), hover, hundido (campos y pistas),
     // borde y linea (filos finos), texto/texto2/texto3, apagado (interruptor sin activar),
     // activo + enActivo + iconoActivo + activoBorde (lo que esta encendido), acento (deslizadores,
@@ -110,22 +114,52 @@ Singleton {
                       borde: "#1aa0b4ff", linea: "#12a0b4ff", texto: "#eef1f7", texto2: "#858c9b", texto3: "#5a6070",
                       apagado: "#262a35", activo: "#121a2c", enActivo: "#e3eaff", iconoActivo: "#8fb0ff",
                       activoBorde: "#598fb0ff", acento: "#8fb0ff", sobreAcento: "#06070a" },
-        rubi:       { nombre: "Rubí", fondo: "#0a0808", tarjeta: "#130f0f", hover: "#201a1a", hundido: "#1a1515",
-                      borde: "#17ffebe6", linea: "#10ffebe6", texto: "#f6f1f0", texto2: "#968a88", texto3: "#665c5a",
-                      apagado: "#2c2525", activo: "#e5484d", enActivo: "#ffffff", iconoActivo: "#ffffff",
-                      activoBorde: "#00000000", acento: "#e5484d", sobreAcento: "#ffffff" },
-        jade:       { nombre: "Jade", fondo: "#050807", tarjeta: "#0b110e", hover: "#16201c", hundido: "#121a17",
-                      borde: "#17b4ffdc", linea: "#10b4ffdc", texto: "#eef5f2", texto2: "#84958f", texto3: "#5a6a65",
-                      apagado: "#22302b", activo: "#0e1f19", enActivo: "#dcf5ea", iconoActivo: "#5fd4a8",
-                      activoBorde: "#595fd4a8", acento: "#5fd4a8", sobreAcento: "#050807" }
+        // Rubi y Jade: dos tonos. El acento va en interruptores y barras; lo encendido es una tarjeta
+        // oscura con el icono de color y un filo de otro tono (oro rosa, oro viejo).
+        rubi:       { nombre: "Rubí", fondo: "#0b0607", tarjeta: "#150b0d", hover: "#231316", hundido: "#1c0f12",
+                      borde: "#1fffd0d6", linea: "#12ffd0d6", texto: "#f7ecee", texto2: "#a08a8e", texto3: "#6e5a5e",
+                      apagado: "#2e1a1e", activo: "#2a0e14", enActivo: "#ffe3e6", iconoActivo: "#ff5a6e",
+                      activoBorde: "#8ce9a88f", acento: "#e8384f", sobreAcento: "#ffffff" },
+        jade:       { nombre: "Jade", fondo: "#040907", tarjeta: "#0a1410", hover: "#13211b", hundido: "#0f1a15",
+                      borde: "#1fbfe8d2", linea: "#12bfe8d2", texto: "#eaf4ef", texto2: "#8aa39a", texto3: "#5b6f68",
+                      apagado: "#1d2c26", activo: "#0f2a20", enActivo: "#e3f6ec", iconoActivo: "#7fe0b5",
+                      activoBorde: "#99c9a45c", acento: "#4fc497", sobreAcento: "#04140d" },
+        // Pantalla de terminal vieja: hasta el texto va en ambar.
+        fosforo:    { nombre: "Fósforo", fondo: "#0a0702", tarjeta: "#130e05", hover: "#21180a", hundido: "#1a1307",
+                      borde: "#26ffb347", linea: "#14ffb347", texto: "#ffd9a0", texto2: "#b08a52", texto3: "#6e5530",
+                      apagado: "#2c2210", activo: "#ffb347", enActivo: "#1a1003", iconoActivo: "#1a1003",
+                      activoBorde: "#00000000", acento: "#ffb347", sobreAcento: "#1a1003" },
+        // Noche azulada: verde agua en lo encendido y filo violeta.
+        aurora:     { nombre: "Aurora", fondo: "#05060c", tarjeta: "#0c0f1a", hover: "#171b2b", hundido: "#121524",
+                      borde: "#1f9fb0ff", linea: "#129fb0ff", texto: "#eef0ff", texto2: "#8a90b0", texto3: "#5a5f7a",
+                      apagado: "#232842", activo: "#141533", enActivo: "#e8e4ff", iconoActivo: "#3ee0c5",
+                      activoBorde: "#80a77bff", acento: "#3ee0c5", sobreAcento: "#05060c" },
+        // Gris calido de lapiz con piezas de cobre.
+        grafito:    { nombre: "Grafito", fondo: "#0c0b0a", tarjeta: "#171513", hover: "#24211e", hundido: "#1d1a17",
+                      borde: "#1fffe2c8", linea: "#12ffe2c8", texto: "#f1ebe5", texto2: "#9a918a", texto3: "#66605a",
+                      apagado: "#2e2a26", activo: "#c87941", enActivo: "#140b04", iconoActivo: "#140b04",
+                      activoBorde: "#00000000", acento: "#d98a52", sobreAcento: "#140b04" },
+        // Tokio de noche: icono magenta, filo e interruptores cian.
+        neon:       { nombre: "Neón", fondo: "#050308", tarjeta: "#0e0a14", hover: "#1a1324", hundido: "#140f1d",
+                      borde: "#26ff4fd8", linea: "#14ff4fd8", texto: "#f6eefe", texto2: "#9a8bb0", texto3: "#64587a",
+                      apagado: "#261c33", activo: "#1a0b24", enActivo: "#ffe6fb", iconoActivo: "#ff4fd8",
+                      activoBorde: "#9922e5ff", acento: "#22e5ff", sobreAcento: "#050308" },
+        // El unico sin negro puro: gris azulado suave, poco contraste.
+        niebla:     { nombre: "Niebla", fondo: "#101317", tarjeta: "#181c21", hover: "#232830", hundido: "#1d2228",
+                      borde: "#24dbe7f5", linea: "#16dbe7f5", texto: "#dfe6ee", texto2: "#8b96a3", texto3: "#5f6874",
+                      apagado: "#2c323b", activo: "#dfe6ee", enActivo: "#101317", iconoActivo: "#101317",
+                      activoBorde: "#00000000", acento: "#a9c3dc", sobreAcento: "#101317" }
     })
-    readonly property var ordenTemas: ["onix", "champan", "medianoche", "rubi", "jade"]
+    readonly property var ordenTemas: ["onix", "champan", "medianoche", "rubi", "jade", "fosforo", "aurora", "grafito", "neon", "niebla"]
     readonly property var tema: temas[valor("tema")] || temas.champan
     readonly property color fondo: tema.fondo
     readonly property color tarjeta: tema.tarjeta
     readonly property color hover: tema.hover
     readonly property color nada: Qt.alpha(tema.hover, 0)     // hover apagado: transparente del mismo tono
     readonly property color hundido: tema.hundido
+    // Hover: el tono de hover aclarado para que se note sobre cualquier fondo del tema.
+    readonly property color realce: Qt.tint(tema.hover, Qt.alpha(tema.texto, 0.09))
+    function aclarar(c) { return Qt.tint(c, Qt.alpha(tema.texto, 0.14)) }
     readonly property color borde: tema.borde
     readonly property color linea: tema.linea
     readonly property color texto: tema.texto
@@ -219,7 +253,134 @@ tokens {
     readonly property var formasIsla: [["clasica", "Clásica"], ["biselada", "Biselada"], ["octagono", "Octágono"], ["ola", "Ola"],
                                        ["liquida", "Líquida"], ["recta", "Recta"], ["pildora", "Píldora"]]
 
+    // ---- Color propio de cada ajuste (la paleta de sistema de Apple) ----
+    // Solo en detalles: la burbuja del icono, el interruptor encendido y un filo fino. Nunca de relleno.
+    readonly property var tonos: ({
+        bt: "#0a84ff", red: "#30d158", wifi: "#30d158", dnd: "#bf5af2", cafe: "#ff9f0a", captura: "#64d2ff",
+        isla: "#5ac8fa", vidrio: "#64d2ff", grabar: "#ff375f", juego: "#ff375f", mic: "#ff9f0a", sonido: "#ff2d55",
+        temporizador: "#ff9f0a", cronometro: "#ffd60a", color: "#ff6482", portapapeles: "#a2845e", fondo: "#32ade6",
+        tema: "#bf5af2", ajustes: "#8e8e93", bloquear: "#7d7aff", salir: "#8e8e93", suspender: "#5e5ce6",
+        reiniciar: "#ff9f0a", apagar: "#ff453a", papelera: "#ff453a"
+    })
+    function tono(id) { return tonos[id] || "#8e8e93"; }
+    // Siguiente fondo de ~/Imágenes/Wallpapers, en orden (isla y lanzador).
+    readonly property var comandoSiguienteFondo: ["sh", "-c", "d=\"$HOME/Imágenes/Wallpapers\"; a=$(awww query | sed -n 's/.*image: //p' | head -1); " +
+        "ls \"$d\" | grep -iE '\\.(jpe?g|png|webp)$' > $XDG_RUNTIME_DIR/menisco-fondos.txt; " +
+        "n=$(grep -nxF \"$(basename \"$a\")\" $XDG_RUNTIME_DIR/menisco-fondos.txt | cut -d: -f1); " +
+        "s=$(sed -n \"$(( ${n:-0} + 1 ))p\" $XDG_RUNTIME_DIR/menisco-fondos.txt); [ -z \"$s\" ] && s=$(head -1 $XDG_RUNTIME_DIR/menisco-fondos.txt); " +
+        "awww img \"$d/$s\" --transition-type grow --transition-fps 144"]
+
+    // ---- Formas del dock (solo sin vidrio: el vidrio cubre la ventana entera) ----
+    // Mitad izquierda como tres curvas: abajo (esquina, u hombro si va pegado), lado y arriba.
+    // Diez puntos [S, a1, b1, P1, a2, b2, P2, a3, b3, T]; todas las formas tienen los mismos, asi
+    // que el dock pasa de una a otra mezclando punto a punto. x0 = lado del cuerpo, h = alto.
+    readonly property var formasDock: [["redondeada", "Redondeada"], ["capsula", "Cápsula"], ["biselada", "Biselada"],
+                                       ["octagono", "Octágono"], ["ola", "Ola"], ["liquida", "Líquida"], ["recta", "Recta"]]
+    function mitadDock(f, x0, h, pegado, s) {
+        const k = 0.62;
+        const sum = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+        const recta = (A, B) => [sum(A, B, 1 / 3), sum(A, B, 2 / 3), B];
+        const esquina = (A, C, B, kk) => [sum(A, C, kk), sum(B, C, kk), B];
+        // una sola cubica partida en tres (de Casteljau) para que tenga los mismos puntos
+        const partir = (P0, P1, P2, P3) => {
+            const en = t => { const a = sum(P0, P1, t), b = sum(P1, P2, t), c = sum(P2, P3, t), d = sum(a, b, t), e = sum(b, c, t); return [a, b, c, d, e, sum(d, e, t)]; };
+            const c1 = en(1 / 3), q = c1[5];
+            const r = (u, v) => sum(u, v, 0.5);    // tramo [1/3, 1]: se vuelve a partir a la mitad
+            const R0 = q, R1 = c1[4], R2 = c1[2], R3 = P3;
+            const m01 = r(R0, R1), m12 = r(R1, R2), m23 = r(R2, R3), m012 = r(m01, m12), m123 = r(m12, m23), mid = r(m012, m123);
+            return [P0, c1[0], c1[3], q, m01, m012, mid, m123, m23, R3];
+        };
+        const lado = (xb, xt, rb, rt) => {
+            const L = Math.hypot(xt - xb, h), u = [(xt - xb) / L, -h / L];
+            const Cb = [xb, h], Ct = [xt, 0];
+            const abajo = pegado ? esquina([xb - s, h], Cb, [xb + u[0] * s, h + u[1] * s], 0.75)
+                                 : esquina([xb + rb, h], Cb, [xb + u[0] * rb, h + u[1] * rb], k);
+            const P2 = [xt - u[0] * rt, -u[1] * rt];          // a rt de la esquina de arriba, sobre el lado
+            const arriba = esquina(P2, Ct, [xt + rt, 0], k);
+            const S = pegado ? [xb - s, h] : [xb + rb, h];
+            return [S, ...abajo, ...recta(abajo[2], P2), ...arriba];
+        };
+        const chafl = (c) => {
+            const S = pegado ? [x0 - s, h] : [x0 + c, h];
+            const abajo = pegado ? esquina(S, [x0, h], [x0, h - s], 0.75) : recta(S, [x0, h - c]);
+            return [S, ...abajo, ...recta(abajo[2], [x0, c]), ...recta([x0, c], [x0 + c, 0])];
+        };
+        switch (f) {
+        case "capsula":   return lado(x0, x0, h / 2, h / 2);
+        case "biselada":  return lado(x0, x0 + 10, 6, 6);
+        case "octagono":  return chafl(14);
+        case "recta":     return lado(x0, x0, 4, 4);
+        case "ola": {     // pegado, la de la isla al reves: una sola curva larga desde el borde del marco
+            const b = Math.min(h, 60);
+            return pegado ? partir([x0 - b * 2, h], [x0 - b, h], [x0 - b * 0.55, 0], [x0 + b * 0.1, 0])
+                          : partir([x0 + 8, h], [x0 - 12, h], [x0 - 2, 0], [x0 + 24, 0]);
+        }
+        case "liquida": { // pegado, la clasica con hombros largos (como la isla); flotante, la redondeada
+            const r = Math.min(22, h / 2);
+            if (!pegado) return lado(x0, x0, r, r);
+            const P1 = [x0, h - s * 1.1], P2 = [x0, r];
+            return [[x0 - s * 3, h], [x0 - s * 0.9, h], [x0 - s * 0.2, h - s * 0.4], P1, ...recta(P1, P2), ...esquina(P2, [x0, 0], [x0 + r, 0], k)];
+        }
+        default:          return lado(x0, x0, Math.min(22, h / 2), Math.min(22, h / 2));   // redondeada
+        }
+    }
+    // Contorno completo de la mitad l reflejada en cx. abajo = alto hasta donde baja el relleno
+    // pegado (cubre la franja del marco); -1 = sin cerrar por abajo (el filo de Contorno pegado).
+    function trazoDock(l, cx, pegado, abajo) {
+        const m = q => [2 * cx - q[0], q[1]];
+        const n = q => q[0].toFixed(2) + " " + q[1].toFixed(2);
+        const [S, a1, b1, P1, a2, b2, P2, a3, b3, T] = l;
+        const p = `M${n(S)} C${n(a1)} ${n(b1)} ${n(P1)} C${n(a2)} ${n(b2)} ${n(P2)} C${n(a3)} ${n(b3)} ${n(T)} L${n(m(T))} `
+                + `C${n(m(b3))} ${n(m(a3))} ${n(m(P2))} C${n(m(b2))} ${n(m(a2))} ${n(m(P1))} C${n(m(b1))} ${n(m(a1))} ${n(m(S))}`;
+        if (abajo < 0) return p;
+        return pegado ? p + ` V${abajo.toFixed(2)} H${S[0].toFixed(2)} Z` : p + " Z";
+    }
+
+    // ---- Materiales del dock (Dock.qml y sus muestras en Ajustes) ----
+    function dockConVidrio(m) { return ["vidrio", "ahumado", "escarcha", "tinte"].includes(m); }
+    // Material You: el color mas vivo del fondo de pantalla, llevado a un tono oscuro.
+    // Casi gris: el acento del tema, para que nunca quede apagado.
+    function tonoMaterialYou(colores) {
+        let mejor = null, puntos = -1;
+        for (const c of colores) {
+            const p = c.hsvSaturation * Math.min(1, c.hsvValue * 2);
+            if (p > puntos) { puntos = p; mejor = c; }
+        }
+        const base = mejor && mejor.hsvSaturation > 0.12 ? mejor : acento;
+        return Qt.hsla(base.hslHue, Math.min(0.32, Math.max(0.18, base.hslSaturation * 0.5)), 0.17, 1);
+    }
+    // Tono de Material You del fondo de pantalla actual (el dock y el fundido del marco).
+    property string fondoPantalla: ""
+    Process {
+        id: leerFondo
+        command: ["sh", "-c", "awww query 2>/dev/null | sed -n 's/.*image: //p' | head -1"]
+        stdout: StdioCollector { onStreamFinished: estilo.fondoPantalla = text.trim() }
+    }
+    Timer { running: estilo.valor("dockMaterial") === "materialyou"; repeat: true; triggeredOnStart: true; interval: 5000; onTriggered: leerFondo.running = true }
+    ColorQuantizer { id: cuantizador; source: estilo.fondoPantalla ? "file://" + estilo.fondoPantalla : ""; depth: 3; rescaleSize: 64 }
+    readonly property color tonoDock: tonoMaterialYou(cuantizador.colors)
+    // Dock pegado al borde de abajo del marco: hace falta el marco y un material sin vidrio
+    // (el vidrio no se puede fundir con el marco).
+    readonly property bool dockPegado: valor("dockPegado") && grosorMarco > 0 && !dockConVidrio(valor("dockMaterial"))
+    // Color al que baja el marco: el del dock pegado de Material You; en los demas, el negro de siempre.
+    readonly property color colorMarcoAbajo: dockPegado && valor("dockMaterial") === "materialyou" ? tonoDock : fondo
+    // [relleno, filo, ancho del filo] de cada material
+    function aspectoDock(m, tono, encima) {
+        return ({
+            vidrio:      [Qt.rgba(1, 1, 1, encima ? 0.06 : 0.03), Qt.rgba(1, 1, 1, 0.18), 1],
+            solido:      [fondo, borde, 1],
+            ahumado:     [Qt.rgba(0, 0, 0, 0.5), Qt.rgba(1, 1, 1, 0.1), 1],
+            escarcha:    [Qt.rgba(1, 1, 1, encima ? 0.26 : 0.22), Qt.rgba(1, 1, 1, 0.42), 1],
+            tinte:       [Qt.alpha(acento, encima ? 0.22 : 0.16), Qt.alpha(acento, 0.45), 1],
+            contorno:    [Qt.rgba(1, 1, 1, 0), Qt.rgba(1, 1, 1, 0.5), 1.5],
+            materialyou: [tono, Qt.alpha(Qt.hsla(tono.hslHue, 0.6, 0.85, 1), 0.18), 1]
+        })[m] || [Qt.rgba(1, 1, 1, 0.03), Qt.rgba(1, 1, 1, 0.18), 1];
+    }
+
     // ---- Aspecto ----
+    // Marco de pantalla (Marco.qml): grosor real, 0 si esta apagado. La isla baja lo mismo.
+    readonly property int grosorMarco: valor("marco") ? 6 : 0
+    property real anchoBandeja: 0          // lo escribe Bandeja.qml; la oreja del marco se ensancha
     readonly property string letra: valor("letra") === "Inter" ? "Inter Display" : "SF Pro Text"
 
     // Bluetooth: al encender, primero se quita el bloqueo de rfkill (Plasma lo deja bloqueado al
@@ -233,6 +394,10 @@ tokens {
 
     // ---- No molestar: lo guarda Hokum (que recibe las notificaciones) ----
     // --watch avisa cada vez que cambia, venga de donde venga (Hokum, la barra, el lanzador...).
+    // Vista general de niri abierta (la pone shell.qml): la isla, el dock y los botones se van
+    // con una ola de colores (Gelatina) y salen el fondo borroso y el minimapa.
+    property bool vistaGeneral: false
+    onVistaGeneralChanged: if (vistaGeneral) leerFondo.running = true
     property bool noMolestar: false
     function ponerNoMolestar(v) { Quickshell.execDetached(["hokum", "dnd", v ? "on" : "off"]); }
     Process {

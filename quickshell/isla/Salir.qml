@@ -100,7 +100,7 @@ PanelWindow {
         property bool principal: false
         signal pulsado()
         width: (columna.width - 10) / 2; height: 40; radius: 12
-        color: principal ? Estilo.acento : zona.containsMouse ? Estilo.hover : Estilo.tarjeta
+        color: principal ? Estilo.acento : zona.containsMouse ? Estilo.realce : Estilo.tarjeta
         border.width: principal ? 0 : 1; border.color: Estilo.borde
         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
         scale: zona.pressed ? 0.95 : 1
@@ -110,7 +110,7 @@ PanelWindow {
             Texto { anchors.verticalCenter: parent.verticalCenter; text: boton.texto; font.weight: Font.DemiBold; color: boton.principal ? Estilo.sobreAcento : Estilo.texto }
             Texto { anchors.verticalCenter: parent.verticalCenter; text: boton.tecla; font.pixelSize: 11; color: boton.principal ? Qt.alpha(Estilo.sobreAcento, 0.6) : Estilo.texto3 }
         }
-        MouseArea { id: zona; anchors.fill: parent; hoverEnabled: true; onClicked: boton.pulsado() }
+        MouseArea { cursorShape: Qt.PointingHandCursor; id: zona; anchors.fill: parent; hoverEnabled: true; onClicked: boton.pulsado() }
     }
     component Texto: Text {
         color: Estilo.texto

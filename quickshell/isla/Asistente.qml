@@ -36,7 +36,7 @@ Canvas {
     }
 
     FrameAnimation {
-        running: lienzo.visible && lienzo.despierto
+        running: lienzo.visible && lienzo.despierto && !Estilo.juego
         onTriggered: {
             if (Motor.avanzar(Date.now(), frameTime * 60)) {
                 lienzo.requestPaint();

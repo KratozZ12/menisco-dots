@@ -1,10 +1,13 @@
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-// Dock flotante abajo al centro. El fondo es casi transparente: el vidrio lo pone
-// el compositor (liquid glass en Lniri, desenfoque en niri), por la capa "dock".
+// Dock flotante abajo al centro. Su material se elige en Ajustes > Apariencia: Vidrio (de
+// fabrica), Solido, Ahumado, Escarcha, Tinte, Contorno o Material You. El desenfoque lo pone el
+// compositor (liquid glass en Lniri, desenfoque en niri) a la capa "dock"; los materiales sin
+// vidrio usan la capa "dock-solido", que no lo recibe.
 // Apps: primero las ancladas (dock.json) y despues las abiertas sin anclar; al abrir o
 // cerrar una, el dock crece o se encoge y el icono entra o sale con rebote.
 // Clic derecho: menu con Abrir / Quitar del dock (cerrada) o Anclar / Cerrar (abierta).
@@ -87,22 +90,114 @@ PanelWindow {
         });
     }
 
+    // ---- Material ----
+    readonly property string material: Estilo.valor("dockMaterial")
+    readonly property bool conVidrio: Estilo.dockConVidrio(material)
+    // El nombre de la capa solo se lee al crear la ventana: para cambiarlo, el dock baja y se
+    // desvanece, se rehace oculto (shell.qml mira "oculto") y vuelve a subir. El espacio de las
+    // ventanas lo guarda "reserva", que no se rehace: asi las ventanas no se mueven.
+    property string capa: conVidrio ? "dock" : "dock-solido"
+    property bool oculto: false
+    onConVidrioChanged: { aparecer.stop(); bajar.restart(); }
+    // Pegado al marco (Ajustes > Dock): sale del borde de abajo con hombros, como la isla arriba.
+    property bool pegado: Estilo.dockPegado
+    readonly property real hombro: 14
+    // Sin vidrio el dock lleva la forma elegida (Ajustes > Dock > Forma) y la ventana se ensancha
+    // "e" por lado para que quepan los hombros y la ola (la mas ancha: 2 x 60 px). Fijo para
+    // todas las formas: si cambiara al pasar de una a otra, niri movería la ventana a saltos. Con vidrio, rectangulo redondeado: el
+    // vidrio cubre la ventana entera y no sabria seguir otra forma.
+    property bool sinVidrio: !conVidrio
+    readonly property real e: sinVidrio ? 124 : 0
+    // Cambio de forma: de la vieja a la nueva con rebote, como la isla.
+    property string formaVieja: Estilo.valor("dockForma")
+    property string formaNueva: Estilo.valor("dockForma")
+    property real cambio: 1
+    readonly property string formaElegida: Estilo.valor("dockForma")
+    onFormaElegidaChanged: { formaVieja = formaNueva; formaNueva = formaElegida; animForma.restart(); }
+    NumberAnimation { id: animForma; target: dock; property: "cambio"; from: 0; to: 1; duration: Estilo.t(640); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote }
+    readonly property real g: Estilo.grosorMarco
+    Connections { target: Estilo; function onDockPegadoChanged() { aparecer.stop(); bajar.restart(); } }
+    SequentialAnimation {
+        id: bajar
+        ParallelAnimation {
+            NumberAnimation { target: fondo; property: "opacity"; to: 0; duration: Estilo.t(180); easing.type: Easing.InCubic }
+            NumberAnimation { target: subida; property: "y"; to: 16; duration: Estilo.t(200); easing.type: Easing.InCubic }
+        }
+        ScriptAction { script: { dock.oculto = true; dock.capa = dock.conVidrio ? "dock" : "dock-solido"; dock.pegado = Estilo.dockPegado; dock.sinVidrio = !dock.conVidrio; } }
+        PauseAnimation { duration: 40 }
+        ScriptAction { script: { dock.oculto = false; aparecer.restart(); } }
+    }
+    PanelWindow {
+        id: reserva
+        screen: dock.screen
+        anchors.bottom: true
+        // Fija: flotante o pegado, las ventanas no se mueven.
+        margins.bottom: 10
+        exclusiveZone: dock.icono + dock.relleno * 2 + 6   // niri ya le suma el margen de abajo
+        implicitWidth: 1; implicitHeight: 1
+        color: "transparent"
+        mask: Region {}
+        WlrLayershell.namespace: "dock-reserva"
+    }
+
+    // Material You: un tono oscuro del color principal del fondo de pantalla.
+    readonly property color tono: Estilo.tonoDock
+    readonly property var aspecto: Estilo.aspectoDock(material, tono, sobre.hovered)
+
     anchors.bottom: true
-    margins.bottom: 10
-    exclusiveZone: implicitHeight   // niri ya le suma el margen de abajo
-    implicitWidth: fila.implicitWidth + relleno * 2 + 6
-    implicitHeight: icono + relleno * 2 + 6
+    margins.bottom: pegado ? 0 : 10
+    exclusionMode: ExclusionMode.Ignore   // el espacio lo reserva "reserva"
+    implicitWidth: fila.implicitWidth + relleno * 2 + 6 + e * 2
+    implicitHeight: icono + relleno * 2 + 6 + (pegado ? g : 0)
     color: "transparent"
-    WlrLayershell.namespace: "dock"
+    WlrLayershell.namespace: capa
+    Gelatina { objetivo: dock.contentItem; origenY: 1 }   // se va con la vista general
+    property Region sinNada: Region {}
+    mask: Estilo.vistaGeneral ? sinNada : null   // escondido no tapa la vista general
 
     Rectangle {
         id: fondo
-        anchors.fill: parent
-        radius: 22
-        color: Qt.rgba(1, 1, 1, sobre.hovered ? 0.06 : 0.03)   // casi nada: que se vea la refraccion
-        Behavior on color { ColorAnimation { duration: Estilo.t(260) } }
-        border.color: Qt.rgba(1, 1, 1, 0.18)
-        border.width: 1
+        anchors { fill: parent; leftMargin: dock.e; rightMargin: dock.e; bottomMargin: dock.pegado ? dock.g : 0 }
+        radius: dock.material === "materialyou" ? 24 : 22
+        Behavior on radius { NumberAnimation { duration: Estilo.t(300) } }
+        color: dock.sinVidrio ? "transparent" : dock.aspecto[0]
+        Behavior on color { ColorAnimation { duration: Estilo.t(320) } }
+        border.color: dock.aspecto[1]
+        Behavior on border.color { ColorAnimation { duration: Estilo.t(320) } }
+        border.width: dock.sinVidrio ? 0 : dock.aspecto[2]
+
+        // La forma elegida. Pegado: hombros abajo que se funden con el borde del marco, y el filo
+        // (solo Contorno) no cierra por abajo: sigue en el marco.
+        Shape {
+            id: silueta
+            visible: dock.sinVidrio
+            x: -dock.e; width: fondo.width + dock.e * 2; height: fondo.height + (dock.pegado ? dock.g : 0)
+            preferredRendererType: Shape.CurveRenderer
+            function mezcla(a, b, t) { return a.map((q, i) => [q[0] + (b[i][0] - q[0]) * t, q[1] + (b[i][1] - q[1]) * t]); }
+            readonly property var mitad: mezcla(Estilo.mitadDock(dock.formaVieja, dock.e, fondo.height, dock.pegado, dock.hombro),
+                                                Estilo.mitadDock(dock.formaNueva, dock.e, fondo.height, dock.pegado, dock.hombro), dock.cambio)
+            ShapePath {
+                fillColor: dock.aspecto[0]
+                strokeWidth: -1
+                PathSvg { path: Estilo.trazoDock(silueta.mitad, silueta.width / 2, dock.pegado, silueta.height) }
+            }
+            // Material You flotante: brillo suave arriba que se apaga hacia la mitad.
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: LinearGradient {
+                    y1: 0; y2: fondo.height
+                    GradientStop { position: 0; color: Qt.rgba(1, 1, 1, dock.material === "materialyou" && !dock.pegado ? 0.13 : 0) }
+                    GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0) }
+                }
+                PathSvg { path: Estilo.trazoDock(silueta.mitad, silueta.width / 2, false, 0) }
+            }
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: dock.material === "contorno" ? dock.aspecto[1] : "transparent"
+                strokeWidth: dock.material === "contorno" ? dock.aspecto[2] : 0
+                PathSvg { path: Estilo.trazoDock(silueta.mitad, silueta.width / 2, dock.pegado, dock.pegado ? -1 : 0) }
+            }
+        }
 
         // Aparece al arrancar: sube 16 px con fundido.
         opacity: 0
@@ -181,13 +276,14 @@ PanelWindow {
                         width: 4; height: 4; radius: 2
                         color: "#ffffff"
                         anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 3 }
-                        opacity: app.ventanas.length > 0 ? 0.9 : 0
-                        scale: app.ventanas.length > 0 ? 1 : 0
+                        readonly property bool ver: app.ventanas.length > 0
+                        opacity: ver ? 0.9 : 0
+                        scale: ver ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(300) } }
                         Behavior on scale { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(3) } }
                     }
 
-                    MouseArea {
+                    MouseArea { cursorShape: Qt.PointingHandCursor
                         id: zona
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -228,7 +324,7 @@ PanelWindow {
                     font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
                     renderType: Text.NativeRendering
                 }
-                MouseArea { id: zonaMenu; anchors.fill: parent; hoverEnabled: true; onClicked: if (dock.shell) dock.shell.lanzadorAbierto = !dock.shell.lanzadorAbierto }
+                MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaMenu; anchors.fill: parent; hoverEnabled: true; onClicked: if (dock.shell) dock.shell.lanzadorAbierto = !dock.shell.lanzadorAbierto }
             }
         }
     }
@@ -305,7 +401,7 @@ PanelWindow {
                         width: columna.width
                         height: 32
                         radius: 9
-                        color: opcion.containsMouse ? Estilo.hover : Estilo.nada
+                        color: opcion.containsMouse ? Estilo.realce : Estilo.nada
                         Behavior on color { ColorAnimation { duration: Estilo.t(120) } }
                         scale: opcion.pressed ? 0.96 : 1
                         Behavior on scale { NumberAnimation { duration: Estilo.t(140); easing.type: Easing.OutCubic } }
@@ -325,7 +421,7 @@ PanelWindow {
                             color: modelData.id === "cerrar" ? Estilo.peligro : Estilo.texto
                             font { family: Estilo.letra; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
                         }
-                        MouseArea { id: opcion; anchors.fill: parent; hoverEnabled: true; onClicked: menu.elegir(modelData.id) }
+                        MouseArea { cursorShape: Qt.PointingHandCursor; id: opcion; anchors.fill: parent; hoverEnabled: true; onClicked: menu.elegir(modelData.id) }
                     }
                 }
             }

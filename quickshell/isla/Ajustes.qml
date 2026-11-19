@@ -861,21 +861,36 @@ PanelWindow {
                     Encabezado { text: "Isla pequeña" }
                     Rectangle {
                         id: previaIsla
-                        width: parent.width; height: 70; radius: 12; color: "#3a3f4a"
-                        clip: true
+                        // La muestra es la isla misma, en grande y a todo el ancho (sin el recuadro gris).
+                        // Con Ajustar contenido se encoge con los huecos, como la de verdad.
+                        width: parent.width; height: 110; color: "transparent"
+                        readonly property string forma: Estilo.valor("islaForma")
+                        // Se dibuja con las medidas de la isla real (42 px de alto) y se agranda entera,
+                        // asi cada forma conserva sus proporciones (la pildora sigue siendo pildora).
+                        readonly property real k: height / 42
+                        // Lo que la forma se sale a los lados por arriba (hombros, diagonales): se deja de margen.
+                        readonly property real hombros: -Math.min(...Estilo.mitadForma(forma, 0, 42, 20, 16).map(q => q[0])) * k
+                        readonly property real anchoForma: Math.min(width - 2 * hombros, filaHuecos.width + 52)
                         Shape {   // la forma elegida, con las mismas cuentas que la isla de verdad
                             anchors.fill: parent
+                            transform: Scale { origin.x: previaIsla.width / 2; xScale: previaIsla.k; yScale: previaIsla.k }
                             preferredRendererType: Shape.CurveRenderer
                             ShapePath {
-                                fillColor: Estilo.fondo; strokeWidth: -1
-                                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(Estilo.valor("islaForma"), (previaIsla.width - filaHuecos.width - 24) / 2 - Estilo.ajusteForma(Estilo.valor("islaForma"))[0], 38, 18, 16), previaIsla.width / 2) }
+                                // la pagina es del mismo color que la isla: un poco mas oscura y con filo
+                                fillColor: Qt.darker(Estilo.fondo, 1.6); strokeColor: Estilo.borde; strokeWidth: 1 / previaIsla.k
+                                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(previaIsla.forma, (previaIsla.width - previaIsla.anchoForma / previaIsla.k) / 2, 42, 20, 16), previaIsla.width / 2) }
                             }
                         }
                         // Tres huecos: se pulsa uno y abajo se elige que muestra.
                         Row {
                             id: filaHuecos
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: 4; spacing: 4
+                            // centrada en el cuerpo de la forma (la pildora deja 5 px libres arriba)
+                            y: ((previaIsla.forma === "pildora" ? 5 * previaIsla.k : 0) + previaIsla.height) / 2 - 32 - (previaIsla.forma === "pildora" ? 0 : 3); spacing: 8
+                            // Las formas con hombros anchos (biselada, ola) dejan menos cuerpo: los huecos se reparten lo que quede.
+                            readonly property real cuerpo: previaIsla.width - 2 * previaIsla.hombros - 52
+                            readonly property real anchoLado: Math.max(64, Math.min(100, cuerpo * 0.2))
+                            readonly property real anchoCentro: Math.max(100, cuerpo - 2 * anchoLado - 2 * spacing)
                             Repeater {
                                 model: ["izquierda", "centro", "derecha"]
                                 delegate: Rectangle {
@@ -885,7 +900,8 @@ PanelWindow {
                                     readonly property bool elegido: paginaIsla.huecoElegido === modelData
                                     // Con Ajustar contenido los vacios se achican (siguen ahi para poder elegirlos)
                                     // y la forma de atras se encoge con ellos, como la isla de verdad.
-                                    width: tipo === "nada" && Estilo.valor("islaAjustar") ? 34 : modelData === "centro" ? 120 : 82; height: 30; radius: 10
+                                    width: tipo === "nada" && Estilo.valor("islaAjustar") ? 64 : modelData === "centro" ? filaHuecos.anchoCentro : filaHuecos.anchoLado
+                                    height: 64; radius: 32
                                     Behavior on width { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
                                     color: zonaHueco.containsMouse && !elegido ? Estilo.realce : Estilo.nada
                                     border.width: elegido ? 1.5 : 1
@@ -893,12 +909,14 @@ PanelWindow {
                                     Behavior on border.color { ColorAnimation { duration: Estilo.t(160) } }
                                     Rectangle {   // asistente: los dos ojos
                                         visible: hueco.tipo === "asistente"
+                                        scale: 1.7
                                         anchors.centerIn: parent
                                         width: 24; height: 24; radius: 12; color: Estilo.tarjeta
                                         Row { anchors.centerIn: parent; spacing: 4; Repeater { model: 2; Rectangle { width: 3; height: 8; radius: 2; color: "#fff" } } }
                                     }
                                     Row {         // visualizador
                                         visible: hueco.tipo === "visualizador"
+                                        scale: 1.7
                                         anchors.centerIn: parent; spacing: 3
                                         Repeater { model: [6, 11, 16, 11, 6]; Rectangle { required property int modelData; width: 3; height: modelData; radius: 1.5; color: "#fff"; anchors.verticalCenter: parent.verticalCenter } }
                                     }
@@ -907,10 +925,11 @@ PanelWindow {
                                         anchors.centerIn: parent
                                         text: (hueco.tipo === "fecha" ? Qt.locale("es_MX").toString(reloj.date, "ddd d").replace(/\./g, "") + " · " : "")
                                             + Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm" : "H:mm")
-                                        font.pixelSize: hueco.tipo === "fecha" ? 13 : 15; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
+                                        font.pixelSize: hueco.tipo === "fecha" ? 22 : 26; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
                                     }
                                     Simbolo {     // el resto: su icono
                                         visible: !["asistente", "visualizador", "hora", "fecha"].includes(hueco.tipo)
+                                        font.pixelSize: 34
                                         anchors.centerIn: parent
                                         text: (paginaIsla.catalogo.find(c => c[0] === hueco.tipo) || ["", "", "block"])[2]
                                         color: hueco.tipo === "nada" ? Estilo.texto3 : Estilo.texto
@@ -923,7 +942,7 @@ PanelWindow {
                     Texto {
                         text: "Pulse un hueco y elija qué muestra. Si ya estaba en otro hueco, se cambian de lugar."
                         color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
-                        topPadding: 4; bottomPadding: 6
+                        topPadding: 10; bottomPadding: 6
                     }
                     Grid {
                         width: parent.width; columns: 5; spacing: 8

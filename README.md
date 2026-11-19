@@ -32,7 +32,7 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).
 - **Visualizador de audio** a la derecha: 5 barras redondeadas que siguen el sonido real (con [cava](https://github.com/karlstav/cava)). En silencio se convierten en una línea ondulada suave. Si hay una grabación o un temporizador en marcha, ahí sale su tiempo.
-- **Huecos:** la isla pequeña tiene tres (izquierda, centro y derecha) y en **Ajustes > Isla > Isla pequeña** se elige qué va en cada uno: hora, hora con fecha, asistente, temperatura, uso de CPU, volumen, puntos de escritorios, un mini reproductor (carátula redonda con un anillo que se llena según avanza la canción, y el tiempo), clima de afuera (de [wttr.in](https://wttr.in), que ubica por la IP), velocidad de descarga, RAM en uso, micrófono (solo sale si está silenciado) o la batería de los audífonos o el mando conectado. Lo de arriba es lo que trae de fábrica. Con **Ajustar contenido** encendido y solo uno o dos huecos ocupados, los que se ven van juntos al centro y la isla se encoge al ancho justo de lo que muestra.
+- **Huecos:** la isla pequeña tiene tres (izquierda, centro y derecha) y en **Ajustes > Isla > Isla pequeña** se elige qué va en cada uno: hora, hora con fecha, asistente, temperatura, uso de CPU, volumen, puntos de escritorios, un mini reproductor (carátula redonda con un anillo que se llena según avanza la canción, y el tiempo), clima de afuera (de [wttr.in](https://wttr.in), que ubica por la IP), velocidad de descarga, RAM en uso, micrófono (en rojo con "Mudo" si está silenciado) o la batería de los audífonos o el mando conectado. Lo de arriba es lo que trae de fábrica. Con **Ajustar contenido** encendido y solo uno o dos huecos ocupados, los que se ven van juntos al centro y la isla se encoge al ancho justo de lo que muestra.
 
 **Avisos.** La isla crece unos segundos y vuelve sola cuando:
 - empieza una canción nueva (carátula y título);
@@ -43,7 +43,7 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma
 - cambia la salida de audio (apagado de fábrica);
 - termina el temporizador o se copia un color.
 
-Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No molestar puesto no salen (menos temporizador y color, que los pide usted). Las notificaciones de las apps no pasan por la isla: las muestra [Hokum](https://hokum.app).
+Los avisos ocupan una sola línea del mismo tamaño que la isla pequeña, con solo lo esencial (en la isla más angosta, una versión corta; un clic en el de captura la abre). Si la isla está abierta, los avisos esperan en fila y salen al cerrarla. Con No molestar puesto no salen (menos temporizador y color, que los pide usted). Las notificaciones de las apps no pasan por la isla: las muestra [Hokum](https://hokum.app).
 
 **Vista expandida.** Al pasar el cursor (o fija con un clic) crece hacia abajo con tres pestañas:
 - **Música:** carátula grande (un clic lleva a la app), la isla teñida con el color del disco, barra de progreso que se arrastra, pastillas para elegir reproductor si suena más de uno, volumen de esa app, salida de audio (audífonos, bocinas, HDMI) y **letra sincronizada** abajo, que sube línea por línea con una ola, al estilo de Apple Music. La letra se busca en [LRCLIB](https://lrclib.net) y, si no está, en NetEase (`letra.sh`).

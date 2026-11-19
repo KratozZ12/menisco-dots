@@ -26,7 +26,8 @@ Singleton {
         // Isla: como se abre y que avisos muestra (los avisos se ajustan en Notificaciones)
         dockMaterial: "vidrio", dockForma: "redondeada",   // vidrio | solido | ahumado | escarcha | tinte | contorno | materialyou
         islaForma: "clasica", islaFormaAbierta: "clasica",
-        reproductorForma: "redondeada", reproductorTinte: "nada", miniDockApps: [],   // botones de arriba islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
+        reproductorForma: "redondeada", reproductorTinte: "nada", miniDockApps: [],   // botones de arriba
+        islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
           // clasica | biselada | octagono | ola | liquida | recta | pildora
         islaAjustar: false, islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
         avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
@@ -111,7 +112,8 @@ Singleton {
         return JSON.parse(JSON.stringify(d));
     }
     // El perfil que coincide en todo con lo que se ve ahora (-1 si ninguno)
-    readonly property int perfilActivo: perfiles.findIndex(p => clavesPerfil.every(k => JSON.stringify(p.datos[k]) === JSON.stringify(fotoActual[k])))
+    // Claves que un perfil viejo no tiene (agregadas despues) no cuentan: si no, ninguno saldria activo.
+    readonly property int perfilActivo: perfiles.findIndex(p => clavesPerfil.every(k => !(k in p.datos) || JSON.stringify(p.datos[k]) === JSON.stringify(fotoActual[k])))
     function guardarPerfil(nombre) { poner("perfiles", perfiles.concat([{ nombre: nombre, datos: fotoActual }])); }
     function actualizarPerfil(i) { const l = perfiles.slice(); l[i] = { nombre: l[i].nombre, datos: fotoActual }; poner("perfiles", l); }
     function renombrarPerfil(i, n) { const l = perfiles.slice(); l[i] = { nombre: n, datos: l[i].datos }; poner("perfiles", l); }

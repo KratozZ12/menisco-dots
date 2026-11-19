@@ -1593,9 +1593,10 @@ PanelWindow {
                     Item { width: 1; height: 12 }
                     Boton {
                         texto: "Volver a como estaba"
+                        // lo mismo que Estilo.botones sin guardar: la estrella solo si la barra tiene boton
                         onPulsado: Estilo.ponerBotones(Estilo.barra.lado === "izquierda"
-                            ? { izquierda: ["barra", "bandeja"], derecha: ["menisco"] }
-                            : { izquierda: ["menisco"], derecha: ["bandeja", "barra"] })
+                            ? { izquierda: (Estilo.barra.boton ? ["barra"] : []).concat(["bandeja"]), derecha: ["menisco"] }
+                            : { izquierda: ["menisco"], derecha: ["bandeja"].concat(Estilo.barra.boton ? ["barra"] : []) })
                     }
                 }
                 Desplazable {
@@ -1682,7 +1683,8 @@ PanelWindow {
                                         }
                                         MouseArea {
                                             cursorShape: Qt.PointingHandCursor; id: zSugD; anchors.fill: parent; hoverEnabled: true
-                                            onClicked: { Estilo.poner("miniDockApps", paginaEsquinas.appsDock.concat([parent.modelData.id])); paginaEsquinas.agregandoApp = false; }
+                                            // al guardar, esta sugerencia desaparece (ya esta agregada) y su contexto con ella: todo antes
+                                            onClicked: { const id = parent.modelData.id, pag = paginaEsquinas; pag.agregandoApp = false; Estilo.poner("miniDockApps", pag.appsDock.concat([id])); }
                                         }
                                     }
                                 }

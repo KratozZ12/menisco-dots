@@ -4,6 +4,11 @@
   "seccion": "isla",
   "lista": [
     {
+      "icono": "notifications",
+      "titulo": "Avisos a la medida",
+      "texto": "Del tamaño de su isla, en una línea"
+    },
+    {
       "icono": "border_top",
       "titulo": "Botones nuevos arriba",
       "texto": "Mini reproductor, mini dock y más"
@@ -17,11 +22,6 @@
       "icono": "crop_square",
       "titulo": "Forma de la isla abierta",
       "texto": "Elija una distinta a la pequeña"
-    },
-    {
-      "icono": "fit_width",
-      "titulo": "Ajustar contenido",
-      "texto": "La isla se encoge a lo que muestra"
     }
   ]
 }

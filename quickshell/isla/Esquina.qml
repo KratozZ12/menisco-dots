@@ -65,6 +65,7 @@ PanelWindow {
             width: Estilo.anchoBandeja; height: 34; visible: mostrar
             // La bandeja se pone sola encima: le dice cuanto hay entre el borde y este hueco.
             Binding { target: Estilo; property: "sepBandeja"; value: esq.derecha ? esq.width - (fila.x + h.parent.x + h.width) : fila.x + h.parent.x }
+            Component.onDestruction: Estilo.sepBandeja = -1   // la bandeja se quito o cambio de esquina
         }
     }
 
@@ -81,8 +82,9 @@ PanelWindow {
     readonly property string arte: musica && modoTinte !== "nada" ? musica.trackArtUrl || "" : ""
     property string arteLocal: ""
     onArteChanged: {
-        if (!arte) arteLocal = "";
-        else if (arte.startsWith("file://")) arteLocal = arte;
+        arteLocal = "";
+        if (!arte) return;
+        if (arte.startsWith("file://")) arteLocal = arte;
         else {
             const destino = Estilo.tmp + "/menisco-arte-" + Qt.md5(arte);
             bajarArte.command = ["sh", "-c", "[ -s \"$2\" ] || curl -sfL --max-time 8 -o \"$2\" \"$1\"", "sh", arte, destino];
@@ -90,7 +92,15 @@ PanelWindow {
             bajarArte.running = true;
         }
     }
-    Process { id: bajarArte; property string destino; onExited: code => { if (code === 0) esq.arteLocal = "file://" + destino; } }
+    // Si la cancion cambio mientras bajaba, se baja la nueva (si no, quedaba la vieja o ninguna).
+    Process {
+        id: bajarArte; property string destino
+        onExited: code => {
+            const quiere = esq.arte && !esq.arte.startsWith("file://") ? Estilo.tmp + "/menisco-arte-" + Qt.md5(esq.arte) : "";
+            if (quiere && quiere !== destino) { esq.arteChanged(); return; }
+            if (code === 0 && quiere) esq.arteLocal = "file://" + destino;
+        }
+    }
     ColorQuantizer { id: cuantizador; source: esq.arteLocal; depth: 3; rescaleSize: 64 }
     property color tinte: Estilo.fondo
     readonly property color tinteNuevo: {
@@ -113,7 +123,7 @@ PanelWindow {
             visible: mostrar
             // abre: el ancho, con la curva de los paneles y sin rebote. Titulo y botones entran
             // despues, cada uno con su retraso; al cerrar se van sin esperar.
-            readonly property bool encima: zonaRp.containsMouse
+            readonly property bool encima: hoverRp.hovered   // HoverHandler: sigue "encima" aunque el cursor pase a un boton
             property real abre: encima ? 1 : 0
             Behavior on abre { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
             property real info: encima ? 1 : 0
@@ -133,7 +143,7 @@ PanelWindow {
             radius: esq.pildora ? 17 : 12
             color: Estilo.fondo
             clip: true
-            MouseArea { id: zonaRp; anchors.fill: parent; hoverEnabled: true }
+            HoverHandler { id: hoverRp }
             // Tinte de la caratula: desde ella hacia el centro, o subiendo desde abajo.
             Rectangle {
                 id: tinteRp
@@ -334,7 +344,7 @@ PanelWindow {
                 onClicked: esq.pulsar(b.clave)
                 // Volumen: la rueda sube y baja de 5 en 5 (hasta 150 %, como la tecla).
                 onWheel: w => {
-                    if (b.clave !== "volumen") return;
+                    if (b.clave !== "volumen" || w.angleDelta.y === 0) return;
                     Quickshell.execDetached(["wpctl", "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", w.angleDelta.y > 0 ? "5%+" : "5%-"]);
                 }
             }

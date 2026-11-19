@@ -102,8 +102,7 @@ PanelWindow {
     // Tamano de la forma segun lo que muestra
     readonly property var tamano: expandida ? [620, 344, 36]
         : !aviso ? [anchoPequena, 42, 20]
-        : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [420, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
-             temperatura: [390, 42, 20], temporizador: [380, 42, 20], modo: [320, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
+        : [anchoPequena, 42, 20]   // avisos: del mismo tamaño que la isla pequeña, con solo lo esencial
 
     // Ajustar contenido (Ajustes > Isla): con uno o dos widgets a la vista, van juntos al centro
     // (en el orden de sus huecos, 14 px entre ellos) y la isla mide justo eso mas 18 px por lado.
@@ -115,12 +114,12 @@ PanelWindow {
         if (tipo === "nada") return 0;
         if (tipo === "asistente") return 40;
         if (tipo === "hora" || tipo === "fecha") return hora.implicitWidth;
-        if (tipo === "visualizador") return visIsla.width;
+        if (tipo === "visualizador") return Estilo.juego ? 0 : visIsla.width;
         const m = minis.count === 3 ? minis.itemAt(lados.indexOf(lado)) : null;
         return m && m.hay ? m.width : 0;
     }
     readonly property var anchos: lados.map(l => anchoDe(l))
-    readonly property bool empacar: Estilo.valor("islaAjustar") && !derechaOcupada && anchos.filter(w => w > 0).length <= 2
+    readonly property bool empacar: Estilo.valor("islaAjustar") && !derechaOcupada && !expandida   // abierta: cada uno a su orilla && anchos.filter(w => w > 0).length <= 2
     readonly property real totalEmpacado: anchos.filter(w => w > 0).reduce((s, w, k) => s + w + (k ? 14 : 0), 0)
     readonly property real anchoPequena: empacar ? Math.max(100, Math.ceil(totalEmpacado + 36)) : 360
     // x de un widget empacado dentro de la cabecera (que mide anchoPequena).
@@ -393,8 +392,9 @@ PanelWindow {
                         readonly property string tipo: Estilo.huecos[modelData]
                         readonly property bool deDatos: ["temperatura", "cpu", "volumen", "escritorios", "caratula", "clima", "red", "ram", "micro", "bateria"].includes(tipo)
                         // Micrófono solo si esta silenciado; batería solo si hay algo conectado que la informe.
-                        readonly property bool hay: tipo === "micro" ? win.micMudo : tipo === "bateria" ? !!win.bateriaExterna
-                            : tipo === "clima" ? win.clima.temp !== "" : true
+                        // Batería solo si hay algo conectado que la informe; red y clima, cuando ya tienen dato.
+                        readonly property bool hay: tipo === "bateria" ? !!win.bateriaExterna : tipo === "clima" ? win.clima.temp !== ""
+                            : tipo === "red" ? win.red !== "" : true
                         width: contenidoMini.implicitWidth; height: 28
                         anchors.verticalCenter: parent.verticalCenter
                         x: win.empacar ? win.xEmpacado(modelData, parent.width) : modelData === "centro" ? (parent.width - width) / 2 : modelData === "izquierda" ? 18 : parent.width - 18 - width
@@ -410,13 +410,13 @@ PanelWindow {
                                 visible: ["temperatura", "cpu", "volumen", "clima", "red", "ram", "micro", "bateria"].includes(mini.tipo)
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: mini.tipo === "red" ? 15 : 17
-                                color: (mini.tipo === "temperatura" && win.temperatura >= Estilo.valor("avisoGrados")) || mini.tipo === "micro" ? Estilo.peligro : Estilo.texto2
+                                color: (mini.tipo === "temperatura" && win.temperatura >= Estilo.valor("avisoGrados")) || (mini.tipo === "micro" && win.micMudo) ? Estilo.peligro : Estilo.texto2
                                 text: ({ temperatura: "thermostat", cpu: "memory", clima: win.clima.icono, red: "arrow_downward", ram: "memory_alt",
-                                         micro: "mic_off", bateria: win.bateriaExterna ? win.bateriaExterna.icono : "battery_full" })[mini.tipo]
+                                         micro: win.micMudo ? "mic_off" : "mic", bateria: win.bateriaExterna ? win.bateriaExterna.icono : "battery_full" })[mini.tipo]
                                     ?? (win.volumenMudo ? "volume_off" : "volume_up")
                             }
                             Texto {
-                                visible: ["temperatura", "cpu", "volumen", "clima", "red", "ram", "micro", "bateria"].includes(mini.tipo)
+                                visible: ["temperatura", "cpu", "volumen", "clima", "red", "ram", "micro", "bateria"].includes(mini.tipo) && !(mini.tipo === "micro" && !win.micMudo)
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
@@ -446,7 +446,7 @@ PanelWindow {
                                 width: 28; height: 28
                                 readonly property real largo: win.musica ? win.musica.length : 0
                                 readonly property real avance: largo > 0 ? Math.min(1, win.musica.position / largo) : 0
-                                Timer { interval: 1000; repeat: true; running: miniRepro.visible; triggeredOnStart: true; onTriggered: win.musica.positionChanged() }   // pausado tambien: si no, sale 0:00
+                                Timer { interval: 1000; repeat: true; running: miniRepro.visible; triggeredOnStart: true; onTriggered: win.musica?.positionChanged() }   // pausado tambien: si no, sale 0:00
                                 Shape {
                                     anchors.fill: parent
                                     preferredRendererType: Shape.CurveRenderer
@@ -761,12 +761,12 @@ PanelWindow {
                 let rx = 0;
                 for (const l of net.trim().split("\n")) {
                     const [nombre, datos] = l.split(":");
-                    if (!datos || nombre.trim() === "lo") continue;
+                    if (!datos || /^(lo|veth|docker|br-|virbr)/.test(nombre.trim())) continue;   // sin las virtuales: contarian doble
                     rx += Number(datos.trim().split(/\s+/)[0]);
                 }
                 const ahora = Date.now();
                 if (win.redAntes) {
-                    const bps = (rx - win.redAntes[0]) / ((ahora - win.redAntes[1]) / 1000);
+                    const bps = Math.max(0, (rx - win.redAntes[0]) / ((ahora - win.redAntes[1]) / 1000));
                     win.red = bps >= 1e6 ? (bps / 1e6).toFixed(1) + " MB/s" : Math.round(bps / 1e3) + " KB/s";
                 }
                 win.redAntes = [rx, ahora];
@@ -786,12 +786,14 @@ PanelWindow {
                 if (!t || !/°/.test(t)) return;
                 const icono = { "o": "clear_day", "m": "partly_cloudy_day", "mm": "cloud", "mmm": "cloud", "=": "foggy",
                                 "/": "rainy", "//": "rainy", "///": "rainy", ".": "rainy", "x": "weather_mix",
-                                "*": "weather_snowy", "**": "weather_snowy", "*/*": "weather_snowy", "/!/": "thunderstorm", "!/": "thunderstorm" }[x] || "partly_cloudy_day";
+                                "*": "weather_snowy", "**": "weather_snowy", "*/*": "weather_snowy", "*/": "weather_snowy", "x/": "weather_mix",
+                                "/!/": "thunderstorm", "!/": "thunderstorm", "*!*": "thunderstorm" }[x] || "partly_cloudy_day";
                 win.clima = { temp: t.replace("+", "").replace("C", ""), icono: icono };
             }
         }
     }
-    Timer { interval: 1800000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("clima") !== ""; onTriggered: lecturaClima.running = true }
+    // Sin dato todavia (la red no estaba al entrar), reintenta cada minuto.
+    Timer { interval: win.clima.temp ? 1800000 : 60000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("clima") !== ""; onTriggered: lecturaClima.running = true }
 
     // Micrófono silenciado (el widget solo sale entonces).
     PwObjectTracker { objects: [Pipewire.defaultAudioSource] }
@@ -870,23 +872,46 @@ PanelWindow {
     }
 
     // ---------------- Avisos (contenido) ----------------
+    // Todos en una linea, del tamaño de la isla pequeña: icono a la izquierda, lo esencial al
+    // centro y, si cabe (isla de 300 px o mas), un dato corto a la derecha.
+    component AvisoLinea: Item {
+        id: al
+        default property alias icono: caja.data
+        property alias extra: lado.data         // algo que se queda siempre (el boton de Arreglar)
+        property string texto
+        property string textoCorto: ""          // lo que se lee en la isla pequeña (menos de 200 px)
+        readonly property bool angosta: width < 200
+        property color tinta: Estilo.texto
+        property string dato: ""
+        property color tintaDato: Estilo.texto2
+        readonly property bool conDato: dato !== "" && width >= 300
+        Item { id: caja; x: al.angosta ? 10 : 12; width: 26; height: 26; anchors.verticalCenter: parent.verticalCenter }
+        Item { id: lado; anchors { right: parent.right; rightMargin: al.angosta ? 10 : 12; verticalCenter: parent.verticalCenter } width: childrenRect.width; height: childrenRect.height }
+        Texto {
+            id: textoDato
+            visible: al.conDato
+            anchors { right: lado.left; rightMargin: lado.width > 0 ? 8 : 4; verticalCenter: parent.verticalCenter }
+            text: al.dato; color: al.tintaDato; font.pixelSize: 12
+        }
+        Texto {
+            x: caja.x + caja.width + (al.angosta ? 6 : 8)
+            width: (al.conDato ? textoDato.x - 8 : lado.x - (lado.width > 0 ? 8 : 0)) - x
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: al.angosta && al.textoCorto ? al.textoCorto : al.texto; color: al.tinta; elide: Text.ElideRight
+            font.weight: Font.DemiBold; font.pixelSize: al.angosta ? 13 : 14
+        }
+    }
+    component IconoAviso: Simbolo { anchors.centerIn: parent; font.pixelSize: 20 }
+
     Component {
         id: avMusica
-        Row {
-            anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
-            spacing: 12
+        AvisoLinea {
+            texto: capaAviso.a.titulo; dato: capaAviso.a.artista || ""
             ClippingRectangle {
-                width: 46; height: 46; radius: 10; color: Estilo.hover; anchors.verticalCenter: parent.verticalCenter
-                Image { anchors.fill: parent; source: capaAviso.a.arte || ""; fillMode: Image.PreserveAspectCrop; asynchronous: true }
+                anchors.centerIn: parent; width: 24; height: 24; radius: 7; color: Estilo.hover
+                Image { anchors.fill: parent; source: capaAviso.a.arte || ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64) }
             }
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 46 - 12 - 46 - 12
-                Texto { text: "Ahora suena"; color: Estilo.texto2; font.pixelSize: 11 }
-                Texto { width: parent.width; text: capaAviso.a.titulo; font.weight: Font.DemiBold; font.pixelSize: 14; elide: Text.ElideRight }
-                Texto { width: parent.width; text: capaAviso.a.artista || ""; color: Estilo.texto2; font.pixelSize: 12; elide: Text.ElideRight }
-            }
-            Asistente { width: 46; height: 46; emocion: "feliz"; fondoNegro: true; anchors.verticalCenter: parent.verticalCenter }
         }
     }
     // qs -p ~/.config/quickshell/isla ipc call gota_HDMI-A-1 abrir | preguntar "texto" | pestana acciones
@@ -918,12 +943,10 @@ PanelWindow {
     // Fallo detectado: la Gota confundida, que es y "Arreglar" (le pasa el problema)
     Component {
         id: avFallo
-        Item {
-            Asistente { x: 8; width: 30; height: 30; anchors.verticalCenter: parent.verticalCenter; emocion: "confuso" }
-            Texto { x: 46; width: parent.width - 46 - arreglar.width - 26; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.titulo; elide: Text.ElideRight; font.weight: Font.DemiBold }
-            Chip {
-                id: arreglar
-                anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+        AvisoLinea {
+            texto: capaAviso.a.titulo
+            Asistente { anchors.centerIn: parent; width: 26; height: 26; emocion: "confuso" }
+            extra: Chip {
                 texto: "Arreglar"; blanco: true
                 onPulsado: { const a = capaAviso.a; win.siguienteAviso(); win.conGota = true; win.fijada = true; Cerebro.arreglar(a.titulo, a.detalle); }
             }
@@ -931,108 +954,77 @@ PanelWindow {
     }
     Component {
         id: avGota
-        Item {
-            Asistente { x: 8; width: 30; height: 30; anchors.verticalCenter: parent.verticalCenter; emocion: Cerebro.emocion || "feliz" }
-            Texto { x: 46; width: parent.width - 62; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.texto; elide: Text.ElideRight; font.weight: Font.DemiBold }
+        AvisoLinea {
+            texto: capaAviso.a.texto
+            Asistente { anchors.centerIn: parent; width: 26; height: 26; emocion: Cerebro.emocion || "feliz" }
         }
     }
     Component {
         id: avBt
-        Item {
-            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "headphones"; font.pixelSize: 20 }
-            // Nombre y "conectados" centrados juntos en 240 px (el aviso mide 420: 90 libres a cada lado
-            // para el icono y la bateria). Fijo, no el ancho vivo: al encogerse la isla el nombre se recortaba.
-            Row {
-                anchors.centerIn: parent
-                spacing: 6
-                Texto { width: Math.min(implicitWidth, 240 - conectados.width - 6); text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                Texto { id: conectados; text: "conectados"; color: Estilo.texto2 }
-            }
-            Row {
-                visible: capaAviso.a.bateria >= 0
-                anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
-                spacing: 3
-                Simbolo { text: "battery_5_bar"; color: "#7ee28f"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
-                Texto { text: capaAviso.a.bateria + " %"; color: "#7ee28f"; font.pixelSize: 12 }
-            }
+        AvisoLinea {
+            texto: capaAviso.a.nombre; textoCorto: capaAviso.a.bateria >= 0 ? capaAviso.a.bateria + " %" : "Conectados"
+            dato: capaAviso.a.bateria >= 0 ? capaAviso.a.bateria + " %" : ""; tintaDato: "#7ee28f"
+            IconoAviso { text: "headphones" }
         }
     }
+    // Captura: un clic en el aviso la abre (TapHandler de "dentro").
     Component {
         id: avCaptura
-        Row {
-            anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
-            spacing: 12
+        AvisoLinea {
+            texto: "Captura guardada"; textoCorto: "Lista"; dato: "Copiada"
             ClippingRectangle {
-                width: 104; height: 62; radius: 10; color: Estilo.hover; anchors.verticalCenter: parent.verticalCenter
-                Image { anchors.fill: parent; source: "file://" + capaAviso.a.ruta; sourceSize.width: 220; fillMode: Image.PreserveAspectCrop; asynchronous: true }
-            }
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
-                Texto { text: "Captura guardada"; font.weight: Font.DemiBold; font.pixelSize: 14 }
-                Texto { text: "Copiada al portapapeles"; color: Estilo.texto2; font.pixelSize: 12 }
-                Row {
-                    topPadding: 4; spacing: 6
-                    Chip { texto: "Abrir"; blanco: true; onPulsado: { Quickshell.execDetached(["xdg-open", capaAviso.a.ruta]); win.siguienteAviso(); } }
-                    Chip { texto: "Carpeta"; onPulsado: { Quickshell.execDetached(["xdg-open", capaAviso.a.ruta.replace(/\/[^/]+$/, "")]); win.siguienteAviso(); } }
-                }
+                anchors.centerIn: parent; width: 34; height: 24; radius: 6; color: Estilo.hover
+                Image { anchors.fill: parent; source: "file://" + capaAviso.a.ruta; sourceSize.width: 96; fillMode: Image.PreserveAspectCrop; asynchronous: true }
             }
         }
     }
     Component {
         id: avTemp
-        Item {
-            Asistente { x: 8; width: 34; height: 34; emocion: "confuso"; fondoNegro: true; anchors.verticalCenter: parent.verticalCenter }
-            Row {
-                anchors.centerIn: parent; spacing: 6
-                Simbolo { text: "thermostat"; color: Estilo.peligro; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
-                Texto { text: capaAviso.a.texto; color: Estilo.peligro; font.weight: Font.DemiBold; font.pixelSize: 15 }
-            }
-            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Temperatura alta"; color: Estilo.texto2; font.pixelSize: 12 }
+        AvisoLinea {
+            texto: capaAviso.a.texto; textoCorto: (capaAviso.a.texto || "").replace(/^\S+\s/, ""); tinta: Estilo.peligro
+            IconoAviso { text: "thermostat"; color: Estilo.peligro }
         }
     }
     Component {
         id: avColor
-        Item {
-            Rectangle { x: 14; width: 22; height: 22; radius: 11; color: capaAviso.a.hex; border.color: Estilo.texto3; anchors.verticalCenter: parent.verticalCenter }
-            Texto { anchors.centerIn: parent; text: capaAviso.a.hex; font.weight: Font.DemiBold; font.pixelSize: 15; font.features: { "tnum": 1 } }
-            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Copiado"; color: Estilo.texto2; font.pixelSize: 12 }
+        AvisoLinea {
+            texto: capaAviso.a.hex; dato: "Copiado"
+            Rectangle { anchors.centerIn: parent; width: 20; height: 20; radius: 10; color: capaAviso.a.hex; border.color: Estilo.texto3 }
         }
     }
     Component {
         id: avBateria
-        Item {
-            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "battery_alert"; color: Estilo.peligro; font.pixelSize: 20 }
-            Texto { anchors.centerIn: parent; width: parent.width - 150; horizontalAlignment: Text.AlignHCenter; text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
-            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: capaAviso.a.bateria + " %"; color: Estilo.peligro; font.pixelSize: 12 }
+        AvisoLinea {
+            texto: capaAviso.a.nombre; textoCorto: capaAviso.a.bateria + " %"
+            dato: capaAviso.a.bateria + " %"; tintaDato: Estilo.peligro
+            IconoAviso { text: "battery_alert"; color: Estilo.peligro }
         }
     }
     Component {
         id: avSalida
-        Item {
-            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "volume_up"; font.pixelSize: 20 }
-            Texto { anchors.centerIn: parent; width: parent.width - 150; horizontalAlignment: Text.AlignHCenter; text: capaAviso.a.nombre; font.weight: Font.DemiBold; elide: Text.ElideRight }
-            Texto { anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter } text: "Salida"; color: Estilo.texto2; font.pixelSize: 12 }
+        AvisoLinea {
+            texto: capaAviso.a.nombre
+            IconoAviso { text: "volume_up" }
         }
     }
     // Modo del escritorio: pastilla blanca con icono negro si flota, gris si va en fila.
     Component {
         id: avModo
-        Item {
+        AvisoLinea {
+            texto: capaAviso.a.flotante ? "Flotante" : "En fila"
+            dato: capaAviso.a.numero > 0 ? "Escritorio " + capaAviso.a.numero : ""
             Rectangle {
-                x: 12; width: 28; height: 28; radius: 14; anchors.verticalCenter: parent.verticalCenter
+                anchors.centerIn: parent; width: 26; height: 26; radius: 13
                 color: capaAviso.a.flotante ? Estilo.texto : Estilo.realce
-                Simbolo { anchors.centerIn: parent; text: capaAviso.a.flotante ? "web_asset" : "view_column"; font.pixelSize: 18; color: capaAviso.a.flotante ? Estilo.fondo : Estilo.texto }
+                Simbolo { anchors.centerIn: parent; text: capaAviso.a.flotante ? "web_asset" : "view_column"; font.pixelSize: 17; color: capaAviso.a.flotante ? Estilo.fondo : Estilo.texto }
             }
-            Texto { x: 52; anchors.verticalCenter: parent.verticalCenter; text: capaAviso.a.flotante ? "Flotante" : "En fila"; font.weight: Font.DemiBold; font.pixelSize: 15 }
-            Texto { anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter } visible: capaAviso.a.numero > 0; text: "Escritorio " + capaAviso.a.numero; color: Estilo.texto2; font.pixelSize: 12 }
         }
     }
     Component {
         id: avTimer
-        Item {
-            Simbolo { x: 16; anchors.verticalCenter: parent.verticalCenter; text: "alarm"; color: "#ff9f0a"; font.pixelSize: 20 }
-            Texto { anchors.centerIn: parent; text: "Temporizador terminado"; color: "#ff9f0a"; font.weight: Font.DemiBold; font.pixelSize: 14 }
+        AvisoLinea {
+            texto: "Temporizador terminado"; textoCorto: "Listo"; tinta: "#ff9f0a"
+            IconoAviso { text: "alarm"; color: "#ff9f0a" }
         }
     }
 

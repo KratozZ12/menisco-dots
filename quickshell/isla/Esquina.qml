@@ -24,7 +24,11 @@ PanelWindow {
     // La ventana empieza en la esquina de la pantalla (sin margenes: niri no aplica un margen
     // que cambia antes de mostrarse) y los botones van dentro, a 10 px del borde.
     readonly property bool conMarco: Estilo.grosorMarco > 0 && !raiz.modoJuego
-    implicitWidth: conMarco ? oreja.width : fila.width + 10
+    // Mientras el mini reproductor se estira o se encoge, la ventana ya mide lo que medira abierto
+    // (extraRepro = lo que le falta): cambia de tamaño al empezar y al terminar, no en cada cuadro.
+    property real extraRepro: 0
+    readonly property real anchoFila: fila.width + extraRepro
+    implicitWidth: conMarco ? anchoFila + 20 + oreja.s : anchoFila + 10
     implicitHeight: conMarco ? oreja.height : 38
     mask: Region { item: fila }
     exclusionMode: ExclusionMode.Ignore                 // la isla ya reserva esta franja
@@ -36,7 +40,9 @@ PanelWindow {
         id: oreja
         visible: esq.conMarco
         espejo: esq.derecha
+        x: esq.derecha ? esq.width - width : 0      // pegada a su borde aunque la ventana mida mas
         ancho: fila.width + 20
+        animar: esq.extraRepro === 0
     }
 
     Row {
@@ -45,11 +51,15 @@ PanelWindow {
         y: 4 + Estilo.grosorMarco
         spacing: 8
         Repeater {
+            id: repBotones
             model: esq.lista
             delegate: Loader {
                 required property string modelData
                 sourceComponent: modelData === "bandeja" ? hueco : modelData === "reproductor" ? reproductor : modelData === "minidock" ? miniDock : boton
                 property string clave: modelData
+                // Medida del Loader = la implicita de lo cargado. Sin esto el Loader crecia con el mini
+                // reproductor pero no se encogia al cerrarse (y empujaba lo de al lado).
+                width: item ? item.implicitWidth : 0; height: 34
                 // no item.visible: hereda el del Loader y, una vez apagado, no vuelve a encenderse
                 visible: !item || item.mostrar === undefined || item.mostrar
             }
@@ -62,9 +72,25 @@ PanelWindow {
         Item {
             id: h
             readonly property bool mostrar: width > 0
-            width: Estilo.anchoBandeja; height: 34; visible: mostrar
+            implicitWidth: Estilo.anchoBandeja; width: implicitWidth; height: 34; visible: mostrar
             // La bandeja se pone sola encima: le dice cuanto hay entre el borde y este hueco.
-            Binding { target: Estilo; property: "sepBandeja"; value: esq.derecha ? esq.width - (fila.x + h.parent.x + h.width) : fila.x + h.parent.x }
+            // Se cuenta con los anchos, no con posiciones (la Row las acomoda tarde y la bandeja quedaba
+            // donde no era). El mini reproductor cuenta ya su ancho final mientras se anima: la bandeja
+            // se aparta una vez al empezar a abrirse y vuelve una vez al terminar de cerrarse.
+            Binding {
+                target: Estilo; property: "sepBandeja"
+                value: {
+                    const idx = esq.lista.indexOf("bandeja");
+                    let x = 10;
+                    for (let i = 0; i < esq.lista.length; i++) {
+                        if (esq.derecha ? i <= idx : i >= idx) continue;
+                        const l = repBotones.count > i ? repBotones.itemAt(i) : null;
+                        if (!l || !l.visible || !l.item) continue;
+                        x += (l.item.anchoFinal ?? l.item.implicitWidth) + 8;
+                    }
+                    return x;
+                }
+            }
             Component.onDestruction: Estilo.sepBandeja = -1   // la bandeja se quito o cambio de esquina
         }
     }
@@ -139,7 +165,11 @@ PanelWindow {
                 PauseAnimation { duration: rp.encima ? Estilo.t(170) : 0 }
                 NumberAnimation { duration: Estilo.t(rp.encima ? 320 : 140); easing.type: rp.encima ? Easing.OutBack : Easing.OutCubic; easing.overshoot: Estilo.o(2) } } }
             readonly property real anchoInfo: Math.min(140, Math.max(tituloRp.implicitWidth, artistaRp.implicitWidth))
-            width: 64 + abre * (anchoInfo + 9 + 12 + 56); height: 34
+            readonly property real anchoAbierto: 64 + anchoInfo + 9 + 12 + 56
+            readonly property real anchoFinal: abre > 0 ? anchoAbierto : 64   // lo que medira al terminar (o ya mide)
+            implicitWidth: 64 + abre * (anchoAbierto - 64); width: implicitWidth; height: 34
+            Binding { target: esq; property: "extraRepro"; value: rp.abre > 0 && rp.visible ? rp.anchoAbierto - rp.width : 0 }
+            Component.onDestruction: esq.extraRepro = 0
             radius: esq.pildora ? 17 : 12
             color: Estilo.fondo
             clip: true
@@ -200,7 +230,7 @@ PanelWindow {
         Rectangle {
             readonly property bool mostrar: esq.appsDock.length > 0
             visible: mostrar
-            width: filaDock.width + 10; height: 34; radius: esq.pildora ? 17 : 12
+            implicitWidth: filaDock.width + 10; width: implicitWidth; height: 34; radius: esq.pildora ? 17 : 12
             color: Estilo.fondo
             Row {
                 id: filaDock
@@ -256,7 +286,7 @@ PanelWindow {
                 : clave === "vista" ? Estilo.vistaGeneral : false
             // Grabando, el boton se estira para mostrar el tiempo.
             readonly property bool grabando: clave === "grabar" && esq.raiz.grabando
-            width: grabando ? tiempoGrab.implicitWidth + 32 : 34; height: 34; radius: 12
+            implicitWidth: grabando ? tiempoGrab.implicitWidth + 32 : 34; width: implicitWidth; height: 34; radius: 12
             Behavior on width { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
             color: encendido ? Estilo.activo : zona.containsMouse ? Estilo.realce : Estilo.fondo
             Behavior on color { ColorAnimation { duration: Estilo.t(220) } }

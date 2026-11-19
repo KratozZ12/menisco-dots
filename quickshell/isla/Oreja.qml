@@ -7,7 +7,8 @@ import QtQuick.Shapes
 Shape {
     id: oreja
     property real ancho                          // desde el borde de la pantalla
-    Behavior on ancho { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+    property bool animar: true                   // apagado: sigue al contenido cuadro a cuadro (mini reproductor)
+    Behavior on ancho { enabled: oreja.animar; NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
     property bool espejo: false
     readonly property real g: Estilo.grosorMarco
     readonly property real alto: g + 42          // lo mismo que la isla cerrada

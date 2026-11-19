@@ -161,7 +161,7 @@ PanelWindow {
         readonly property var ajusteV: Estilo.ajusteForma(vieja)
         readonly property var ajusteN: Estilo.ajusteForma(nueva)
         // el contenido baja lo que pida la forma (la pildora lo centra en su capsula); abierta, nada
-        readonly property string abierta: Estilo.valor("islaFormaAbierta") || "clasica"
+        readonly property string abierta: ["clasica", "recta", "octagono"].includes(Estilo.valor("islaFormaAbierta")) ? Estilo.valor("islaFormaAbierta") : "clasica"
         readonly property var ajusteA: Estilo.ajusteForma(abierta)
         readonly property real bajada: (ajusteV[1] + (ajusteN[1] - ajusteV[1]) * cambio) * (1 - aClasica) + ajusteA[1] * aClasica
         readonly property string trazo: {
@@ -213,39 +213,53 @@ PanelWindow {
                 }
             }
 
-            // ---------- Tinte de la caratula (pestana Musica) ----------
-            // Degradado del color principal del disco desde la izquierda; se apaga en las otras pestanas.
-            Rectangle {
+            // Tinte y fondo van recortados con la forma de la isla (mascara con el mismo trazo),
+            // asi la imagen sigue cualquier forma, no un rectangulo redondeado.
+            Item {
+                id: mascaraForma
                 anchors.fill: parent
-                bottomLeftRadius: forma.esquina; bottomRightRadius: forma.esquina
-                opacity: win.expandida && win.pestana === "musica" && win.musica && Estilo.valor("musicaTinte") ? 1 : 0
-                visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(400) } }
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: win.tinte }
-                    GradientStop { position: 0.45; color: Qt.rgba(win.tinte.r, win.tinte.g, win.tinte.b, 0.45) }
-                    GradientStop { position: 0.85; color: Qt.rgba(win.tinte.r, win.tinte.g, win.tinte.b, 0) }
+                visible: false
+                layer.enabled: true
+                Shape {
+                    x: -forma.x0; y: -forma.bajada; width: forma.width; height: forma.height
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath { fillColor: "white"; strokeWidth: -1; PathSvg { path: forma.trazo } }
                 }
             }
-
-            // ---------- Imagen de fondo (pestana Acciones, Ajustes > Isla) ----------
-            // Arriba se ve la imagen y hacia abajo se funde con el fondo, para que todo se lea.
             Item {
-                id: fondoAcciones
                 anchors.fill: parent
-                readonly property string ruta: Estilo.valor("islaImagen")
-                opacity: win.expandida && win.pestana === "acciones" && ruta ? 1 : 0
-                visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(400); easing.type: Easing.OutCubic } }
-                // arriba no hay esquinas (la isla sale del borde): el recorte sube fuera de la vista
-                ClippingRectangle {
-                    anchors { fill: parent; topMargin: -forma.esquina }
-                    radius: forma.esquina
-                    color: "transparent"
+                visible: tinteMusica.opacity > 0.01 || fondoAcciones.opacity > 0.01   // no .visible: hereda el de este Item y nunca se encenderia
+                layer.enabled: visible
+                layer.effect: MultiEffect { maskEnabled: true; maskSource: mascaraForma; maskThresholdMin: 0.5; maskSpreadAtMin: 1 }
+
+                // ---------- Tinte de la caratula (pestana Musica) ----------
+                // Degradado del color principal del disco desde la izquierda; se apaga en las otras pestanas.
+                Rectangle {
+                    id: tinteMusica
+                    anchors.fill: parent
+                    opacity: win.expandida && win.pestana === "musica" && win.musica && Estilo.valor("musicaTinte") ? 1 : 0
+                    visible: opacity > 0.01
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(400) } }
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: win.tinte }
+                        GradientStop { position: 0.45; color: Qt.rgba(win.tinte.r, win.tinte.g, win.tinte.b, 0.45) }
+                        GradientStop { position: 0.85; color: Qt.rgba(win.tinte.r, win.tinte.g, win.tinte.b, 0) }
+                    }
+                }
+
+                // ---------- Imagen de fondo (pestana Acciones, Ajustes > Isla) ----------
+                // Arriba se ve la imagen y hacia abajo se funde con el fondo, para que todo se lea.
+                Item {
+                    id: fondoAcciones
+                    anchors.fill: parent
+                    readonly property string ruta: Estilo.valor("islaImagen")
+                    opacity: win.expandida && win.pestana === "acciones" && ruta ? 1 : 0
+                    visible: opacity > 0.01
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(400); easing.type: Easing.OutCubic } }
                     Image {
                         anchors.fill: parent
-                        source: fondoAcciones.ruta ? "file://" + fondoAcciones.ruta : ""   // (dentro de ClippingRectangle, parent no es el Item de afuera)
+                        source: fondoAcciones.ruta ? "file://" + fondoAcciones.ruta : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         sourceSize.width: 1280

@@ -270,7 +270,8 @@ tokens {
                     [x0 - ux * j, h - uy * j], [x0 - ux * j * 0.4, h - uy * j * 0.4], [x0 + j * 0.4, h], [x0 + j, h]];
         }
         case "octagono": {          // lados rectos y las esquinas de abajo cortadas
-            const c = 12;
+            // el corte crece con el alto: 12 en la isla pequena, ~28 en la vista grande
+            const c = Math.max(12, Math.min(28, h * 0.08));
             return [[x0, 0], [x0, 0.3], [x0, 0.6], [x0, 1], [x0, h - c], [x0 + c * 0.33, h - c * 0.67], [x0 + c * 0.67, h - c * 0.33], [x0 + c, h]];
         }
         case "ola": {               // una sola curva desde el borde de arriba hasta el fondo

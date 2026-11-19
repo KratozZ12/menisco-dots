@@ -27,7 +27,7 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 Diez temas oscuros, que se eligen en **Ajustes > Apariencia > Color**: Ónix, Champán, Medianoche, Rubí, Jade, Fósforo (terminal ámbar), Aurora, Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema.
 
 ### La isla
-Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la de la vista grande, que se elige aparte en **Ajustes > Isla > Isla abierta** (de fábrica, Clásica).
+Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la de la vista grande, que se elige aparte en **Ajustes > Isla > Isla abierta**: Clásica (de fábrica), Recta u Octágono. La imagen de fondo y el tinte de la música siguen la forma elegida.
 
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).

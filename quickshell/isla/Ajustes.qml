@@ -2235,9 +2235,11 @@ PanelWindow {
         id: formas
         property string clave
         readonly property real altoIsla: clave === "islaFormaAbierta" ? 30 : 20
+    // La vista grande solo admite estas tres (las demas no le quedaban a un panel tan alto).
+    readonly property var lista: clave === "islaFormaAbierta" ? Estilo.formasIsla.filter(f => ["clasica", "recta", "octagono"].includes(f[0])) : Estilo.formasIsla
         width: parent.width; spacing: 8
         Repeater {
-            model: Estilo.formasIsla
+            model: formas.lista
             delegate: Rectangle {
                 id: muestraForma
                 required property var modelData

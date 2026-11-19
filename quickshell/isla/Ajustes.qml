@@ -868,11 +868,12 @@ PanelWindow {
                             preferredRendererType: Shape.CurveRenderer
                             ShapePath {
                                 fillColor: Estilo.fondo; strokeWidth: -1
-                                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(Estilo.valor("islaForma"), (previaIsla.width - 300) / 2 - Estilo.ajusteForma(Estilo.valor("islaForma"))[0], 38, 18, 16), previaIsla.width / 2) }
+                                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(Estilo.valor("islaForma"), (previaIsla.width - filaHuecos.width - 24) / 2 - Estilo.ajusteForma(Estilo.valor("islaForma"))[0], 38, 18, 16), previaIsla.width / 2) }
                             }
                         }
                         // Tres huecos: se pulsa uno y abajo se elige que muestra.
                         Row {
+                            id: filaHuecos
                             anchors.horizontalCenter: parent.horizontalCenter
                             y: 4; spacing: 4
                             Repeater {
@@ -882,7 +883,10 @@ PanelWindow {
                                     required property string modelData
                                     readonly property string tipo: Estilo.huecos[modelData]
                                     readonly property bool elegido: paginaIsla.huecoElegido === modelData
-                                    width: modelData === "centro" ? 120 : 82; height: 30; radius: 10
+                                    // Con Ajustar contenido los vacios se achican (siguen ahi para poder elegirlos)
+                                    // y la forma de atras se encoge con ellos, como la isla de verdad.
+                                    width: tipo === "nada" && Estilo.valor("islaAjustar") ? 34 : modelData === "centro" ? 120 : 82; height: 30; radius: 10
+                                    Behavior on width { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
                                     color: zonaHueco.containsMouse && !elegido ? Estilo.realce : Estilo.nada
                                     border.width: elegido ? 1.5 : 1
                                     border.color: elegido ? Estilo.acento : Qt.alpha(Estilo.texto, 0.18)

@@ -13,7 +13,13 @@ Un escritorio para **niri** hecho a mano con **Quickshell**: una isla dinámica 
 
 Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que agrega *liquid glass*, es decir, refracción real en los bordes del vidrio.
 
----
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/tarjeta-niri-oscuro.svg"><img alt="" src="assets/readme/tarjeta-niri-claro.svg" width="270"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/tarjeta-temas-oscuro.svg"><img alt="" src="assets/readme/tarjeta-temas-claro.svg" width="270"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/tarjeta-personalizacion-oscuro.svg"><img alt="" src="assets/readme/tarjeta-personalizacion-claro.svg" width="270"></picture>
+</p>
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-con-logo-oscuro.svg"><img alt="" src="assets/readme/readme-separador-con-logo-claro.svg" width="100%"></picture></p>
 
 ## Qué trae
 
@@ -139,7 +145,7 @@ Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config
 ### Aviso de volumen
 Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. Aparece al cambiar el volumen y se va sola.
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Requisitos
 
@@ -163,7 +169,7 @@ Cápsula pequeña sobre el dock que se llena de líquido con el borde ondulado. 
 
 > **Sobre SF Pro:** es de Apple, se descarga gratis en [developer.apple.com/fonts](https://developer.apple.com/fonts/), pero su licencia solo permite usarla para diseñar apps para dispositivos de Apple. Este repo **no** la incluye. Si no la instala, Qt usará otra fuente; Inter Display es un buen sustituto (cambie `"SF Pro Text"` en los `.qml`).
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Instalación
 
@@ -189,7 +195,7 @@ Compila niri 26.04 con los archivos de [TattvaOrg/Lniri](https://github.com/Tatt
 
 > El *liquid glass* solo se ve detrás de lo que es transparente: el dock, terminales con transparencia y otras piezas de Quickshell. Las ventanas opacas lo tapan.
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Atajos
 
@@ -209,7 +215,7 @@ Compila niri 26.04 con los archivos de [TattvaOrg/Lniri](https://github.com/Tatt
 
 El resto son los atajos de fábrica de niri.
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Cosas que conviene saber
 
@@ -225,7 +231,7 @@ El resto son los atajos de fábrica de niri.
 - **Quickshell a la frecuencia del monitor:** niri lo lanza con `QSG_RENDER_LOOP=threaded`; sin eso, Qt anima a 60 fps aunque el monitor vaya a 144.
 - **El fondo de awww vive en el *backdrop* de niri:** por eso el fondo de los espacios de trabajo es transparente en la configuración.
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Créditos
 
@@ -234,8 +240,12 @@ El resto son los atajos de fábrica de niri.
 - [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [LRCLIB](https://lrclib.net).
 - Iconos: Material Symbols (Google) y WhiteSur.
 
----
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 
 ## Licencia
 
 [MIT](LICENSE). Lniri (que `lniri/compilar.sh` descarga y compila) tiene su propia licencia, GPL-3.0.
+
+<br>
+
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-encabezado-oscuro.svg"><img alt="" src="assets/readme/readme-encabezado-claro.svg" width="480"></picture></p>

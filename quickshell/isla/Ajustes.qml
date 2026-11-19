@@ -324,7 +324,7 @@ PanelWindow {
                 { id: "vidrio", texto: "Liquid glass", icono: "water_drop" },
                 { id: "isla", texto: "Isla", icono: "pill" },
                 { id: "dock", texto: "Dock", icono: "dock_to_bottom" },
-                { id: "esquinas", texto: "Botones", icono: "border_top" },
+                { id: "esquinas", texto: "Botones", icono: "crop_free" },
                 { id: "barra", texto: "Barra lateral", icono: "view_sidebar" },
                 { id: "notificaciones", texto: "Notificaciones", icono: "notifications" },
                 { id: "asistente", texto: "Asistente", icono: "smart_toy" },

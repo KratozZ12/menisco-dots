@@ -48,12 +48,21 @@ Singleton {
         agregar("yo", texto);
         const envio = (nota ? nota + "\n" : "") + texto;
         nota = "";
-        estado = "pensando"; paso = ""; textoParcial = ""; inicio = Date.now();
+        estado = "pensando"; paso = ""; textoParcial = ""; inicio = Date.now(); reintentos = 0;
         proceso.environment = sesion ? { GOTA_SESION: sesion } : {};
         proceso.command = [dir + "/gota.sh", envio];
         proceso.running = true;
     }
-    function detener() { if (proceso.running) proceso.signal(15); }
+    // El modelo gratuito a veces responde "Unexpected server error" o se satura: se reintenta
+    // solo, hasta dos veces, antes de mostrar el fallo.
+    property int reintentos: 0
+    Timer { id: reintentar; interval: 2500; onTriggered: { cerebro.textoParcial = ""; proceso.running = true; } }
+    function detener() {
+        if (reintentar.running) {   // parada en la espera del reintento: no hay proceso que avise
+            reintentar.stop(); paso = ""; estado = "error"; fin = Date.now(); agregar("gota", "Me detuve."); termino("");
+        }
+        if (proceso.running) proceso.signal(15);
+    }
     function nueva() {
         detener();
         mensajes = []; plan = null; sesion = ""; nota = ""; paso = ""; estado = "libre"; puedeDeshacer = false;
@@ -90,6 +99,11 @@ Singleton {
         onExited: (codigo, estadoSalida) => {
             const t = cerebro.textoParcial;
             cerebro.paso = "";
+            if (codigo !== 143 && cerebro.reintentos < 2 && (t.startsWith("__error__") || (!t && codigo !== 0))
+                && /server error|overloaded|rate limit|timeout|ECONNRESET|503|502|429/i.test(t)) {
+                cerebro.reintentos++; cerebro.paso = "Reintentando"; reintentar.restart();
+                return;
+            }
             if (t.startsWith("__error__") || (!t && codigo !== 0)) {
                 cerebro.estado = "error"; cerebro.fin = Date.now();
                 cerebro.agregar("gota", codigo === 143 ? "Me detuve." : "No pude contestar: " + (t.slice(9).split("\n")[0].slice(0, 120) || "OpenCode falló."));

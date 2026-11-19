@@ -13,10 +13,14 @@ PanelWindow {
     required property var raiz
     property bool abierta: false
     property var info: ({ lista: [] })
+    // 0 = solo el logo, 1 = mas el titulo, 2 = todo
+    property int etapa: 0
+    signal olaLetras()
+    signal entraResto()
     readonly property var c: Estilo.temas.onix
 
     function abrir() { monitor.running = true; }
-    function reiniciar() { torres.hI = 44; torres.oI = 0.35; torres.hD = 44; torres.oD = 0.35; torres.hC = 40; torres.oC = 0.6; textos.opacity = 0; subir.y = 6; }
+    function reiniciar() { torres.hI = 44; torres.oI = 0.35; torres.hD = 44; torres.oD = 0.35; torres.hC = 40; torres.oC = 0.6; etiquetaFecha.opacity = 0; etapa = 0; }
     function cerrar() { abierta = false; Estilo.poner("novedadesVista", info.version); }
 
     visible: abierta || caja.opacity > 0.01
@@ -71,7 +75,13 @@ PanelWindow {
     Rectangle {
         id: caja
         anchors.centerIn: parent
-        width: 360; height: columna.implicitHeight + 48
+        width: nov.etapa === 0 ? 200 : 360
+        height: nov.etapa === 0 ? torres.y + torres.height + 26 + columna.y
+              : nov.etapa === 1 ? textos.y + textos.height + 26 + columna.y
+              : columna.y + columna.implicitHeight + 24
+        Behavior on width { NumberAnimation { duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+        Behavior on height { NumberAnimation { duration: 420; easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+        clip: true
         radius: 22
         color: nov.c.fondo
         border.width: 1; border.color: nov.c.borde
@@ -81,9 +91,35 @@ PanelWindow {
         Behavior on scale { NumberAnimation { duration: Estilo.t(nov.abierta ? 420 : 160); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
         MouseArea { anchors.fill: parent }
 
+        // Marca de Menisco arriba a la izquierda, como en la barra lateral de Ajustes
+        FontLoader { id: letraMarca; source: Qt.resolvedUrl("fuentes/Archivo-ExpandedBlack.ttf") }
+        Row {
+            x: 18; y: 16; spacing: 6
+            Shape {
+                width: 53 * 0.27; height: 44 * 0.27
+                anchors.verticalCenter: marca.verticalCenter
+                preferredRendererType: Shape.CurveRenderer
+                transform: Scale { xScale: 0.27; yScale: 0.27 }
+                ShapePath {
+                    strokeWidth: -1; fillColor: Qt.alpha(nov.c.texto2, 0.45)
+                    PathSvg { path: "M0 16Q7.5 21.25 15 16V39A5 5 0 0 1 10 44H5A5 5 0 0 1 0 39ZM38 16Q45.5 21.25 53 16V39A5 5 0 0 1 48 44H43A5 5 0 0 1 38 39Z" }
+                }
+                ShapePath {
+                    strokeWidth: -1; fillColor: nov.c.texto2
+                    PathSvg { path: "M19 0Q26.5 5.25 34 0V39A5 5 0 0 1 29 44H24A5 5 0 0 1 19 39Z" }
+                }
+            }
+            Text {
+                id: marca
+                text: "MENISCO"; color: nov.c.texto2
+                font { family: letraMarca.name; pixelSize: 11; weight: Font.Black; letterSpacing: 0.4 }
+            }
+        }
+
+        // Ancho fijo y centrado: con la caja angosta, lo de los lados queda recortado.
         Column {
             id: columna
-            x: 24; y: 24; width: parent.width - 48
+            width: 312; x: (parent.width - width) / 2; y: 44
             spacing: 6
 
             // Las tres torres del logo (lienzo de 100x100 de assets/menisco-logo-white.svg,
@@ -114,10 +150,36 @@ PanelWindow {
             Column {
                 id: textos
                 width: parent.width; spacing: 6
-                opacity: 0
-                transform: Translate { id: subir; y: 6 }
-                Texto { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "Menisco se actualizó"; font.pixelSize: 17; font.weight: Font.DemiBold }
+                // Letra por letra: cada una sube, se pasa un poco y vuelve a su sitio.
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    Repeater {
+                        model: "Menisco se actualizó".split("")
+                        delegate: Texto {
+                            id: letra
+                            required property string modelData
+                            required property int index
+                            text: modelData; font.pixelSize: 17; font.weight: Font.DemiBold
+                            opacity: 0
+                            transform: Translate { id: alza; y: 0 }
+                            Connections { target: nov; function onOlaLetras() { ola.restart(); } }
+                            Connections { target: nov; function onEtapaChanged() { if (nov.etapa === 0) { ola.stop(); letra.opacity = 0; alza.y = 0; } } }
+                            SequentialAnimation {
+                                id: ola
+                                PauseAnimation { duration: letra.index * 35 }
+                                ParallelAnimation {
+                                    NumberAnimation { target: alza; property: "y"; to: -9; duration: 170; easing.type: Easing.OutCubic }
+                                    NumberAnimation { target: letra; property: "opacity"; to: 1; duration: 140 }
+                                }
+                                NumberAnimation { target: alza; property: "y"; to: 0; duration: 320; easing.type: Easing.OutBack; easing.overshoot: 2.4 }
+                            }
+                        }
+                    }
+                }
                 Rectangle {
+                    id: etiquetaFecha
+                    opacity: 0
+                    Behavior on opacity { NumberAnimation { duration: 260 } }
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: etiqueta.implicitWidth + 20; height: 20; radius: 10
                     color: nov.c.tarjeta; border.width: 1; border.color: nov.c.borde
@@ -128,9 +190,12 @@ PanelWindow {
             Repeater {
                 model: nov.info.lista
                 delegate: Rectangle {
+                    id: fila
                     required property var modelData
+                    required property int index
                     width: columna.width; height: 52; radius: 14
                     color: nov.c.tarjeta
+                    Entrada { objetivo: fila; retraso: fila.index * 80 }
                     Rectangle {
                         x: 12; anchors.verticalCenter: parent.verticalCenter
                         width: 32; height: 32; radius: 10
@@ -152,7 +217,9 @@ PanelWindow {
             }
             Item { width: 1; height: 12 }
             Row {
+                id: botones
                 width: parent.width; spacing: 10
+                Entrada { objetivo: botones; retraso: nov.info.lista.length * 80 + 60 }
                 Boton { texto: "Ver en Ajustes"; onPulsado: { nov.cerrar(); nov.raiz.abrirAjustesEn(nov.info.seccion || "inicio"); } }
                 Boton { texto: "Entendido"; tecla: "Enter"; principal: true; onPulsado: nov.cerrar() }
             }
@@ -184,8 +251,7 @@ PanelWindow {
         ParallelAnimation {
             NumberAnimation { target: torres; property: "hC"; to: 28; duration: 1040; easing.type: Easing.OutElastic; easing.amplitude: 1; easing.period: 0.37 }
             NumberAnimation { target: torres; property: "oC"; to: 1; duration: 200 }
-            NumberAnimation { target: textos; property: "opacity"; to: 1; duration: 300 }
-            NumberAnimation { target: subir; property: "y"; to: 0; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.32, 0.72, 0, 1, 1, 1] }
+            SequentialAnimation { PauseAnimation { duration: 600 } ScriptAction { script: nov.etapa = 1 } }
             SequentialAnimation {
                 ParallelAnimation { Sube { blanco: "I"; h: 49; o: 0.4; duracion: 120 } Sube { blanco: "D"; h: 49; o: 0.4; duracion: 120 } }
                 ParallelAnimation {
@@ -194,6 +260,34 @@ PanelWindow {
                     NumberAnimation { target: torres; property: "oI"; to: 0.45; duration: 300 }
                     NumberAnimation { target: torres; property: "oD"; to: 0.45; duration: 300 }
                 }
+            }
+        }
+        // el titulo letra por letra, despues la fecha, y al final se abre todo lo de abajo
+        ScriptAction { script: nov.olaLetras() }
+        PauseAnimation { duration: 19 * 35 + 380 }
+        ScriptAction { script: etiquetaFecha.opacity = 1 }
+        PauseAnimation { duration: 180 }
+        ScriptAction { script: nov.etapa = 2 }
+        PauseAnimation { duration: 160 }
+        ScriptAction { script: nov.entraResto() }
+    }
+
+    // Aparece subiendo un poco, con retraso para que entren en cascada. Escondido en las etapas 0 y 1.
+    component Entrada: Item {
+        id: entrada
+        visible: false   // que Row y Column no le den hueco
+        required property Item objetivo
+        property int retraso: 0
+        Component.onCompleted: { objetivo.opacity = 0; objetivo.transform = [mover]; }
+        Translate { id: mover; y: 12 }
+        Connections { target: nov; function onEntraResto() { anim.restart(); } }
+        Connections { target: nov; function onEtapaChanged() { if (nov.etapa === 0) { anim.stop(); entrada.objetivo.opacity = 0; mover.y = 12; } } }
+        SequentialAnimation {
+            id: anim
+            PauseAnimation { duration: entrada.retraso }
+            ParallelAnimation {
+                NumberAnimation { target: entrada.objetivo; property: "opacity"; to: 1; duration: 220 }
+                NumberAnimation { target: mover; property: "y"; to: 0; duration: 420; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
             }
         }
     }

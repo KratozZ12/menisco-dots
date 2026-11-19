@@ -369,11 +369,14 @@ PanelWindow {
                         id: mini
                         required property string modelData
                         readonly property string tipo: Estilo.huecos[modelData]
-                        readonly property bool deDatos: ["temperatura", "cpu", "volumen", "escritorios", "caratula"].includes(tipo)
+                        readonly property bool deDatos: ["temperatura", "cpu", "volumen", "escritorios", "caratula", "clima", "red", "ram", "micro", "bateria"].includes(tipo)
+                        // Micrófono solo si esta silenciado; batería solo si hay algo conectado que la informe.
+                        readonly property bool hay: tipo === "micro" ? win.micMudo : tipo === "bateria" ? !!win.bateriaExterna
+                            : tipo === "clima" ? win.clima.temp !== "" : true
                         width: contenidoMini.implicitWidth; height: 28
                         anchors.verticalCenter: parent.verticalCenter
                         x: modelData === "centro" || win.centrarSolo ? (parent.width - width) / 2 : modelData === "izquierda" ? 18 : parent.width - 18 - width
-                        opacity: deDatos && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
+                        opacity: deDatos && hay && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
                         visible: opacity > 0.01
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
                         Row {
@@ -382,20 +385,24 @@ PanelWindow {
                             spacing: 5
                             // Icono + numero: temperatura, CPU, volumen
                             Simbolo {
-                                visible: ["temperatura", "cpu", "volumen"].includes(mini.tipo)
+                                visible: ["temperatura", "cpu", "volumen", "clima", "red", "ram", "micro", "bateria"].includes(mini.tipo)
                                 anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: 17
-                                color: mini.tipo === "temperatura" && win.temperatura >= Estilo.valor("avisoGrados") ? Estilo.peligro : Estilo.texto2
-                                text: mini.tipo === "temperatura" ? "thermostat" : mini.tipo === "cpu" ? "memory"
-                                    : win.volumenMudo ? "volume_off" : "volume_up"
+                                font.pixelSize: mini.tipo === "red" ? 15 : 17
+                                color: (mini.tipo === "temperatura" && win.temperatura >= Estilo.valor("avisoGrados")) || mini.tipo === "micro" ? Estilo.peligro : Estilo.texto2
+                                text: ({ temperatura: "thermostat", cpu: "memory", clima: win.clima.icono, red: "arrow_downward", ram: "memory_alt",
+                                         micro: "mic_off", bateria: win.bateriaExterna ? win.bateriaExterna.icono : "battery_full" })[mini.tipo]
+                                    ?? (win.volumenMudo ? "volume_off" : "volume_up")
                             }
                             Texto {
-                                visible: ["temperatura", "cpu", "volumen"].includes(mini.tipo)
+                                visible: ["temperatura", "cpu", "volumen", "clima", "red", "ram", "micro", "bateria"].includes(mini.tipo)
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
                                 font.features: { "tnum": 1 }
-                                text: mini.tipo === "temperatura" ? win.temperatura + "°" : mini.tipo === "cpu" ? win.usoCpu + "%" : win.volumen
+                                color: mini.tipo === "micro" ? Estilo.peligro : Estilo.texto
+                                text: ({ temperatura: win.temperatura + "°", cpu: win.usoCpu + "%", clima: win.clima.temp, red: win.red,
+                                         ram: win.usoRam + "%", micro: "Mudo", bateria: win.bateriaExterna ? win.bateriaExterna.pct + "%" : "" })[mini.tipo]
+                                    ?? win.volumen
                             }
                             // Escritorios de este monitor: el activo es una pastilla, los demas puntos
                             Repeater {
@@ -409,20 +416,47 @@ PanelWindow {
                                     Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
                                 }
                             }
-                            // Caratula de lo que suena (sin disco: la nota)
-                            ClippingRectangle {
+                            // Mini reproductor: caratula redonda, anillo de avance y el tiempo que va.
+                            Item {
+                                id: miniRepro
                                 visible: mini.tipo === "caratula" && !!win.musica
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 24; height: 24; radius: 7
-                                color: Estilo.hover
-                                Simbolo { anchors.centerIn: parent; text: "music_note"; font.pixelSize: 15; color: Estilo.texto2; visible: !portada.source.toString() }
-                                Image {
-                                    id: portada
+                                width: 28; height: 28
+                                readonly property real largo: win.musica ? win.musica.length : 0
+                                readonly property real avance: largo > 0 ? Math.min(1, win.musica.position / largo) : 0
+                                Timer { interval: 1000; repeat: true; running: miniRepro.visible; triggeredOnStart: true; onTriggered: win.musica.positionChanged()   // pausado tambien: si no, sale 0:00 }
+                                Shape {
                                     anchors.fill: parent
-                                    source: mini.tipo === "caratula" && win.musica ? win.musica.trackArtUrl || "" : ""
-                                    fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64)
-                                    opacity: win.musica && win.musica.isPlaying ? 1 : 0.5
+                                    preferredRendererType: Shape.CurveRenderer
+                                    ShapePath {   // pista
+                                        strokeColor: Estilo.hover; strokeWidth: 2; fillColor: "transparent"
+                                        PathAngleArc { centerX: 14; centerY: 14; radiusX: 13; radiusY: 13; startAngle: 0; sweepAngle: 360 }
+                                    }
+                                    ShapePath {   // lo que va
+                                        strokeColor: Estilo.texto; strokeWidth: 2; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                                        PathAngleArc { centerX: 14; centerY: 14; radiusX: 13; radiusY: 13; startAngle: -90; sweepAngle: 360 * miniRepro.avance }
+                                    }
                                 }
+                                ClippingRectangle {
+                                    anchors.centerIn: parent
+                                    width: 20; height: 20; radius: 10
+                                    color: Estilo.hover
+                                    Simbolo { anchors.centerIn: parent; text: "music_note"; font.pixelSize: 13; color: Estilo.texto2; visible: !portada.source.toString() }
+                                    Image {
+                                        id: portada
+                                        anchors.fill: parent
+                                        source: mini.tipo === "caratula" && win.musica ? win.musica.trackArtUrl || "" : ""
+                                        fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64)
+                                        opacity: win.musica && win.musica.isPlaying ? 1 : 0.5
+                                    }
+                                }
+                            }
+                            Texto {
+                                visible: miniRepro.visible
+                                anchors.verticalCenter: parent.verticalCenter
+                                font.pixelSize: 13; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
+                                color: win.musica && win.musica.isPlaying ? Estilo.texto : Estilo.texto2
+                                text: win.musica ? win.mmss(win.musica.position).replace(/^0(?=\d:)/, "") : ""
                             }
                         }
                     }
@@ -689,6 +723,68 @@ PanelWindow {
         }
     }
     Timer { interval: 2000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("cpu") !== ""; onTriggered: lecturaCpu.running = true }
+
+    // RAM en uso y velocidad de descarga: cada 2 s, solo si algun hueco los muestra.
+    property int usoRam: 0
+    property string red: ""
+    property var redAntes: null
+    Process {
+        id: lecturaRamRed
+        command: ["sh", "-c", "grep -E '^(MemTotal|MemAvailable):' /proc/meminfo; echo ---; tail -n +3 /proc/net/dev"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const [mem, net] = text.split("---");
+                const kb = k => Number((mem.match(new RegExp(k + ":\\s+(\\d+)")) || [0, 0])[1]);
+                if (kb("MemTotal") > 0) win.usoRam = Math.round(100 * (1 - kb("MemAvailable") / kb("MemTotal")));
+                let rx = 0;
+                for (const l of net.trim().split("\n")) {
+                    const [nombre, datos] = l.split(":");
+                    if (!datos || nombre.trim() === "lo") continue;
+                    rx += Number(datos.trim().split(/\s+/)[0]);
+                }
+                const ahora = Date.now();
+                if (win.redAntes) {
+                    const bps = (rx - win.redAntes[0]) / ((ahora - win.redAntes[1]) / 1000);
+                    win.red = bps >= 1e6 ? (bps / 1e6).toFixed(1) + " MB/s" : Math.round(bps / 1e3) + " KB/s";
+                }
+                win.redAntes = [rx, ahora];
+            }
+        }
+    }
+    Timer { interval: 2000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("ram") !== "" || Estilo.ladoDe("red") !== ""; onTriggered: lecturaRamRed.running = true }
+
+    // Clima de afuera (wttr.in ubica por la IP): cada 30 min, solo si algun hueco lo muestra.
+    property var clima: ({ temp: "", icono: "partly_cloudy_day" })
+    Process {
+        id: lecturaClima
+        command: ["curl", "-sf", "--max-time", "10", "https://wttr.in/?format=%t|%x&m"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const [t, x] = text.trim().split("|");
+                if (!t || !/°/.test(t)) return;
+                const icono = { "o": "clear_day", "m": "partly_cloudy_day", "mm": "cloud", "mmm": "cloud", "=": "foggy",
+                                "/": "rainy", "//": "rainy", "///": "rainy", ".": "rainy", "x": "weather_mix",
+                                "*": "weather_snowy", "**": "weather_snowy", "*/*": "weather_snowy", "/!/": "thunderstorm", "!/": "thunderstorm" }[x] || "partly_cloudy_day";
+                win.clima = { temp: t.replace("+", "").replace("C", ""), icono: icono };
+            }
+        }
+    }
+    Timer { interval: 1800000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("clima") !== ""; onTriggered: lecturaClima.running = true }
+
+    // Micrófono silenciado (el widget solo sale entonces).
+    PwObjectTracker { objects: [Pipewire.defaultAudioSource] }
+    readonly property bool micMudo: !!Pipewire.defaultAudioSource?.audio?.muted
+    // Bateria de lo conectado por Bluetooth (audifonos) o de un mando/raton que UPower vea.
+    readonly property var bateriaExterna: {
+        for (const d of Bluetooth.devices.values)
+            if (d.connected && d.batteryAvailable)
+                return { pct: Math.round(d.battery * 100), icono: /audio|head/.test(d.icon) ? "headphones" : /game|joy/.test(d.icon) ? "sports_esports" : "bluetooth" };
+        for (const d of UPower.devices.values) {
+            if (d.isLaptopBattery || !d.isPresent || d.percentage <= 0) continue;
+            return { pct: Math.round(d.percentage > 1 ? d.percentage : d.percentage * 100), icono: /game|joy/i.test(d.model) ? "sports_esports" : "mouse" };
+        }
+        return null;
+    }
 
     Process {
         id: temperaturas

@@ -865,7 +865,9 @@ PanelWindow {
                 // [clave, nombre, icono]
                 readonly property var catalogo: [["asistente", "Asistente", "face"], ["hora", "Hora", "schedule"], ["fecha", "Fecha y hora", "calendar_today"],
                     ["visualizador", "Visualizador", "graphic_eq"], ["temperatura", "Temperatura", "thermostat"], ["cpu", "Uso de CPU", "memory"],
-                    ["volumen", "Volumen", "volume_up"], ["escritorios", "Escritorios", "view_week"], ["caratula", "Carátula", "music_note"], ["nada", "Nada", "block"]]
+                    ["volumen", "Volumen", "volume_up"], ["escritorios", "Escritorios", "view_week"], ["caratula", "Reproductor", "play_circle"],
+                    ["clima", "Clima", "partly_cloudy_day"], ["red", "Red", "arrow_downward"], ["ram", "RAM", "memory_alt"],
+                    ["micro", "Micrófono", "mic_off"], ["bateria", "Batería", "headphones"], ["nada", "Nada", "block"]]
                 Desplazable {
 
                     Encabezado { text: "Isla pequeña" }
@@ -963,7 +965,12 @@ PanelWindow {
                                 Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
                                 scale: zonaPieza.pressed ? 0.95 : 1
                                 Behavior on scale { NumberAnimation { duration: Estilo.t(zonaPieza.pressed ? 80 : 340); easing.type: zonaPieza.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-                                Simbolo { x: 12; y: 11; text: pieza.modelData[2]; font.pixelSize: 20; color: pieza.puesto ? Estilo.iconoActivo : Estilo.texto }
+                                Simbolo { visible: pieza.modelData[0] !== "asistente"; x: 12; y: 11; text: pieza.modelData[2]; font.pixelSize: 20; color: pieza.puesto ? Estilo.iconoActivo : Estilo.texto }
+                                Rectangle {   // asistente: como el de la isla, circulo oscuro con dos ojos
+                                    visible: pieza.modelData[0] === "asistente"
+                                    x: 12; y: 10; width: 22; height: 22; radius: 11; color: pieza.puesto ? "#000" : Estilo.hover
+                                    Row { anchors.centerIn: parent; spacing: 4; Repeater { model: 2; Rectangle { width: 3; height: 8; radius: 2; color: "#fff" } } }
+                                }
                                 Texto {
                                     x: 12; y: 38; width: parent.width - 20; elide: Text.ElideRight
                                     text: pieza.modelData[1]; font.pixelSize: 12; font.weight: Font.DemiBold

@@ -4,6 +4,11 @@
   "seccion": "isla",
   "lista": [
     {
+      "icono": "widgets",
+      "titulo": "Widgets nuevos en la isla",
+      "texto": "Reproductor, clima, red, RAM y más"
+    },
+    {
       "icono": "fit_width",
       "titulo": "Ajustar contenido",
       "texto": "La isla se encoge a lo que muestra"
@@ -17,11 +22,6 @@
       "icono": "pill",
       "titulo": "Huecos de la isla",
       "texto": "Hora, fecha, CPU o carátula"
-    },
-    {
-      "icono": "palette",
-      "titulo": "Perfiles de apariencia",
-      "texto": "Todo el estilo en un clic"
     }
   ]
 }

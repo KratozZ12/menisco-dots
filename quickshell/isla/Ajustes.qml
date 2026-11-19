@@ -923,6 +923,7 @@ PanelWindow {
                     Texto {
                         text: "Pulse un hueco y elija qué muestra. Si ya estaba en otro hueco, se cambian de lugar."
                         color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
+                        topPadding: 4; bottomPadding: 6
                     }
                     Grid {
                         width: parent.width; columns: 5; spacing: 8

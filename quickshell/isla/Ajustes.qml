@@ -959,6 +959,7 @@ PanelWindow {
                             }
                         }
                     }
+                    Encabezado { text: "Tamaño" }
                     Grupo {
                         Interruptor { titulo: "Ajustar contenido"; sub: "Con uno o dos huecos ocupados, la isla se encoge a su medida"; encendido: Estilo.valor("islaAjustar"); onCambiar: v => Estilo.poner("islaAjustar", v) }
                     }

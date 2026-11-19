@@ -223,7 +223,7 @@ PanelWindow {
         MouseArea { id: zonaBm; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bm.pulsado() }
     }
 
-    // ---- Mini dock: las apps que se eligen en Ajustes > Botones (ids de .desktop), con un punto si estan abiertas ----
+    // ---- Mini dock: lanzadores de las apps que se eligen en Ajustes > Botones (ids de .desktop) ----
     readonly property var appsDock: Estilo.valor("miniDockApps") || []
     Component {
         id: miniDock
@@ -242,29 +242,18 @@ PanelWindow {
                         id: app
                         required property string modelData
                         readonly property var entrada: DesktopEntries.applications.values.find(e => e.id === modelData) ?? null
-                        readonly property var ventanas: ToplevelManager.toplevels.values.filter(t => t.appId === modelData
-                            || (DesktopEntries.heuristicLookup(t.appId) || {}).id === modelData)
-                        width: 26; height: 30
+                        width: 26; height: 26
                         IconImage {
-                            anchors.horizontalCenter: parent.horizontalCenter; y: 2
+                            anchors.centerIn: parent
                             implicitSize: 22
                             source: Quickshell.iconPath(app.entrada ? app.entrada.icon : app.modelData, "application-x-executable")
                             scale: zonaApp.pressed ? 0.85 : zonaApp.containsMouse ? 1.12 : 1
                             Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
                         }
-                        Rectangle {   // abierta
-                            visible: app.ventanas.length > 0
-                            anchors.horizontalCenter: parent.horizontalCenter; y: 26
-                            width: 4; height: 3; radius: 1.5; color: Estilo.texto2
-                        }
                         MouseArea {
                             id: zonaApp
                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            // ponytail: con varias ventanas de la misma app va a la primera sin enfocar
-                            onClicked: {
-                                if (app.ventanas.length > 0) (app.ventanas.find(t => !t.activated) ?? app.ventanas[0]).activate();
-                                else if (app.entrada) app.entrada.execute();
-                            }
+                            onClicked: if (app.entrada) app.entrada.execute()   // solo lanza: no sigue ventanas abiertas
                         }
                     }
                 }

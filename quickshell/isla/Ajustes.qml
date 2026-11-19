@@ -920,15 +920,8 @@ PanelWindow {
                                         anchors.centerIn: parent; spacing: 3
                                         Repeater { model: [6, 11, 16, 11, 6]; Rectangle { required property int modelData; width: 3; height: modelData; radius: 1.5; color: "#fff"; anchors.verticalCenter: parent.verticalCenter } }
                                     }
-                                    Texto {       // reloj (con fecha solo en el centro)
-                                        visible: hueco.tipo === "hora" || hueco.tipo === "fecha"
-                                        anchors.centerIn: parent
-                                        text: (hueco.tipo === "fecha" ? Qt.locale("es_MX").toString(reloj.date, "ddd d").replace(/\./g, "") + " · " : "")
-                                            + Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm" : "H:mm")
-                                        font.pixelSize: hueco.tipo === "fecha" ? 22 : 26; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
-                                    }
                                     Simbolo {     // el resto: su icono
-                                        visible: !["asistente", "visualizador", "hora", "fecha"].includes(hueco.tipo)
+                                        visible: !["asistente", "visualizador"].includes(hueco.tipo)
                                         font.pixelSize: 34
                                         anchors.centerIn: parent
                                         text: (paginaIsla.catalogo.find(c => c[0] === hueco.tipo) || ["", "", "block"])[2]

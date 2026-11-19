@@ -27,7 +27,7 @@ Singleton {
         dockMaterial: "vidrio", dockForma: "redondeada",   // vidrio | solido | ahumado | escarcha | tinte | contorno | materialyou
         islaForma: "clasica", islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
           // clasica | biselada | octagono | ola | liquida | recta | pildora
-        islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
+        islaAjustar: false, islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
         avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
         avisoGrados: 80, avisoDuracion: "normal",                          // corta | normal | larga
         avisoBateria: true, avisoSalida: false, avisoFallos: true,

@@ -1,10 +1,27 @@
 {
-  "version": "2026-11-18",
-  "fecha": "18 nov",
-  "seccion": "esquinas",
+  "version": "2026-11-19",
+  "fecha": "19 nov",
+  "seccion": "isla",
   "lista": [
-    { "icono": "border_top", "titulo": "Botones de las esquinas", "texto": "Elija y ordene los de arriba" },
-    { "icono": "pill", "titulo": "Huecos de la isla", "texto": "Hora, fecha, CPU o carátula" },
-    { "icono": "palette", "titulo": "Perfiles de apariencia", "texto": "Todo el estilo en un clic" }
+    {
+      "icono": "fit_width",
+      "titulo": "Ajustar contenido",
+      "texto": "La isla se encoge a lo que muestra"
+    },
+    {
+      "icono": "border_top",
+      "titulo": "Botones de las esquinas",
+      "texto": "Elija y ordene los de arriba"
+    },
+    {
+      "icono": "pill",
+      "titulo": "Huecos de la isla",
+      "texto": "Hora, fecha, CPU o carátula"
+    },
+    {
+      "icono": "palette",
+      "titulo": "Perfiles de apariencia",
+      "texto": "Todo el estilo en un clic"
+    }
   ]
 }

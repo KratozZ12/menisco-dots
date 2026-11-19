@@ -32,7 +32,7 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).
 - **Visualizador de audio** a la derecha: 5 barras redondeadas que siguen el sonido real (con [cava](https://github.com/karlstav/cava)). En silencio se convierten en una línea ondulada suave. Si hay una grabación o un temporizador en marcha, ahí sale su tiempo.
-- **Huecos:** la isla pequeña tiene tres (izquierda, centro y derecha) y en **Ajustes > Isla > Isla pequeña** se elige qué va en cada uno: hora, hora con fecha, asistente, temperatura, uso de CPU, volumen, puntos de escritorios o la carátula de la canción. Lo de arriba es lo que trae de fábrica.
+- **Huecos:** la isla pequeña tiene tres (izquierda, centro y derecha) y en **Ajustes > Isla > Isla pequeña** se elige qué va en cada uno: hora, hora con fecha, asistente, temperatura, uso de CPU, volumen, puntos de escritorios o la carátula de la canción. Lo de arriba es lo que trae de fábrica. Con **Ajustar contenido** encendido y solo uno o dos huecos ocupados, la isla se encoge al ancho justo de lo que muestra (uno solo queda al centro).
 
 **Avisos.** La isla crece unos segundos y vuelve sola cuando:
 - empieza una canción nueva (carátula y título);

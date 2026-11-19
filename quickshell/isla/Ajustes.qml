@@ -955,6 +955,9 @@ PanelWindow {
                             }
                         }
                     }
+                    Grupo {
+                        Interruptor { titulo: "Ajustar contenido"; sub: "Con uno o dos huecos ocupados, la isla se encoge a su medida"; encendido: Estilo.valor("islaAjustar"); onCambiar: v => Estilo.poner("islaAjustar", v) }
+                    }
                     Encabezado { text: "Forma" }
                     // Una muestra por forma, dibujada con las mismas cuentas que la isla.
                     Flow {

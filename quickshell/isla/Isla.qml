@@ -105,33 +105,29 @@ PanelWindow {
         : ({ gota: [440, 42, 20], fallo: [420, 42, 20], musica: [430, 74, 26], bt: [420, 42, 20], color: [330, 42, 20], captura: [410, 94, 28],
              temperatura: [390, 42, 20], temporizador: [380, 42, 20], modo: [320, 42, 20], bateria: [390, 42, 20], salida: [400, 42, 20] })[aviso.tipo] || [360, 42, 20]
 
-    // Ajustar contenido (Ajustes > Isla): con uno o dos huecos ocupados, el ancho justo para lo que
-    // hay. Cada lado pide su distancia al borde (margen + ancho) y el centro su ancho; con algo al
-    // centro y algo a un lado, la isla tiene que dejar 24 px entre los dos a cada lado del centro.
+    // Ajustar contenido (Ajustes > Isla): con uno o dos widgets a la vista, van juntos al centro
+    // (en el orden de sus huecos, 14 px entre ellos) y la isla mide justo eso mas 18 px por lado.
+    // Los que no se ven (microfono sin silenciar, bateria sin nada conectado) no cuentan.
     // ponytail: con grabacion o temporizador a la derecha vuelve a 360 en vez de medir esa fila.
-    // Uno solo, este donde este, va al centro (si no, un asistente a la izquierda quedaba ladeado).
-    readonly property bool centrarSolo: Estilo.valor("islaAjustar") && !derechaOcupada
-        && ["izquierda", "centro", "derecha"].filter(k => Estilo.huecos[k] !== "nada").length === 1
-    readonly property real anchoPequena: {
-        if (!Estilo.valor("islaAjustar") || derechaOcupada) return 360;
-        const h = Estilo.huecos;
-        const medir = lado => {
-            const tipo = h[lado];
-            if (tipo === "nada") return -1;
-            if (tipo === "asistente") return lado === "centro" || centrarSolo ? 40 : 46;
-            const w = tipo === "hora" || tipo === "fecha" ? hora.implicitWidth
-                : tipo === "visualizador" ? visIsla.width
-                : (minis.count === 3 ? minis.itemAt(["izquierda", "centro", "derecha"].indexOf(lado)).width : 0);
-            return lado === "centro" || centrarSolo ? w : 18 + w;
-        };
-        const iz = medir("izquierda"), ce = medir("centro"), de = medir("derecha");
-        const usados = [iz, ce, de].filter(v => v >= 0);
-        if (usados.length === 0 || usados.length === 3) return 360;
-        let ancho = 0;
-        if (centrarSolo) ancho = Math.max(iz, ce, de) + 36;
-        else if (ce >= 0) ancho = Math.max(ce + 36, 2 * (Math.max(iz, de, 0) + (iz >= 0 || de >= 0 ? 24 : 0)) + ce);
-        else ancho = (iz >= 0 ? iz : 0) + (de >= 0 ? de : 0) + (usados.length === 2 ? 24 : 18);
-        return Math.min(360, Math.max(100, Math.ceil(ancho)));
+    readonly property var lados: ["izquierda", "centro", "derecha"]
+    function anchoDe(lado) {
+        const tipo = Estilo.huecos[lado];
+        if (tipo === "nada") return 0;
+        if (tipo === "asistente") return 40;
+        if (tipo === "hora" || tipo === "fecha") return hora.implicitWidth;
+        if (tipo === "visualizador") return visIsla.width;
+        const m = minis.count === 3 ? minis.itemAt(lados.indexOf(lado)) : null;
+        return m && m.hay ? m.width : 0;
+    }
+    readonly property var anchos: lados.map(l => anchoDe(l))
+    readonly property bool empacar: Estilo.valor("islaAjustar") && !derechaOcupada && anchos.filter(w => w > 0).length <= 2
+    readonly property real totalEmpacado: anchos.filter(w => w > 0).reduce((s, w, k) => s + w + (k ? 14 : 0), 0)
+    readonly property real anchoPequena: empacar ? Math.max(100, Math.ceil(totalEmpacado + 36)) : 360
+    // x de un widget empacado dentro de la cabecera (que mide anchoPequena).
+    function xEmpacado(lado, ancho) {
+        let x = (ancho - totalEmpacado) / 2;
+        for (let k = 0; k < lados.indexOf(lado); k++) if (anchos[k] > 0) x += anchos[k] + 14;
+        return x;
     }
 
     // ---------------- Forma ----------------
@@ -280,7 +276,7 @@ PanelWindow {
                         : win.raiz.emocion === "normal" && Estilo.valor("reaccionMusica") && Mpris.players.values.some(p => p.isPlaying) ? "feliz" : win.raiz.emocion
                     readonly property string lado: Estilo.ladoDe("asistente")
                     visible: lado !== "" && !(lado === "derecha" && win.derechaOcupada)
-                    x: lado === "centro" || win.centrarSolo ? (parent.width - 40) / 2 : lado === "derecha" ? parent.width - 46 : 6
+                    x: win.empacar ? win.xEmpacado(lado, parent.width) : lado === "centro" ? (parent.width - 40) / 2 : lado === "derecha" ? parent.width - 46 : 6
                     ritmo: ({ tranquilo: 1.8, normal: 1, inquieto: 0.5 })[Estilo.valor("personalidad")] ?? 1
                     fondoNegro: true
                     readonly property bool fuera: (win.raiz.lanzadorAbierto && Estilo.valor("succion")) || win.expandida
@@ -346,7 +342,7 @@ PanelWindow {
                     readonly property string lado: Estilo.ladoDe("hora")
                     readonly property bool conFecha: !win.expandida && Estilo.huecos.centro === "fecha"
                     anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: win.expandida ? -9 : win.centrarSolo ? 0
+                    anchors.horizontalCenterOffset: win.expandida ? -9 : win.empacar ? win.xEmpacado(lado, parent.width) + implicitWidth / 2 - parent.width / 2
                         : lado === "izquierda" ? -(parent.width / 2 - 18 - implicitWidth / 2)
                         : lado === "derecha" ? parent.width / 2 - 18 - implicitWidth / 2 : 0
                     Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: Estilo.t(200) } }
@@ -375,7 +371,7 @@ PanelWindow {
                             : tipo === "clima" ? win.clima.temp !== "" : true
                         width: contenidoMini.implicitWidth; height: 28
                         anchors.verticalCenter: parent.verticalCenter
-                        x: modelData === "centro" || win.centrarSolo ? (parent.width - width) / 2 : modelData === "izquierda" ? 18 : parent.width - 18 - width
+                        x: win.empacar ? win.xEmpacado(modelData, parent.width) : modelData === "centro" ? (parent.width - width) / 2 : modelData === "izquierda" ? 18 : parent.width - 18 - width
                         opacity: deDatos && hay && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
                         visible: opacity > 0.01
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
@@ -424,7 +420,7 @@ PanelWindow {
                                 width: 28; height: 28
                                 readonly property real largo: win.musica ? win.musica.length : 0
                                 readonly property real avance: largo > 0 ? Math.min(1, win.musica.position / largo) : 0
-                                Timer { interval: 1000; repeat: true; running: miniRepro.visible; triggeredOnStart: true; onTriggered: win.musica.positionChanged()   // pausado tambien: si no, sale 0:00 }
+                                Timer { interval: 1000; repeat: true; running: miniRepro.visible; triggeredOnStart: true; onTriggered: win.musica.positionChanged() }   // pausado tambien: si no, sale 0:00
                                 Shape {
                                     anchors.fill: parent
                                     preferredRendererType: Shape.CurveRenderer
@@ -496,7 +492,7 @@ PanelWindow {
                     visible: opacity > 0.01 && lado !== "" && !Estilo.juego && !(lado === "derecha" && win.derechaOcupada)
                     opacity: win.expandida && ((win.pestana === "musica" && Estilo.valor("ocultarVisualizador")) || lado === "centro") ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
-                    x: lado === "centro" || win.centrarSolo ? (parent.width - width) / 2 : lado === "izquierda" ? 18 : parent.width - 18 - width
+                    x: win.empacar ? win.xEmpacado(lado, parent.width) : lado === "centro" ? (parent.width - width) / 2 : lado === "izquierda" ? 18 : parent.width - 18 - width
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }

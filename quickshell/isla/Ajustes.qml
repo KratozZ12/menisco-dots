@@ -101,6 +101,7 @@ PanelWindow {
         if (!fila) return;
         let f = fila.parent;
         while (f && f.contentY === undefined) f = f.parent;
+        if (f && f.conPestanas) f.parent.parte = f.parte;
         if (f) {
             const y = fila.mapToItem(f.contentItem, 0, 0).y;
             f.contentY = Math.max(0, Math.min(y - 60, f.contentHeight - f.height));
@@ -435,6 +436,7 @@ PanelWindow {
                 id: paginaApariencia
                 anchors.fill: parent
                 clave: "apariencia"; activa: ventana.seccion === clave
+                partes: ["Perfiles", "Color y texto"]
                 // Perfil en edicion (nombre) y el que muestra sus acciones (clic derecho)
                 property int perfilRenombrando: -1
                 property int perfilMenu: -1
@@ -582,6 +584,9 @@ PanelWindow {
                             }
                         }
                     }
+                }
+                Desplazable {
+                    parte: 1
                     Encabezado { text: "Color" }
                     // Una muestra por tema, pintada con sus propios colores; al tocarla cambia todo Menisco.
                     Grid {
@@ -678,6 +683,7 @@ PanelWindow {
             Pagina {
                 anchors.fill: parent
                 clave: "dock"; activa: ventana.seccion === clave
+                partes: ["Material", "Posición y forma"]
                 Desplazable {
                     Encabezado { text: "Vista previa" }
                     MuestraDock {
@@ -704,6 +710,9 @@ PanelWindow {
                             delegate: TarjetaMaterial { width: (parent.width - 20) / 3 }
                         }
                     }
+                }
+                Desplazable {
+                    parte: 1
                     Encabezado { text: "Posición" }
                     Grupo {
                         Segmentos {
@@ -851,6 +860,7 @@ PanelWindow {
                 id: paginaIsla
                 anchors.fill: parent
                 clave: "isla"; activa: ventana.seccion === clave
+                partes: ["Isla pequeña", "Isla abierta"]
                 property string huecoElegido: "izquierda"
                 // [clave, nombre, icono]
                 readonly property var catalogo: [["asistente", "Asistente", "face"], ["hora", "Hora", "schedule"], ["fecha", "Fecha y hora", "calendar_today"],
@@ -1019,6 +1029,9 @@ PanelWindow {
                         Segmentos { titulo: "Reloj"; opciones: ["24 horas", "12 horas"]; claves: [false, true]; elegida: Estilo.valor("reloj12"); onElegir: c => Estilo.poner("reloj12", c) }
                         Interruptor { titulo: "Segundos en el reloj"; encendido: Estilo.valor("segundos"); onCambiar: v => Estilo.poner("segundos", v) }
                     }
+                }
+                Desplazable {
+                    parte: 1
                     Encabezado { text: "Al abrirse" }
                     Grupo {
                         Interruptor { titulo: "Abrir al pasar el cursor"; sub: "Si se apaga, solo se abre con un clic"; encendido: Estilo.valor("islaCursor"); onCambiar: v => Estilo.poner("islaCursor", v) }
@@ -1088,6 +1101,7 @@ PanelWindow {
                 id: paginaNotif
                 anchors.fill: parent
                 clave: "notificaciones"; activa: ventana.seccion === clave
+                partes: ["Avisos", "Hokum"]
                 onActivaChanged: if (activa) leerHokum.running = true
 
                 property var hokum: ({ posicion: "top-right", dura: "6", maximo: 5, apps: [] })
@@ -1233,6 +1247,9 @@ PanelWindow {
                         Segmentos { titulo: "Al reanudar la misma canción"; opciones: ["No avisar", "Avisar"]; claves: [false, true]; elegida: Estilo.valor("musicaReanudar"); onElegir: c => Estilo.poner("musicaReanudar", c) }
                     }
 
+                }
+                Desplazable {
+                    parte: 1
                     Encabezado { text: "Hokum (notificaciones de apps)" }
                     Grupo {
                         Segmentos { titulo: "Posición"; opciones: ["Izquierda", "Centro", "Derecha"]; claves: ["left", "center", "right"]; elegida: paginaNotif.lado; onElegir: c => paginaNotif.ponerPosicion(paginaNotif.alto, c) }
@@ -1337,6 +1354,7 @@ PanelWindow {
                 id: paginaBot
                 anchors.fill: parent
                 clave: "asistente"; activa: ventana.seccion === clave
+                partes: ["Gotas", "Personalidad"]
                 property string prueba: "feliz"     // emocion de la vista previa (solo se ve aqui)
                 Desplazable {
                     Encabezado { text: "Tus gotas"; topPadding: 14 }
@@ -1419,6 +1437,9 @@ PanelWindow {
                             }
                         }
                     }
+                }
+                Desplazable {
+                    parte: 1
                     Encabezado { text: "Identidad" }
                     Grupo {
                         Campo {
@@ -2242,7 +2263,14 @@ PanelWindow {
     }
     component Desplazable: Flickable {
         default property alias contenido: columna.data
+        // En paginas con pestanas (Pagina.partes) cada Desplazable es una subpagina.
+        property int parte: 0
+        readonly property bool conPestanas: !!parent && !!parent.partes && parent.partes.length > 0
         anchors.fill: parent
+        anchors.topMargin: conPestanas ? 50 : 0
+        opacity: !conPestanas || parent.parte === parte ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Estilo.t(200); easing.type: Easing.OutCubic } }
         contentHeight: columna.implicitHeight + 8
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -2593,6 +2621,39 @@ PanelWindow {
         id: pagina
         property string clave
         property bool activa
+        property var partes: []     // nombres de las subpaginas; vacio = sin pestanas
+        property int parte: 0
+        // Pestanas arriba: misma pastilla que Segmentos, pero a todo el ancho.
+        Rectangle {
+            visible: pagina.partes.length > 0
+            width: parent.width; height: 36; radius: 11; color: Estilo.hundido
+            z: 2
+            Rectangle {
+                readonly property real ancho: (parent.width - 6) / Math.max(1, pagina.partes.length)
+                x: 3 + pagina.parte * ancho; y: 3; width: ancho; height: 30; radius: 8
+                color: Estilo.activo; border.width: 1; border.color: Estilo.activoBorde
+                Behavior on x { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+            }
+            Row {
+                x: 3; y: 3
+                Repeater {
+                    model: pagina.partes
+                    delegate: Item {
+                        required property string modelData
+                        required property int index
+                        width: (pagina.width - 6) / pagina.partes.length; height: 30
+                        Texto {
+                            anchors.centerIn: parent
+                            text: modelData; font.pixelSize: 13
+                            font.weight: pagina.parte === index ? Font.DemiBold : Font.Normal
+                            color: pagina.parte === index ? Estilo.enActivo : zPestana.containsMouse ? Estilo.texto : Estilo.texto2
+                            Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
+                        }
+                        MouseArea { id: zPestana; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pagina.parte = index }
+                    }
+                }
+            }
+        }
         opacity: activa ? 1 : 0
         visible: opacity > 0.01
         enabled: activa

@@ -132,7 +132,7 @@ A la altura de la isla, en las dos esquinas de arriba. En **Ajustes > Botones** 
 Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi, Bluetooth, No molestar, Modo café y más), volumen, música, calendario y energía, con páginas propias para Bluetooth, Wi-Fi y sonido. También se abre con el botón de estrella de la esquina o acercando el cursor al borde.
 
 ### Ajustes (`Super+.`)
-Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar).
+Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar). Las páginas largas (Apariencia, Isla, Dock, Notificaciones y Asistente) se parten en dos pestañas arriba, para no tener que bajar tanto.
 - **Inicio:** buscador que lleva a cualquier ajuste y lo ilumina; fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
 - También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
 - **Apariencia:** **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tema de color, velocidad y rebote de las animaciones, tipografía, esquinas, espacio entre ventanas.

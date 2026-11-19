@@ -4,6 +4,11 @@
   "seccion": "isla",
   "lista": [
     {
+      "icono": "border_top",
+      "titulo": "Botones nuevos arriba",
+      "texto": "Mini reproductor, mini dock y más"
+    },
+    {
       "icono": "widgets",
       "titulo": "Widgets nuevos en la isla",
       "texto": "Reproductor, clima, red, RAM y más"
@@ -17,11 +22,6 @@
       "icono": "fit_width",
       "titulo": "Ajustar contenido",
       "texto": "La isla se encoge a lo que muestra"
-    },
-    {
-      "icono": "border_top",
-      "titulo": "Botones de las esquinas",
-      "texto": "Elija y ordene los de arriba"
     }
   ]
 }

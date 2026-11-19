@@ -2,6 +2,10 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
+import Quickshell.Widgets
+import Quickshell.Services.Mpris
+import Quickshell.Services.Pipewire
 
 // Botones de una esquina de arriba, a la altura de la isla (Ajustes > Esquinas).
 // La lista va de izquierda a derecha tal como se ve; "bandeja" deja el hueco donde se
@@ -44,14 +48,134 @@ PanelWindow {
             model: esq.lista
             delegate: Loader {
                 required property string modelData
-                sourceComponent: modelData === "bandeja" ? hueco : boton
+                sourceComponent: modelData === "bandeja" ? hueco : modelData === "reproductor" ? reproductor : modelData === "minidock" ? miniDock : boton
                 property string clave: modelData
+                visible: !item || item.visible
             }
         }
     }
 
     // Hueco de la bandeja: la pildora es otra ventana, encima.
-    Component { id: hueco; Item { width: Estilo.anchoBandeja; height: 34; visible: width > 0 } }
+    Component {
+        id: hueco
+        Item {
+            id: h
+            width: Estilo.anchoBandeja; height: 34; visible: width > 0
+            // La bandeja se pone sola encima: le dice cuanto hay entre el borde y este hueco.
+            Binding { target: Estilo; property: "sepBandeja"; value: esq.derecha ? esq.width - (fila.x + h.parent.x + h.width) : fila.x + h.parent.x }
+        }
+    }
+
+    // ---- Audio: microfono y volumen ----
+    PwObjectTracker { objects: [Pipewire.defaultAudioSource, Pipewire.defaultAudioSink] }
+    readonly property bool micMudo: !!Pipewire.defaultAudioSource?.audio?.muted
+    readonly property bool volMudo: !!Pipewire.defaultAudioSink?.audio?.muted
+
+    // ---- Mini reproductor: carátula y pausa; con el cursor encima, título y controles ----
+    readonly property var musica: Mpris.players.values.find(p => p.isPlaying) ?? Mpris.players.values[0] ?? null
+    Component {
+        id: reproductor
+        Rectangle {
+            id: rp
+            visible: !!esq.musica
+            readonly property bool abierto: zonaRp.containsMouse
+            width: filaRp.width + 10; height: 34; radius: 12
+            color: Estilo.fondo
+            clip: true
+            Behavior on width { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+            MouseArea { id: zonaRp; anchors.fill: parent; hoverEnabled: true }
+            Row {
+                id: filaRp
+                x: 5; anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+                ClippingRectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24; height: 24; radius: 7; color: Estilo.hover
+                    Text { anchors.centerIn: parent; text: "music_note"; font { family: "Material Symbols Rounded"; pixelSize: 15 } color: Estilo.texto2; visible: !arteRp.source.toString() }
+                    Image { id: arteRp; anchors.fill: parent; source: esq.musica ? esq.musica.trackArtUrl || "" : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64) }
+                }
+                Column {
+                    visible: rp.abierto
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(140, Math.max(tituloRp.implicitWidth, artistaRp.implicitWidth))
+                    Text { id: tituloRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackTitle : ""; color: Estilo.texto; font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold } }
+                    Text { id: artistaRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackArtist : ""; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 11 } }
+                }
+                BotonMini { visible: rp.abierto; icono: "skip_previous"; onPulsado: if (esq.musica) esq.musica.previous() }
+                BotonMini { icono: esq.musica && esq.musica.isPlaying ? "pause" : "play_arrow"; tam: 20; onPulsado: if (esq.musica) esq.musica.togglePlaying() }
+                BotonMini { visible: rp.abierto; icono: "skip_next"; onPulsado: if (esq.musica) esq.musica.next() }
+            }
+        }
+    }
+    component BotonMini: Text {
+        id: bm
+        property string icono
+        property int tam: 18
+        signal pulsado()
+        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        text: icono
+        font { family: "Material Symbols Rounded"; pixelSize: tam }
+        font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
+        renderType: Text.NativeRendering   // sin esto el relleno no se aplica y salen huecos
+        color: zonaBm.containsMouse ? Estilo.texto : Qt.alpha(Estilo.texto, 0.85)
+        scale: zonaBm.pressed ? 0.85 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(160) } }
+        MouseArea { id: zonaBm; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bm.pulsado() }
+    }
+
+    // ---- Mini dock: las apps ancladas del dock (dock.json), con un punto si estan abiertas ----
+    property var ancladas: []
+    FileView {
+        path: Estilo.carpeta + "/dock.json"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: { try { esq.ancladas = JSON.parse(text()); } catch (e) {} }
+    }
+    Component {
+        id: miniDock
+        Rectangle {
+            visible: esq.ancladas.length > 0
+            width: filaDock.width + 10; height: 34; radius: 12
+            color: Estilo.fondo
+            Row {
+                id: filaDock
+                x: 5; anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                Repeater {
+                    model: esq.ancladas
+                    delegate: Item {
+                        id: app
+                        required property var modelData
+                        readonly property var entrada: DesktopEntries.applications.values.find(e => e.id === modelData.escritorio)
+                                                       ?? DesktopEntries.heuristicLookup(modelData.ventana)
+                        readonly property var ventanas: ToplevelManager.toplevels.values.filter(t => t.appId === modelData.ventana)
+                        width: 26; height: 30
+                        IconImage {
+                            anchors.horizontalCenter: parent.horizontalCenter; y: 2
+                            implicitSize: 22
+                            source: Quickshell.iconPath(app.entrada ? app.entrada.icon : app.modelData.ventana, "application-x-executable")
+                            scale: zonaApp.pressed ? 0.85 : zonaApp.containsMouse ? 1.12 : 1
+                            Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                        }
+                        Rectangle {   // abierta
+                            visible: app.ventanas.length > 0
+                            anchors.horizontalCenter: parent.horizontalCenter; y: 26
+                            width: 4; height: 3; radius: 1.5; color: Estilo.texto2
+                        }
+                        MouseArea {
+                            id: zonaApp
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            // ponytail: con varias ventanas de la misma app va a la primera sin enfocar
+                            onClicked: {
+                                if (app.ventanas.length > 0) (app.ventanas.find(t => !t.activated) ?? app.ventanas[0]).activate();
+                                else if (app.entrada) app.entrada.execute();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Component {
         id: boton
@@ -65,12 +189,16 @@ PanelWindow {
                 : clave === "juego" ? esq.raiz.modoJuego
                 : clave === "flotante" ? esq.raiz.flotanteAqui
                 : clave === "vista" ? Estilo.vistaGeneral : false
-            width: 34; height: 34; radius: 12
+            // Grabando, el boton se estira para mostrar el tiempo.
+            readonly property bool grabando: clave === "grabar" && esq.raiz.grabando
+            width: grabando ? tiempoGrab.implicitWidth + 32 : 34; height: 34; radius: 12
+            Behavior on width { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
             color: encendido ? Estilo.activo : zona.containsMouse ? Estilo.realce : Estilo.fondo
             Behavior on color { ColorAnimation { duration: Estilo.t(220) } }
             scale: zona.pressed ? 0.86 : 1
             Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 420); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.6) } }
-            readonly property color tinta: encendido ? Estilo.iconoActivo : Estilo.texto
+            readonly property color tinta: encendido ? Estilo.iconoActivo
+                : (clave === "micro" && esq.micMudo) || clave === "grabar" ? Estilo.peligro : Estilo.texto
             readonly property real crece: zona.containsMouse && !encendido ? 1.12 : 1
 
             // Menisco: los tres tubos del logo (assets/menisco-logo-white.svg, lienzo de 100x100)
@@ -114,9 +242,10 @@ PanelWindow {
             }
             // El resto: icono de Material Symbols
             Text {
-                visible: b.clave !== "menisco" && b.clave !== "barra"
+                visible: b.clave !== "menisco" && b.clave !== "barra" && !b.grabando
                 anchors.centerIn: parent
-                text: (Estilo.botonesCatalogo.find(c => c[0] === b.clave) || ["", "", "help"])[2]
+                text: b.clave === "micro" && esq.micMudo ? "mic_off" : b.clave === "volumen" && esq.volMudo ? "volume_off"
+                    : (Estilo.botonesCatalogo.find(c => c[0] === b.clave) || ["", "", "help"])[2]
                 font { family: "Material Symbols Rounded"; pixelSize: 19 }
                 font.variableAxes: { "FILL": b.encendido ? 1 : 0, "wght": 500, "opsz": 24 }
                 renderType: Text.NativeRendering
@@ -125,12 +254,34 @@ PanelWindow {
                 Behavior on scale { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
             }
 
+            Row {   // grabando: punto rojo que late y el tiempo
+                visible: b.grabando
+                anchors.centerIn: parent
+                spacing: 6
+                Rectangle {
+                    width: 8; height: 8; radius: 4; color: Estilo.peligro; anchors.verticalCenter: parent.verticalCenter
+                    SequentialAnimation on opacity { running: b.grabando; loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 700; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine } }
+                }
+                Text {
+                    id: tiempoGrab
+                    text: String(Math.floor(esq.raiz.segundosGrabando / 60)).padStart(2, "0") + ":" + String(esq.raiz.segundosGrabando % 60).padStart(2, "0")
+                    color: Estilo.texto; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold } font.features: { "tnum": 1 }
+                }
+            }
+
             MouseArea {
                 id: zona
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: esq.pulsar(b.clave)
+                // Volumen: la rueda sube y baja de 5 en 5 (hasta 150 %, como la tecla).
+                onWheel: w => {
+                    if (b.clave !== "volumen") return;
+                    Quickshell.execDetached(["wpctl", "set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", w.angleDelta.y > 0 ? "5%+" : "5%-"]);
+                }
             }
         }
     }
@@ -138,7 +289,10 @@ PanelWindow {
     function pulsar(clave) {
         if (clave === "menisco") ajustes.abierta ? ajustes.cerrar() : raiz.abrirAjustes();
         else if (clave === "barra") raiz.barraAbierta = !raiz.barraAbierta;
-        else if (clave === "lanzador") raiz.lanzadorAbierto = !raiz.lanzadorAbierto;
+        else if (clave === "micro") Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"]);
+        else if (clave === "volumen") Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]);
+        else if (clave === "color") Quickshell.execDetached(["qs", "-p", Estilo.carpeta, "ipc", "call", "gota_" + (esq.screen ? esq.screen.name : ""), "elegirColor"]);
+        else if (clave === "grabar") raiz.alternarGrabacion();
         else if (clave === "captura") raiz.abrirCaptura();
         else if (clave === "nomolestar") Estilo.ponerNoMolestar(!Estilo.noMolestar);
         else if (clave === "juego") raiz.alternarModoJuego();

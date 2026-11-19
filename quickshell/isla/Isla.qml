@@ -899,6 +899,7 @@ PanelWindow {
         function calendario(): void { win.conGota = false; win.fijada = true; win.calendario = !win.calendario; }
         function cerrar(): void { win.conGota = false; win.fijada = false; win.encima = false; }
         function preguntar(texto: string): void { abrir(); Cerebro.preguntar(texto); }
+        function elegirColor(): void { tomarColor.running = true; }
         function avisoBt(nombre: string, bateria: int): void { win.avisar({ tipo: "bt", nombre: nombre, bateria: bateria }); }
         function avisoMusica(titulo: string, artista: string): void { win.avisar({ tipo: "musica", titulo: titulo, artista: artista, arte: "" }); }
     }

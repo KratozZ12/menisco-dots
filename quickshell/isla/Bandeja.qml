@@ -16,7 +16,8 @@ PanelWindow {
     readonly property bool izquierda: Estilo.botones.izquierda.includes("bandeja")
     readonly property var listaLado: izquierda ? Estilo.botones.izquierda : Estilo.botones.derecha
     readonly property int indice: listaLado.indexOf("bandeja")
-    readonly property int separacion: 10 + 42 * (izquierda ? indice : listaLado.length - 1 - indice)
+    // Con botones anchos (mini reproductor, mini dock) cuenta lo que mide Esquina.qml de verdad.
+    readonly property int separacion: Estilo.sepBandeja >= 0 ? Estilo.sepBandeja : 10 + 42 * (izquierda ? indice : listaLado.length - 1 - indice)
 
     visible: SystemTray.items.values.length > 0 && indice >= 0
     anchors { top: true; right: !izquierda; left: izquierda }

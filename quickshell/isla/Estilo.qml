@@ -86,13 +86,17 @@ Singleton {
     }
     // Botones de las esquinas de arriba (Esquina.qml), de izquierda a derecha como se ven.
     // Sin la clave guardada: como antes, Menisco enfrente de la barra, que sigue a barra.lado.
-    readonly property var botones: datos.botonesArriba ? Object.assign({ izquierda: [], derecha: [] }, datos.botonesArriba)
+    // Las claves que ya no existen (el lanzador se quito) se descartan al leer.
+    readonly property var botones: datos.botonesArriba ? (b => ({ izquierda: (b.izquierda || []).filter(c => botonesCatalogo.some(x => x[0] === c)),
+                                                                  derecha: (b.derecha || []).filter(c => botonesCatalogo.some(x => x[0] === c)) }))(datos.botonesArriba)
         : barra.lado === "izquierda"
             ? { izquierda: (barra.boton ? ["barra"] : []).concat(["bandeja"]), derecha: ["menisco"] }
             : { izquierda: ["menisco"], derecha: ["bandeja"].concat(barra.boton ? ["barra"] : []) }
     // [clave, nombre, icono]
     readonly property var botonesCatalogo: [["menisco", "Menisco (ajustes)", "deployed_code"], ["barra", "Barra lateral", "auto_awesome"],
-        ["bandeja", "Bandeja de iconos", "more_horiz"], ["lanzador", "Lanzador", "apps"], ["captura", "Captura", "screenshot_region"],
+        ["bandeja", "Bandeja de iconos", "more_horiz"], ["reproductor", "Mini reproductor", "play_circle"], ["minidock", "Mini dock", "dock_to_bottom"],
+        ["micro", "Micrófono", "mic"], ["volumen", "Volumen", "volume_up"], ["color", "Color", "colorize"], ["grabar", "Grabar", "radio_button_checked"],
+        ["captura", "Captura", "screenshot_region"],
         ["nomolestar", "No molestar", "do_not_disturb_on"], ["juego", "Modo juego", "sports_esports"], ["vista", "Vista general", "grid_view"],
         ["flotante", "Escritorio flotante", "web_asset"], ["bloquear", "Bloquear", "lock"], ["fondo", "Siguiente fondo", "wallpaper"]]
     // ---- Perfiles de diseño (Ajustes > Apariencia) ----
@@ -440,6 +444,7 @@ tokens {
     // ---- Aspecto ----
     // Marco de pantalla (Marco.qml): grosor real, 0 si esta apagado. La isla baja lo mismo.
     readonly property int grosorMarco: valor("marco") ? 6 : 0
+    property real sepBandeja: -1           // lo escribe Esquina.qml: distancia del borde al hueco de la bandeja
     property real anchoBandeja: 0          // lo escribe Bandeja.qml; la oreja del marco se ensancha
     readonly property string letra: valor("letra") === "Inter" ? "Inter Display" : "SF Pro Text"
 

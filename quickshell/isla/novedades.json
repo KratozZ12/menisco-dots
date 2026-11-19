@@ -9,6 +9,11 @@
       "texto": "Reproductor, clima, red, RAM y más"
     },
     {
+      "icono": "crop_square",
+      "titulo": "Forma de la isla abierta",
+      "texto": "Elija una distinta a la pequeña"
+    },
+    {
       "icono": "fit_width",
       "titulo": "Ajustar contenido",
       "texto": "La isla se encoge a lo que muestra"
@@ -17,11 +22,6 @@
       "icono": "border_top",
       "titulo": "Botones de las esquinas",
       "texto": "Elija y ordene los de arriba"
-    },
-    {
-      "icono": "pill",
-      "titulo": "Huecos de la isla",
-      "texto": "Hora, fecha, CPU o carátula"
     }
   ]
 }

@@ -994,43 +994,7 @@ PanelWindow {
                         Interruptor { titulo: "Ajustar contenido"; sub: "Con uno o dos huecos ocupados, la isla se encoge a su medida"; encendido: Estilo.valor("islaAjustar"); onCambiar: v => Estilo.poner("islaAjustar", v) }
                     }
                     Encabezado { text: "Forma" }
-                    // Una muestra por forma, dibujada con las mismas cuentas que la isla.
-                    Flow {
-                        width: parent.width; spacing: 8
-                        Repeater {
-                            model: Estilo.formasIsla
-                            delegate: Rectangle {
-                                id: muestraForma
-                                required property var modelData
-                                readonly property bool elegida: Estilo.valor("islaForma") === modelData[0]
-                                width: (parent.width - 24) / 4; height: 74; radius: 12
-                                color: Estilo.tarjeta
-                                border.width: elegida ? 2 : 1; border.color: elegida ? Estilo.acento : zonaForma.containsMouse ? Estilo.texto2 : Estilo.borde
-                                clip: true
-                                scale: zonaForma.pressed ? 0.95 : 1
-                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaForma.pressed ? 80 : 340); easing.type: zonaForma.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-                                Rectangle {   // franja de "pantalla" de la que cuelga la isla
-                                    x: 1; y: 1; width: parent.width - 2; height: 40; color: "#3a3f4a"
-                                    topLeftRadius: 11; topRightRadius: 11
-                                    Shape {
-                                        anchors.fill: parent
-                                        preferredRendererType: Shape.CurveRenderer
-                                        ShapePath {
-                                            fillColor: Estilo.fondo; strokeWidth: -1
-                                            PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(muestraForma.modelData[0], muestraForma.width / 2 - 34 - Estilo.ajusteForma(muestraForma.modelData[0])[0] / 2, 20, 9, 8), muestraForma.width / 2) }
-                                        }
-                                    }
-                                }
-                                Text {
-                                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 9 }
-                                    text: muestraForma.modelData[1]
-                                    color: muestraForma.elegida ? Estilo.texto : Estilo.texto2
-                                    font { family: Estilo.letra; pixelSize: 12; weight: muestraForma.elegida ? Font.DemiBold : Font.Normal }
-                                }
-                                MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaForma; anchors.fill: parent; hoverEnabled: true; onClicked: Estilo.poner("islaForma", muestraForma.modelData[0]) }
-                            }
-                        }
-                    }
+                    FormasIsla { clave: "islaForma" }
                     Encabezado { text: "Reloj" }
                     Grupo {
                         Segmentos { titulo: "Reloj"; opciones: ["24 horas", "12 horas"]; claves: [false, true]; elegida: Estilo.valor("reloj12"); onElegir: c => Estilo.poner("reloj12", c) }
@@ -1039,6 +1003,8 @@ PanelWindow {
                 }
                 Desplazable {
                     parte: 1
+                    Encabezado { text: "Forma" }
+                    FormasIsla { clave: "islaFormaAbierta" }
                     Encabezado { text: "Al abrirse" }
                     Grupo {
                         Interruptor { titulo: "Abrir al pasar el cursor"; sub: "Si se apaga, solo se abre con un clic"; encendido: Estilo.valor("islaCursor"); onCambiar: v => Estilo.poner("islaCursor", v) }
@@ -2262,6 +2228,47 @@ PanelWindow {
     component Texto: Text {
         color: Estilo.texto
         font { family: Estilo.letra; pixelSize: 13; letterSpacing: -0.08 }
+    }
+    // Una muestra por forma, dibujada con las mismas cuentas que la isla. clave: islaForma (pequena)
+    // o islaFormaAbierta (vista grande, dibujada mas alta).
+    component FormasIsla: Flow {
+        id: formas
+        property string clave
+        readonly property real altoIsla: clave === "islaFormaAbierta" ? 30 : 20
+        width: parent.width; spacing: 8
+        Repeater {
+            model: Estilo.formasIsla
+            delegate: Rectangle {
+                id: muestraForma
+                required property var modelData
+                readonly property bool elegida: Estilo.valor(formas.clave) === modelData[0]
+                width: (parent.width - 24) / 4; height: 74; radius: 12
+                color: Estilo.tarjeta
+                border.width: elegida ? 2 : 1; border.color: elegida ? Estilo.acento : zonaForma.containsMouse ? Estilo.texto2 : Estilo.borde
+                clip: true
+                scale: zonaForma.pressed ? 0.95 : 1
+                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaForma.pressed ? 80 : 340); easing.type: zonaForma.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                Rectangle {   // franja de "pantalla" de la que cuelga la isla
+                    x: 1; y: 1; width: parent.width - 2; height: 40; color: "#3a3f4a"
+                    topLeftRadius: 11; topRightRadius: 11
+                    Shape {
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            fillColor: Estilo.fondo; strokeWidth: -1
+                            PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(muestraForma.modelData[0], muestraForma.width / 2 - 34 - Estilo.ajusteForma(muestraForma.modelData[0])[0] / 2, formas.altoIsla, formas.altoIsla === 20 ? 9 : 12, 8), muestraForma.width / 2) }
+                        }
+                    }
+                }
+                Text {
+                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 9 }
+                    text: muestraForma.modelData[1]
+                    color: muestraForma.elegida ? Estilo.texto : Estilo.texto2
+                    font { family: Estilo.letra; pixelSize: 12; weight: muestraForma.elegida ? Font.DemiBold : Font.Normal }
+                }
+                MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaForma; anchors.fill: parent; hoverEnabled: true; onClicked: Estilo.poner(formas.clave, muestraForma.modelData[0]) }
+            }
+        }
     }
     component Encabezado: Texto {
         color: Estilo.texto2

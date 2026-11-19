@@ -146,8 +146,8 @@ PanelWindow {
         Behavior on esquina { NumberAnimation { duration: Estilo.t(400) } }
         readonly property real x0: (win.width - ancho) / 2
         anchors { fill: parent; topMargin: Estilo.grosorMarco }   // sale del borde de arriba del marco
-        // 0 = la forma elegida en Ajustes, 1 = la clasica. Abierta siempre es la clasica: al abrirse
-        // se transforma poco a poco, al mismo ritmo que crece.
+        // 0 = la forma de la isla pequena, 1 = la de la vista grande (las dos en Ajustes > Isla). Al
+        // abrirse se transforma poco a poco, al mismo ritmo que crece.
         property real aClasica: win.expandida ? 1 : 0
         Behavior on aClasica { NumberAnimation { duration: Estilo.t(280); easing.type: Easing.OutCubic } }
         // Cambio de forma en Ajustes: de la vieja a la nueva con rebote (cambio va de 0 a 1 y se pasa un poco).
@@ -161,12 +161,14 @@ PanelWindow {
         readonly property var ajusteV: Estilo.ajusteForma(vieja)
         readonly property var ajusteN: Estilo.ajusteForma(nueva)
         // el contenido baja lo que pida la forma (la pildora lo centra en su capsula); abierta, nada
-        readonly property real bajada: (ajusteV[1] + (ajusteN[1] - ajusteV[1]) * cambio) * (1 - aClasica)
+        readonly property string abierta: Estilo.valor("islaFormaAbierta") || "clasica"
+        readonly property var ajusteA: Estilo.ajusteForma(abierta)
+        readonly property real bajada: (ajusteV[1] + (ajusteN[1] - ajusteV[1]) * cambio) * (1 - aClasica) + ajusteA[1] * aClasica
         readonly property string trazo: {
             const hom = Math.min(win.hombro, esquina * 0.9);
             const v = Estilo.mitadForma(vieja, x0 - ajusteV[0], alto, esquina, hom);
             const n = Estilo.mitadForma(nueva, x0 - ajusteN[0], alto, esquina, hom);
-            const c = Estilo.mitadForma("clasica", x0, alto, esquina, hom);
+            const c = Estilo.mitadForma(abierta, x0 - ajusteA[0], alto, esquina, hom);
             return Estilo.trazoForma(mezcla(mezcla(v, n, cambio), c, aClasica), x0 + ancho / 2);
         }
 

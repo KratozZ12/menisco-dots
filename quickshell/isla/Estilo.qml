@@ -25,7 +25,7 @@ Singleton {
         reaccionMusica: true,
         // Isla: como se abre y que avisos muestra (los avisos se ajustan en Notificaciones)
         dockMaterial: "vidrio", dockForma: "redondeada",   // vidrio | solido | ahumado | escarcha | tinte | contorno | materialyou
-        islaForma: "clasica", islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
+        islaForma: "clasica", islaFormaAbierta: "clasica", islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
           // clasica | biselada | octagono | ola | liquida | recta | pildora
         islaAjustar: false, islaCursor: true, islaEspera: "normal", islaPestana: "acciones",   // pestana: musica | acciones | rendimiento | ultima
         avisoMusica: true, avisoBt: true, avisoCaptura: true, avisoTemp: true,
@@ -98,7 +98,7 @@ Singleton {
     // ---- Perfiles de diseño (Ajustes > Apariencia) ----
     // Guardan solo la apariencia; nunca el No molestar, el fondo ni rutas personales.
     readonly property var clavesPerfil: ["tema", "letra", "velocidad", "rebote", "marco", "esquinas", "espacio", "borde",
-        "dockMaterial", "dockForma", "dockPegado", "islaForma", "islaHuecos", "botonesArriba", "vidrio"]
+        "dockMaterial", "dockForma", "dockPegado", "islaForma", "islaFormaAbierta", "islaHuecos", "botonesArriba", "vidrio"]
     readonly property var perfiles: datos.perfiles || []
     readonly property var fotoActual: {
         const d = {};

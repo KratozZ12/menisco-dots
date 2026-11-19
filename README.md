@@ -26,6 +26,7 @@ Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma
 - **Reloj** al centro, en SF Pro Semibold con cifras de ancho fijo (12 o 24 horas, con o sin segundos).
 - **Asistente** a la izquierda (ver más abajo).
 - **Visualizador de audio** a la derecha: 5 barras redondeadas que siguen el sonido real (con [cava](https://github.com/karlstav/cava)). En silencio se convierten en una línea ondulada suave. Si hay una grabación o un temporizador en marcha, ahí sale su tiempo.
+- **Huecos:** la isla pequeña tiene tres (izquierda, centro y derecha) y en **Ajustes > Isla > Isla pequeña** se elige qué va en cada uno: hora, hora con fecha, asistente, temperatura, uso de CPU, volumen, puntos de escritorios o la carátula de la canción. Lo de arriba es lo que trae de fábrica.
 
 **Avisos.** La isla crece unos segundos y vuelve sola cuando:
 - empieza una canción nueva (carátula y título);
@@ -113,7 +114,10 @@ La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve
 `Super+Shift+/` abre una tabla de atajos propia, en cuatro grupos, que lee las teclas de la config de niri cada vez. `Super+Shift+E` abre un cuadro para salir de niri (`Enter` sale, `Esc` cancela); `Ctrl+Alt+Supr` sigue con el de niri. Los dos siguen el tema de color.
 
 ### Bandeja
-Píldora con los iconos de las apps en segundo plano, a la izquierda del botón de la barra lateral. Clic derecho abre el menú de la app.
+Píldora con los iconos de las apps en segundo plano. Va en el hueco que tenga en **Ajustes > Botones**. Clic derecho abre el menú de la app.
+
+### Botones de las esquinas
+A la altura de la isla, en las dos esquinas de arriba. En **Ajustes > Botones** se eligen y se ordenan: Menisco (ajustes), barra lateral, bandeja, lanzador, captura, No molestar, modo juego, vista general, escritorio flotante, bloquear y siguiente fondo. De fábrica: el logo de Menisco en una esquina, y la bandeja y la estrella de la barra lateral en la otra.
 
 ### Barra lateral (`Super+A`)
 Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi, Bluetooth, No molestar, Modo café y más), volumen, música, calendario y energía, con páginas propias para Bluetooth, Wi-Fi y sonido. También se abre con el botón de estrella de la esquina o acercando el cursor al borde.
@@ -122,7 +126,7 @@ Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi,
 Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar).
 - **Inicio:** buscador que lleva a cualquier ajuste y lo ilumina; fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
 - También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
-- **Apariencia:** tema de color, velocidad y rebote de las animaciones, tipografía, esquinas, espacio entre ventanas.
+- **Apariencia:** **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tema de color, velocidad y rebote de las animaciones, tipografía, esquinas, espacio entre ventanas.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
 - **Isla:** forma, imagen de fondo de Acciones, qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
 - **Notificaciones:** No molestar (también automático en pantalla completa y al grabar), qué avisos salen en la isla, qué apps no avisan de la canción que suena, y lo de Hokum: posición, duración, cuántas a la vista y, por app, ocultarla o dejarla pasar aunque esté No molestar. Lo de Hokum lo escribe `menisco-hokum.py` en `~/.config/hokum/config.kdl` (lo valida con `hokum check` antes de guardar).

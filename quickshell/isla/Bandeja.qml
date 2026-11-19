@@ -11,10 +11,14 @@ import Quickshell.Services.SystemTray
 PanelWindow {
     id: bandeja
 
-    readonly property bool izquierda: Estilo.barra.lado === "izquierda"
-    readonly property int separacion: Estilo.barra.boton ? 52 : 10   // 10 de margen + 34 del boton + 8
+    // Va en la esquina que la tenga en Ajustes > Esquinas, en su hueco: 10 de margen y
+    // 34 + 8 por cada boton que quede entre ella y el borde.
+    readonly property bool izquierda: Estilo.botones.izquierda.includes("bandeja")
+    readonly property var listaLado: izquierda ? Estilo.botones.izquierda : Estilo.botones.derecha
+    readonly property int indice: listaLado.indexOf("bandeja")
+    readonly property int separacion: 10 + 42 * (izquierda ? indice : listaLado.length - 1 - indice)
 
-    visible: SystemTray.items.values.length > 0
+    visible: SystemTray.items.values.length > 0 && indice >= 0
     anchors { top: true; right: !izquierda; left: izquierda }
     // Sin margen arriba (niri no aplica uno que cambia antes de mostrarse): la pildora baja por dentro.
     margins { right: separacion; left: separacion }

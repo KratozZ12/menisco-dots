@@ -246,10 +246,12 @@ PanelWindow {
                 Asistente {
                     id: asistenteIsla
                     width: 40; height: 40
-                    x: 6; anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: parent.verticalCenter
                     emocion: Cerebro.emocion ? Cerebro.emocion
                         : win.raiz.emocion === "normal" && Estilo.valor("reaccionMusica") && Mpris.players.values.some(p => p.isPlaying) ? "feliz" : win.raiz.emocion
-                    visible: Estilo.valor("islaAsistente")
+                    readonly property string lado: Estilo.ladoDe("asistente")
+                    visible: lado !== "" && !(lado === "derecha" && win.derechaOcupada)
+                    x: lado === "derecha" ? parent.width - 46 : lado === "centro" ? (parent.width - 40) / 2 : 6
                     ritmo: ({ tranquilo: 1.8, normal: 1, inquieto: 0.5 })[Estilo.valor("personalidad")] ?? 1
                     fondoNegro: true
                     readonly property bool fuera: (win.raiz.lanzadorAbierto && Estilo.valor("succion")) || win.expandida
@@ -311,14 +313,89 @@ PanelWindow {
                 }
                 Text {
                     id: hora
+                    // Pequena: en el hueco elegido (con fecha si asi se pidio). Abierta: siempre al centro.
+                    readonly property string lado: Estilo.ladoDe("hora")
+                    readonly property bool conFecha: !win.expandida && Estilo.huecos.centro === "fecha"
                     anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: win.expandida ? -9 : 0
+                    anchors.horizontalCenterOffset: win.expandida ? -9
+                        : lado === "izquierda" ? -(parent.width / 2 - 18 - implicitWidth / 2)
+                        : lado === "derecha" ? parent.width / 2 - 18 - implicitWidth / 2 : 0
                     Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: Estilo.t(200) } }
                     anchors.verticalCenterOffset: 1
-                    text: Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
+                    opacity: win.expandida || (lado !== "" && !(lado === "derecha" && win.derechaOcupada)) ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+                    text: (conFecha ? Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, "") + " · " : "")
+                        + Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
                     color: Estilo.texto
-                    font { family: Estilo.letra; weight: Font.DemiBold; pixelSize: 19; letterSpacing: -0.45 }
+                    font { family: Estilo.letra; weight: Font.DemiBold; pixelSize: conFecha ? 17 : 19; letterSpacing: -0.45 }
                     font.features: { "tnum": 1 }
+                }
+
+                // Miniwidgets de datos (Ajustes > Isla > Isla pequena), uno por hueco. El del centro
+                // se esconde con la isla abierta: ahi va el boton de la hora.
+                Repeater {
+                    model: ["izquierda", "centro", "derecha"]
+                    delegate: Item {
+                        id: mini
+                        required property string modelData
+                        readonly property string tipo: Estilo.huecos[modelData]
+                        readonly property bool deDatos: ["temperatura", "cpu", "volumen", "escritorios", "caratula"].includes(tipo)
+                        width: contenidoMini.implicitWidth; height: 28
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: modelData === "izquierda" ? 18 : modelData === "centro" ? (parent.width - width) / 2 : parent.width - 18 - width
+                        opacity: deDatos && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
+                        visible: opacity > 0.01
+                        Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+                        Row {
+                            id: contenidoMini
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 5
+                            // Icono + numero: temperatura, CPU, volumen
+                            Simbolo {
+                                visible: ["temperatura", "cpu", "volumen"].includes(mini.tipo)
+                                anchors.verticalCenter: parent.verticalCenter
+                                font.pixelSize: 17
+                                color: mini.tipo === "temperatura" && win.temperatura >= Estilo.valor("avisoGrados") ? Estilo.peligro : Estilo.texto2
+                                text: mini.tipo === "temperatura" ? "thermostat" : mini.tipo === "cpu" ? "memory"
+                                    : win.volumenMudo ? "volume_off" : "volume_up"
+                            }
+                            Texto {
+                                visible: ["temperatura", "cpu", "volumen"].includes(mini.tipo)
+                                anchors.verticalCenter: parent.verticalCenter
+                                font.pixelSize: 14
+                                font.weight: Font.DemiBold
+                                font.features: { "tnum": 1 }
+                                text: mini.tipo === "temperatura" ? win.temperatura + "°" : mini.tipo === "cpu" ? win.usoCpu + "%" : win.volumen
+                            }
+                            // Escritorios de este monitor: el activo es una pastilla, los demas puntos
+                            Repeater {
+                                model: mini.tipo === "escritorios" ? win.escritoriosAqui : []
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: modelData.is_active ? 16 : 6; height: 6; radius: 3
+                                    color: modelData.is_active ? Estilo.texto : Estilo.texto3
+                                    Behavior on width { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                                    Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
+                                }
+                            }
+                            // Caratula de lo que suena (sin disco: la nota)
+                            ClippingRectangle {
+                                visible: mini.tipo === "caratula" && !!win.musica
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 24; height: 24; radius: 7
+                                color: Estilo.hover
+                                Simbolo { anchors.centerIn: parent; text: "music_note"; font.pixelSize: 15; color: Estilo.texto2; visible: !portada.source.toString() }
+                                Image {
+                                    id: portada
+                                    anchors.fill: parent
+                                    source: mini.tipo === "caratula" && win.musica ? win.musica.trackArtUrl || "" : ""
+                                    fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64)
+                                    opacity: win.musica && win.musica.isPlaying ? 1 : 0.5
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Derecha: grabacion > temporizador > visualizador
@@ -350,10 +427,12 @@ PanelWindow {
                 }
                 Visualizador {
                     // En la pestana Musica se esconde: ahi ya se ve lo que suena.
-                    visible: opacity > 0.01 && Estilo.valor("islaVisualizador") && !Estilo.juego && !win.raiz.grabando && win.raiz.temporizadorRestante <= 0 && win.raiz.cronometroInicio <= 0
-                    opacity: win.expandida && win.pestana === "musica" && Estilo.valor("ocultarVisualizador") ? 0 : 1
+                    readonly property string lado: Estilo.ladoDe("visualizador")
+                    visible: opacity > 0.01 && lado !== "" && !Estilo.juego && !(lado === "derecha" && win.derechaOcupada)
+                    opacity: win.expandida && ((win.pestana === "musica" && Estilo.valor("ocultarVisualizador")) || lado === "centro") ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
-                    anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
+                    x: lado === "izquierda" ? 18 : lado === "centro" ? (parent.width - width) / 2 : parent.width - 18 - width
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
 
@@ -548,6 +627,38 @@ PanelWindow {
     // Temperatura alta: se revisa cada 5 s; avisa al pasar del limite de Ajustes (80 °C de fabrica),
     // una vez hasta que baje 5 grados.
     property bool calienteAvisado: false
+    property int temperatura: 0                      // la mas alta de CPU y GPU, para el miniwidget
+
+    // ---- Datos de los miniwidgets de la isla pequena ----
+    // Grabacion, temporizador y cronometro le ganan el hueco derecho a cualquier miniwidget.
+    readonly property bool derechaOcupada: raiz.grabando || raiz.temporizadorRestante > 0 || raiz.cronometroInicio > 0
+    PwObjectTracker { objects: [win.salidaAudio] }
+    readonly property bool volumenMudo: !!salidaAudio?.audio?.muted
+    readonly property int volumen: Math.round((salidaAudio?.audio?.volume ?? 0) * 100)
+    // Escritorios de este monitor, sin el vacio que niri deja siempre al final.
+    readonly property var escritoriosAqui: raiz.escritorios
+        .filter(w => w.output === win.screen?.name && (w.name || w.active_window_id !== null || w.is_active))
+        .sort((a, b) => a.idx - b.idx)
+    // Uso de CPU: /proc/stat cada 2 s, solo si algun hueco lo muestra.
+    property int usoCpu: 0
+    property var cpuAntes: null
+    Process {
+        id: lecturaCpu
+        command: ["head", "-1", "/proc/stat"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const n = text.trim().split(/\s+/).slice(1).map(Number);
+                const total = n.reduce((a, b) => a + b, 0), libre = n[3] + (n[4] || 0);
+                if (win.cpuAntes) {
+                    const dt = total - win.cpuAntes[0];
+                    if (dt > 0) win.usoCpu = Math.round(100 * (1 - (libre - win.cpuAntes[1]) / dt));
+                }
+                win.cpuAntes = [total, libre];
+            }
+        }
+    }
+    Timer { interval: 2000; repeat: true; triggeredOnStart: true; running: Estilo.ladoDe("cpu") !== ""; onTriggered: lecturaCpu.running = true }
+
     Process {
         id: temperaturas
         command: ["sh", "-c", "for h in /sys/class/hwmon/hwmon*; do case $(cat $h/name) in k10temp|coretemp|zenpower) cat $h/temp1_input;; esac; done | head -1; " +
@@ -556,6 +667,7 @@ PanelWindow {
             onStreamFinished: {
                 const [c, g] = text.trim().split("\n").map(Number);
                 const cpu = (c || 0) / 1000, gpu = g || 0, max = Math.max(cpu, gpu);
+                win.temperatura = Math.round(max);
                 if (max > Estilo.valor("avisoGrados") && !win.calienteAvisado) {
                     win.calienteAvisado = true;
                     win.avisar({ tipo: "temperatura", texto: (gpu >= cpu ? "GPU " : "CPU ") + Math.round(max) + " °C", ms: 4000 });

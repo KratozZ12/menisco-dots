@@ -65,6 +65,65 @@ Singleton {
         poner("gotas", gotas.filter((g, j) => j !== i));
         poner("gotaActiva", activa > i ? activa - 1 : Math.min(activa, gotas.length - 1));
     }
+    // Isla pequena: que muestra cada hueco. Sin la clave guardada se deduce de los
+    // interruptores viejos (islaAsistente / islaVisualizador).
+    readonly property var huecosDefecto: ({ izquierda: "asistente", centro: "hora", derecha: "visualizador" })
+    readonly property var huecos: datos.islaHuecos ? Object.assign({}, huecosDefecto, datos.islaHuecos)
+        : { izquierda: valor("islaAsistente") ? "asistente" : "nada", centro: "hora", derecha: valor("islaVisualizador") ? "visualizador" : "nada" }
+    // Hueco donde esta un miniwidget ("" si no esta). Hora y fecha cuentan como el mismo reloj.
+    function ladoDe(id) {
+        const grupo = id === "hora" || id === "fecha" ? ["hora", "fecha"] : [id];
+        for (const k of ["izquierda", "centro", "derecha"]) if (grupo.includes(huecos[k])) return k;
+        return "";
+    }
+    // Poner algo que ya estaba en otro hueco lo intercambia con lo de este.
+    function ponerHueco(lado, id) {
+        const h = Object.assign({}, huecos);
+        const otro = id === "nada" ? "" : ladoDe(id);
+        if (otro && otro !== lado) h[otro] = h[lado] === "fecha" && otro !== "centro" ? "hora" : h[lado];
+        h[lado] = id;
+        poner("islaHuecos", h);
+    }
+    // Botones de las esquinas de arriba (Esquina.qml), de izquierda a derecha como se ven.
+    // Sin la clave guardada: como antes, Menisco enfrente de la barra, que sigue a barra.lado.
+    readonly property var botones: datos.botonesArriba ? Object.assign({ izquierda: [], derecha: [] }, datos.botonesArriba)
+        : barra.lado === "izquierda"
+            ? { izquierda: (barra.boton ? ["barra"] : []).concat(["bandeja"]), derecha: ["menisco"] }
+            : { izquierda: ["menisco"], derecha: ["bandeja"].concat(barra.boton ? ["barra"] : []) }
+    // [clave, nombre, icono]
+    readonly property var botonesCatalogo: [["menisco", "Menisco (ajustes)", "deployed_code"], ["barra", "Barra lateral", "auto_awesome"],
+        ["bandeja", "Bandeja de iconos", "more_horiz"], ["lanzador", "Lanzador", "apps"], ["captura", "Captura", "screenshot_region"],
+        ["nomolestar", "No molestar", "do_not_disturb_on"], ["juego", "Modo juego", "sports_esports"], ["vista", "Vista general", "grid_view"],
+        ["flotante", "Escritorio flotante", "web_asset"], ["bloquear", "Bloquear", "lock"], ["fondo", "Siguiente fondo", "wallpaper"]]
+    // ---- Perfiles de diseño (Ajustes > Apariencia) ----
+    // Guardan solo la apariencia; nunca el No molestar, el fondo ni rutas personales.
+    readonly property var clavesPerfil: ["tema", "letra", "velocidad", "rebote", "marco", "esquinas", "espacio", "borde",
+        "dockMaterial", "dockForma", "dockPegado", "islaForma", "islaHuecos", "botonesArriba", "vidrio"]
+    readonly property var perfiles: datos.perfiles || []
+    readonly property var fotoActual: {
+        const d = {};
+        for (const k of clavesPerfil) d[k] = k === "islaHuecos" ? huecos : k === "botonesArriba" ? botones : valor(k);
+        return JSON.parse(JSON.stringify(d));
+    }
+    // El perfil que coincide en todo con lo que se ve ahora (-1 si ninguno)
+    readonly property int perfilActivo: perfiles.findIndex(p => clavesPerfil.every(k => JSON.stringify(p.datos[k]) === JSON.stringify(fotoActual[k])))
+    function guardarPerfil(nombre) { poner("perfiles", perfiles.concat([{ nombre: nombre, datos: fotoActual }])); }
+    function actualizarPerfil(i) { const l = perfiles.slice(); l[i] = { nombre: l[i].nombre, datos: fotoActual }; poner("perfiles", l); }
+    function renombrarPerfil(i, n) { const l = perfiles.slice(); l[i] = { nombre: n, datos: l[i].datos }; poner("perfiles", l); }
+    function borrarPerfil(i) { poner("perfiles", perfiles.filter((p, j) => j !== i)); }
+    function aplicarPerfil(i) {
+        const p = perfiles[i];
+        if (!p) return;
+        const d = Object.assign({}, datos, p.datos);   // una sola escritura del archivo
+        datos = d;
+        archivo.setText(JSON.stringify(d, null, 2));
+        // Lo que vive en niri / Lniri
+        niri(["esquinas", valor("esquinas")]);
+        niri(["espacio", valor("espacio")]);
+        niri(["borde", valor("borde")]);
+        niri(["vidrio", JSON.stringify(valor("vidrio"))]);
+    }
+    function ponerBotones(b) { poner("botonesArriba", { izquierda: b.izquierda.slice(), derecha: b.derecha.slice() }); }
     function ponerBarra(clave, v) { const b = Object.assign({}, barra); b[clave] = v; poner("barra", b); }
 
     function poner(clave, v) {

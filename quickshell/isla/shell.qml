@@ -122,8 +122,11 @@ ShellRoot {
                     raiz.escritorios = lista;
                     raiz.escritorioActivo = lista.find(w => w.is_focused)?.id ?? -1;
                     raiz.flotantes = raiz.flotantes.filter(f => lista.some(w => w.id === f));
-                } else if (e.WorkspaceActivated?.focused) {
-                    raiz.escritorioActivo = e.WorkspaceActivated.id;
+                } else if (e.WorkspaceActivated) {
+                    // is_active por monitor, para los puntos de escritorios de la isla
+                    const id = e.WorkspaceActivated.id, w0 = raiz.escritorios.find(w => w.id === id);
+                    if (w0) raiz.escritorios = raiz.escritorios.map(w => w.output === w0.output ? Object.assign({}, w, { is_active: w.id === id }) : w);
+                    if (e.WorkspaceActivated.focused) raiz.escritorioActivo = id;
                 } else if (e.WindowsChanged) {
                     const v = {};
                     for (const w of e.WindowsChanged.windows) v[w.id] = w;
@@ -283,10 +286,11 @@ ShellRoot {
     // Abre la barra lateral ya en una pagina (bt, red, sonido); la usa "Opciones avanzadas" del lanzador.
     function abrirBarraEn(p) { lanzadorAbierto = false; barraAbierta = true; barra.ir(p); }
     Barra { id: barra; raiz: raiz; ajustes: ajustes }
-    BotonBarra { raiz: raiz }
+    // Esquinas de arriba (Ajustes > Esquinas). Bandeja va despues: queda encima de su hueco.
+    Esquina { raiz: raiz; ajustes: ajustes; lado: "izquierda" }
+    Esquina { raiz: raiz; ajustes: ajustes; lado: "derecha" }
     Bandeja {}
     BordeBarra { raiz: raiz }
-    BotonMenisco { raiz: raiz; ajustes: ajustes }
 
     // Para probar: qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz
     IpcHandler {
@@ -347,6 +351,7 @@ ShellRoot {
     }
     // Pantalla de bloqueo propia (Bloqueo.qml). "ensayo" la muestra sin bloquear, para probarla.
     Bloqueo { id: bloqueo }
+    function abrirCaptura() { lanzadorAbierto = false; barraAbierta = false; captura.abrir("zona"); }
     function bloquear() { lanzadorAbierto = false; barraAbierta = false; bloqueo.bloquear(); }
     IpcHandler {
         target: "bloqueo"

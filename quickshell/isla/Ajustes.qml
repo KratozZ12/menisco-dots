@@ -324,6 +324,7 @@ PanelWindow {
                 { id: "vidrio", texto: "Liquid glass", icono: "water_drop" },
                 { id: "isla", texto: "Isla", icono: "pill" },
                 { id: "dock", texto: "Dock", icono: "dock_to_bottom" },
+                { id: "esquinas", texto: "Botones", icono: "border_top" },
                 { id: "barra", texto: "Barra lateral", icono: "view_sidebar" },
                 { id: "notificaciones", texto: "Notificaciones", icono: "notifications" },
                 { id: "asistente", texto: "Asistente", icono: "smart_toy" },
@@ -431,9 +432,156 @@ PanelWindow {
 
             // ---------------- Apariencia ----------------
             Pagina {
+                id: paginaApariencia
                 anchors.fill: parent
                 clave: "apariencia"; activa: ventana.seccion === clave
+                // Perfil en edicion (nombre) y el que muestra sus acciones (clic derecho)
+                property int perfilRenombrando: -1
+                property int perfilMenu: -1
+                readonly property var nombresMaterial: ({ vidrio: "vidrio", solido: "sólido", ahumado: "ahumado", escarcha: "escarcha",
+                                                          tinte: "tinte", contorno: "contorno", materialyou: "Material You" })
                 Desplazable {
+                    Encabezado { text: "Perfiles" }
+                    Texto {
+                        text: "Un perfil guarda toda la apariencia: tema, dock, isla, botones, marco, ventanas y vidrio. Clic para aplicarlo; clic derecho para renombrarlo, actualizarlo o borrarlo."
+                        color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
+                    }
+                    Item { width: 1; height: 10 }
+                    Grid {
+                        id: rejillaPerfiles
+                        width: parent.width; columns: 4; spacing: 10
+                        Repeater {
+                            model: Estilo.perfiles
+                            delegate: Rectangle {
+                                id: tarjetaPerfil
+                                required property var modelData
+                                required property int index
+                                readonly property var t: Estilo.temas[modelData.datos.tema] || Estilo.temas.champan
+                                readonly property bool enUso: Estilo.perfilActivo === index
+                                readonly property bool conMenu: paginaApariencia.perfilMenu === index
+                                width: (rejillaPerfiles.width - 30) / 4; height: 150; radius: 14
+                                color: Estilo.tarjeta; clip: true
+                                border.width: enUso ? 2 : 1
+                                border.color: enUso ? Estilo.texto : zonaPerfil.containsMouse ? Estilo.texto2 : Estilo.borde
+                                scale: zonaPerfil.pressed ? 0.96 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaPerfil.pressed ? 80 : 340); easing.type: zonaPerfil.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                // Miniatura: pantalla con los colores del tema, isla y dock
+                                Rectangle {
+                                    x: 1; y: 1; width: parent.width - 2; height: 74
+                                    topLeftRadius: 13; topRightRadius: 13
+                                    color: tarjetaPerfil.t.fondo
+                                    Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: parent.width * 0.42; height: 11; bottomLeftRadius: 6; bottomRightRadius: 6; color: "#000" }
+                                    Rectangle {
+                                        anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 9 }
+                                        width: parent.width * 0.5; height: 15; radius: 6
+                                        color: tarjetaPerfil.t.hover
+                                        border.width: 1; border.color: tarjetaPerfil.t.activoBorde !== "#00000000" ? tarjetaPerfil.t.activoBorde : tarjetaPerfil.t.borde
+                                    }
+                                    Rectangle { x: parent.width - 16; y: 3; width: 9; height: 9; radius: 3; color: tarjetaPerfil.t.activo }
+                                }
+                                Column {
+                                    x: 12; y: 84; width: parent.width - 24; spacing: 5
+                                    Item {
+                                        width: parent.width; height: 18
+                                        Texto {
+                                            visible: paginaApariencia.perfilRenombrando !== tarjetaPerfil.index
+                                            text: tarjetaPerfil.modelData.nombre; font.pixelSize: 14; font.weight: Font.DemiBold
+                                            width: parent.width - (tarjetaPerfil.enUso ? 52 : 0); elide: Text.ElideRight
+                                        }
+                                        TextInput {
+                                            id: campoNombre
+                                            visible: paginaApariencia.perfilRenombrando === tarjetaPerfil.index
+                                            width: parent.width; text: tarjetaPerfil.modelData.nombre
+                                            color: Estilo.texto; selectionColor: Estilo.acento; selectedTextColor: Estilo.sobreAcento
+                                            font { family: Estilo.letra; pixelSize: 14; weight: Font.DemiBold }
+                                            onVisibleChanged: if (visible) { text = tarjetaPerfil.modelData.nombre; forceActiveFocus(); selectAll(); }
+                                            onAccepted: { if (text.trim()) Estilo.renombrarPerfil(tarjetaPerfil.index, text.trim()); paginaApariencia.perfilRenombrando = -1; }
+                                            Keys.onEscapePressed: paginaApariencia.perfilRenombrando = -1
+                                            Rectangle { anchors { left: parent.left; right: parent.right; top: parent.bottom; topMargin: 1 } height: 1; color: Estilo.acento }
+                                        }
+                                        Rectangle {
+                                            visible: tarjetaPerfil.enUso && paginaApariencia.perfilRenombrando !== tarjetaPerfil.index
+                                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                            width: textoUso.implicitWidth + 12; height: 18; radius: 9; color: Estilo.activo
+                                            Texto { id: textoUso; anchors.centerIn: parent; text: "En uso"; font.pixelSize: 10; font.weight: Font.DemiBold; color: Estilo.enActivo }
+                                        }
+                                    }
+                                    Row {
+                                        spacing: 5
+                                        Rectangle { width: 11; height: 11; radius: 6; color: tarjetaPerfil.t.acento }
+                                        Rectangle { width: 11; height: 11; radius: 6; color: tarjetaPerfil.t.activoBorde !== "#00000000" ? tarjetaPerfil.t.activoBorde : tarjetaPerfil.t.activo }
+                                    }
+                                    Texto {
+                                        width: parent.width; elide: Text.ElideRight; font.pixelSize: 11; color: Estilo.texto2
+                                        text: tarjetaPerfil.t.nombre + " · dock " + (paginaApariencia.nombresMaterial[tarjetaPerfil.modelData.datos.dockMaterial] || "vidrio")
+                                    }
+                                }
+                                MouseArea {
+                                    id: zonaPerfil
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                    enabled: paginaApariencia.perfilRenombrando !== tarjetaPerfil.index
+                                    onClicked: e => {
+                                        if (e.button === Qt.RightButton) { paginaApariencia.perfilMenu = tarjetaPerfil.conMenu ? -1 : tarjetaPerfil.index; return; }
+                                        paginaApariencia.perfilMenu = -1;
+                                        Estilo.aplicarPerfil(tarjetaPerfil.index);
+                                    }
+                                }
+                                // Acciones del clic derecho: encima de la miniatura
+                                Row {
+                                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 22 }
+                                    spacing: 6
+                                    opacity: tarjetaPerfil.conMenu ? 1 : 0
+                                    visible: opacity > 0.01
+                                    scale: tarjetaPerfil.conMenu ? 1 : 0.85
+                                    Behavior on opacity { NumberAnimation { duration: Estilo.t(160) } }
+                                    Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                    Repeater {
+                                        model: [["edit", "nombre"], ["sync", "actualizar"], ["delete", "borrar"]]
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            width: 32; height: 32; radius: 10
+                                            color: zonaAccionPerfil.containsMouse ? (modelData[1] === "borrar" ? Estilo.peligro : Estilo.activo) : Estilo.fondo
+                                            border.width: 1; border.color: Estilo.borde
+                                            Simbolo {
+                                                anchors.centerIn: parent; text: parent.modelData[0]; font.pixelSize: 17
+                                                color: zonaAccionPerfil.containsMouse ? (parent.modelData[1] === "borrar" ? "#fff" : Estilo.iconoActivo) : Estilo.texto
+                                            }
+                                            MouseArea {
+                                                id: zonaAccionPerfil; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    const i = tarjetaPerfil.index, a = parent.modelData[1];
+                                                    paginaApariencia.perfilMenu = -1;
+                                                    if (a === "nombre") paginaApariencia.perfilRenombrando = i;
+                                                    else if (a === "actualizar") Estilo.actualizarPerfil(i);
+                                                    else Estilo.borrarPerfil(i);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Guardar lo de ahora como perfil nuevo (y ponerle nombre de una vez)
+                        Rectangle {
+                            width: (rejillaPerfiles.width - 30) / 4; height: 150; radius: 14
+                            color: zonaNuevo.containsMouse ? Estilo.realce : Estilo.nada
+                            border.width: 1.5; border.color: zonaNuevo.containsMouse ? Estilo.texto2 : Estilo.borde
+                            Column {
+                                anchors.centerIn: parent; spacing: 6
+                                Simbolo { anchors.horizontalCenter: parent.horizontalCenter; text: "add"; font.pixelSize: 26; color: Estilo.texto2 }
+                                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: "Guardar el actual"; color: Estilo.texto2; font.pixelSize: 12 }
+                            }
+                            MouseArea {
+                                id: zonaNuevo; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Estilo.guardarPerfil("Perfil " + (Estilo.perfiles.length + 1));
+                                    paginaApariencia.perfilMenu = -1;
+                                    paginaApariencia.perfilRenombrando = Estilo.perfiles.length - 1;
+                                }
+                            }
+                        }
+                    }
                     Encabezado { text: "Color" }
                     // Una muestra por tema, pintada con sus propios colores; al tocarla cambia todo Menisco.
                     Grid {
@@ -700,11 +848,17 @@ PanelWindow {
 
             // ---------------- Isla ----------------
             Pagina {
+                id: paginaIsla
                 anchors.fill: parent
                 clave: "isla"; activa: ventana.seccion === clave
+                property string huecoElegido: "izquierda"
+                // [clave, nombre, icono]
+                readonly property var catalogo: [["asistente", "Asistente", "face"], ["hora", "Hora", "schedule"], ["fecha", "Fecha y hora", "calendar_today"],
+                    ["visualizador", "Visualizador", "graphic_eq"], ["temperatura", "Temperatura", "thermostat"], ["cpu", "Uso de CPU", "memory"],
+                    ["volumen", "Volumen", "volume_up"], ["escritorios", "Escritorios", "view_week"], ["caratula", "Carátula", "music_note"], ["nada", "Nada", "block"]]
                 Desplazable {
 
-                    Encabezado { text: "Vista previa" }
+                    Encabezado { text: "Isla pequeña" }
                     Rectangle {
                         id: previaIsla
                         width: parent.width; height: 70; radius: 12; color: "#3a3f4a"
@@ -717,25 +871,87 @@ PanelWindow {
                                 PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(Estilo.valor("islaForma"), (previaIsla.width - 300) / 2 - Estilo.ajusteForma(Estilo.valor("islaForma"))[0], 38, 18, 16), previaIsla.width / 2) }
                             }
                         }
-                        Item {
+                        // Tres huecos: se pulsa uno y abajo se elige que muestra.
+                        Row {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            width: 300; height: 38
-                            Rectangle {
-                                visible: Estilo.valor("islaAsistente")
-                                x: 14; anchors.verticalCenter: parent.verticalCenter
-                                width: 24; height: 24; radius: 12; color: Estilo.tarjeta
-                                Row { anchors.centerIn: parent; spacing: 4; Repeater { model: 2; Rectangle { width: 3; height: 8; radius: 2; color: "#fff" } } }
+                            y: 4; spacing: 4
+                            Repeater {
+                                model: ["izquierda", "centro", "derecha"]
+                                delegate: Rectangle {
+                                    id: hueco
+                                    required property string modelData
+                                    readonly property string tipo: Estilo.huecos[modelData]
+                                    readonly property bool elegido: paginaIsla.huecoElegido === modelData
+                                    width: modelData === "centro" ? 120 : 82; height: 30; radius: 10
+                                    color: zonaHueco.containsMouse && !elegido ? Estilo.realce : Estilo.nada
+                                    border.width: elegido ? 1.5 : 1
+                                    border.color: elegido ? Estilo.acento : Qt.alpha(Estilo.texto, 0.18)
+                                    Behavior on border.color { ColorAnimation { duration: Estilo.t(160) } }
+                                    Rectangle {   // asistente: los dos ojos
+                                        visible: hueco.tipo === "asistente"
+                                        anchors.centerIn: parent
+                                        width: 24; height: 24; radius: 12; color: Estilo.tarjeta
+                                        Row { anchors.centerIn: parent; spacing: 4; Repeater { model: 2; Rectangle { width: 3; height: 8; radius: 2; color: "#fff" } } }
+                                    }
+                                    Row {         // visualizador
+                                        visible: hueco.tipo === "visualizador"
+                                        anchors.centerIn: parent; spacing: 3
+                                        Repeater { model: [6, 11, 16, 11, 6]; Rectangle { required property int modelData; width: 3; height: modelData; radius: 1.5; color: "#fff"; anchors.verticalCenter: parent.verticalCenter } }
+                                    }
+                                    Texto {       // reloj (con fecha solo en el centro)
+                                        visible: hueco.tipo === "hora" || hueco.tipo === "fecha"
+                                        anchors.centerIn: parent
+                                        text: (hueco.tipo === "fecha" ? Qt.locale("es_MX").toString(reloj.date, "ddd d").replace(/\./g, "") + " · " : "")
+                                            + Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm" : "H:mm")
+                                        font.pixelSize: hueco.tipo === "fecha" ? 13 : 15; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
+                                    }
+                                    Simbolo {     // el resto: su icono
+                                        visible: !["asistente", "visualizador", "hora", "fecha"].includes(hueco.tipo)
+                                        anchors.centerIn: parent
+                                        text: (paginaIsla.catalogo.find(c => c[0] === hueco.tipo) || ["", "", "block"])[2]
+                                        color: hueco.tipo === "nada" ? Estilo.texto3 : Estilo.texto
+                                    }
+                                    MouseArea { id: zonaHueco; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: paginaIsla.huecoElegido = hueco.modelData }
+                                }
                             }
-                            Texto {
-                                anchors.centerIn: parent
-                                text: Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
-                                font.pixelSize: 17; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
-                            }
-                            Row {
-                                visible: Estilo.valor("islaVisualizador")
-                                anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                                spacing: 3
-                                Repeater { model: [6, 11, 16, 11, 6]; Rectangle { required property int modelData; width: 3; height: modelData; radius: 1.5; color: "#fff"; anchors.verticalCenter: parent.verticalCenter } }
+                        }
+                    }
+                    Texto {
+                        text: "Pulse un hueco y elija qué muestra. Si ya estaba en otro hueco, se cambian de lugar."
+                        color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
+                    }
+                    Grid {
+                        width: parent.width; columns: 5; spacing: 8
+                        Repeater {
+                            model: paginaIsla.catalogo
+                            delegate: Rectangle {
+                                id: pieza
+                                required property var modelData
+                                readonly property bool puesto: Estilo.huecos[paginaIsla.huecoElegido] === modelData[0]
+                                readonly property bool permitido: modelData[0] !== "fecha" || paginaIsla.huecoElegido === "centro"
+                                width: (parent.width - 32) / 5; height: 70; radius: 12
+                                color: puesto ? Estilo.activo : zonaPieza.containsMouse && permitido ? Estilo.realce : Estilo.tarjeta
+                                border.width: 1; border.color: puesto ? Estilo.activoBorde : Estilo.linea
+                                opacity: permitido ? 1 : 0.4
+                                Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
+                                scale: zonaPieza.pressed ? 0.95 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaPieza.pressed ? 80 : 340); easing.type: zonaPieza.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                Simbolo { x: 12; y: 11; text: pieza.modelData[2]; font.pixelSize: 20; color: pieza.puesto ? Estilo.iconoActivo : Estilo.texto }
+                                Texto {
+                                    x: 12; y: 38; width: parent.width - 20; elide: Text.ElideRight
+                                    text: pieza.modelData[1]; font.pixelSize: 12; font.weight: Font.DemiBold
+                                    color: pieza.puesto ? Estilo.enActivo : Estilo.texto
+                                }
+                                Texto {
+                                    visible: pieza.modelData[0] === "fecha"
+                                    x: 12; y: 53; text: "Solo centro"; font.pixelSize: 10
+                                    color: pieza.puesto ? Estilo.enActivo : Estilo.texto2
+                                }
+                                MouseArea {
+                                    id: zonaPieza; anchors.fill: parent; hoverEnabled: true
+                                    cursorShape: pieza.permitido ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: if (pieza.permitido) Estilo.ponerHueco(paginaIsla.huecoElegido, pieza.modelData[0])
+                                }
                             }
                         }
                     }
@@ -777,10 +993,8 @@ PanelWindow {
                             }
                         }
                     }
-                    Encabezado { text: "Qué muestra" }
+                    Encabezado { text: "Reloj" }
                     Grupo {
-                        Interruptor { titulo: "Asistente"; sub: "A la izquierda"; encendido: Estilo.valor("islaAsistente"); onCambiar: v => Estilo.poner("islaAsistente", v) }
-                        Interruptor { titulo: "Visualizador de audio"; sub: "A la derecha"; encendido: Estilo.valor("islaVisualizador"); onCambiar: v => Estilo.poner("islaVisualizador", v) }
                         Segmentos { titulo: "Reloj"; opciones: ["24 horas", "12 horas"]; claves: [false, true]; elegida: Estilo.valor("reloj12"); onElegir: c => Estilo.poner("reloj12", c) }
                         Interruptor { titulo: "Segundos en el reloj"; encendido: Estilo.valor("segundos"); onCambiar: v => Estilo.poner("segundos", v) }
                     }
@@ -1213,6 +1427,154 @@ PanelWindow {
                 }
             }
 
+            // ---------------- Esquinas ----------------
+            // Botones de las esquinas de arriba. Se reordenan arrastrando la fila por el asa;
+            // la flecha la pasa al otro lado.
+            Pagina {
+                id: paginaEsquinas
+                anchors.fill: parent
+                clave: "esquinas"; activa: ventana.seccion === clave
+                function info(c) { return Estilo.botonesCatalogo.find(x => x[0] === c) || [c, c, "help"]; }
+                function mover(lado, i, j) {
+                    const b = { izquierda: Estilo.botones.izquierda.slice(), derecha: Estilo.botones.derecha.slice() };
+                    const [x] = b[lado].splice(i, 1);
+                    b[lado].splice(Math.max(0, Math.min(j, b[lado].length)), 0, x);
+                    Estilo.ponerBotones(b);
+                }
+                function cambiarLado(lado, i) {
+                    const otro = lado === "izquierda" ? "derecha" : "izquierda";
+                    const b = { izquierda: Estilo.botones.izquierda.slice(), derecha: Estilo.botones.derecha.slice() };
+                    const [x] = b[lado].splice(i, 1);
+                    if (otro === "izquierda") b[otro].push(x); else b[otro].unshift(x);   // entra por el lado de la isla
+                    Estilo.ponerBotones(b);
+                }
+                function quitar(lado, i) {
+                    const b = { izquierda: Estilo.botones.izquierda.slice(), derecha: Estilo.botones.derecha.slice() };
+                    b[lado].splice(i, 1);
+                    Estilo.ponerBotones(b);
+                }
+                function agregar(c) {
+                    const b = { izquierda: Estilo.botones.izquierda.concat([c]), derecha: Estilo.botones.derecha.slice() };
+                    Estilo.ponerBotones(b);
+                }
+                Desplazable {
+                    Encabezado { text: "Botones de arriba" }
+                    Texto {
+                        text: "De izquierda a derecha, como se ven en la pantalla. Arrastre una fila por el asa para cambiar el orden; la flecha la pasa al otro lado."
+                        color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
+                    }
+                    Item { width: 1; height: 10 }
+                    Row {
+                        width: parent.width; spacing: 12
+                        Repeater {
+                            model: ["izquierda", "derecha"]
+                            delegate: Rectangle {
+                                id: columnaLado
+                                required property string modelData
+                                readonly property var lista: Estilo.botones[modelData]
+                                readonly property int alto: 44
+                                width: (parent.width - 12) / 2
+                                height: 40 + Math.max(1, lista.length) * (alto + 6) + 6
+                                radius: 12; color: Estilo.tarjeta
+                                border.width: 1; border.color: Estilo.borde
+                                Texto { x: 14; y: 12; text: columnaLado.modelData === "izquierda" ? "Izquierda" : "Derecha"; color: Estilo.texto2; font.weight: Font.DemiBold }
+                                Texto {
+                                    visible: columnaLado.lista.length === 0
+                                    x: 14; y: 46; text: "Sin botones"; color: Estilo.texto3
+                                }
+                                Repeater {
+                                    model: columnaLado.lista
+                                    delegate: Rectangle {
+                                        id: filaBoton
+                                        required property string modelData
+                                        required property int index
+                                        readonly property var datos: paginaEsquinas.info(modelData)
+                                        x: 8; width: parent.width - 16; height: columnaLado.alto; radius: 10
+                                        y: 40 + index * (columnaLado.alto + 6)
+                                        z: asa.drag.active ? 2 : 1
+                                        color: asa.drag.active ? Estilo.realce : Estilo.hundido
+                                        scale: asa.drag.active ? 1.02 : 1
+                                        Behavior on scale { NumberAnimation { duration: Estilo.t(160) } }
+                                        Simbolo {
+                                            id: iconoAsa
+                                            x: 8; anchors.verticalCenter: parent.verticalCenter
+                                            text: "drag_indicator"; color: Estilo.texto3
+                                            MouseArea {
+                                                id: asa
+                                                anchors.fill: parent; anchors.margins: -6
+                                                cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                                                drag.target: filaBoton; drag.axis: Drag.YAxis
+                                                drag.minimumY: 40; drag.maximumY: 40 + (columnaLado.lista.length - 1) * (columnaLado.alto + 6)
+                                                onReleased: {
+                                                    const j = Math.round((filaBoton.y - 40) / (columnaLado.alto + 6));
+                                                    if (j !== filaBoton.index) paginaEsquinas.mover(columnaLado.modelData, filaBoton.index, j);
+                                                    else filaBoton.y = Qt.binding(() => 40 + filaBoton.index * (columnaLado.alto + 6));
+                                                }
+                                            }
+                                        }
+                                        Simbolo { x: 38; anchors.verticalCenter: parent.verticalCenter; text: filaBoton.datos[2] }
+                                        Texto { x: 66; anchors.verticalCenter: parent.verticalCenter; text: filaBoton.datos[1]; width: parent.width - 66 - 70; elide: Text.ElideRight }
+                                        Row {
+                                            anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                                            spacing: 2
+                                            Repeater {
+                                                model: [[columnaLado.modelData === "izquierda" ? "arrow_forward" : "arrow_back", "lado"], ["close", "quitar"]]
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    width: 28; height: 28; radius: 8
+                                                    color: zonaAccion.containsMouse ? Estilo.realce : Estilo.nada
+                                                    Simbolo { anchors.centerIn: parent; text: parent.modelData[0]; font.pixelSize: 16; color: Estilo.texto2 }
+                                                    MouseArea {
+                                                        id: zonaAccion; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: parent.modelData[1] === "lado" ? paginaEsquinas.cambiarLado(columnaLado.modelData, filaBoton.index)
+                                                                                                  : paginaEsquinas.quitar(columnaLado.modelData, filaBoton.index)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Encabezado { text: "Añadir botón" }
+                    Texto {
+                        text: "Entra a la izquierda; con la flecha se pasa al otro lado."
+                        color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
+                    }
+                    Item { width: 1; height: 8 }
+                    Flow {
+                        width: parent.width; spacing: 8
+                        Repeater {
+                            model: Estilo.botonesCatalogo.filter(c => !Estilo.botones.izquierda.includes(c[0]) && !Estilo.botones.derecha.includes(c[0]))
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: filaChip.implicitWidth + 26; height: 34; radius: 17
+                                color: zonaChip.containsMouse ? Estilo.realce : Estilo.tarjeta
+                                border.width: 1; border.color: Estilo.linea
+                                scale: zonaChip.pressed ? 0.94 : 1
+                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaChip.pressed ? 80 : 340); easing.type: zonaChip.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
+                                Row {
+                                    id: filaChip
+                                    anchors.centerIn: parent; spacing: 6
+                                    Simbolo { text: "add"; font.pixelSize: 16; color: Estilo.texto2; anchors.verticalCenter: parent.verticalCenter }
+                                    Simbolo { text: parent.parent.modelData[2]; font.pixelSize: 17; anchors.verticalCenter: parent.verticalCenter }
+                                    Texto { text: parent.parent.modelData[1]; anchors.verticalCenter: parent.verticalCenter }
+                                }
+                                MouseArea { id: zonaChip; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: paginaEsquinas.agregar(parent.modelData[0]) }
+                            }
+                        }
+                    }
+                    Item { width: 1; height: 12 }
+                    Boton {
+                        texto: "Volver a como estaba"
+                        onPulsado: Estilo.ponerBotones(Estilo.barra.lado === "izquierda"
+                            ? { izquierda: ["barra", "bandeja"], derecha: ["menisco"] }
+                            : { izquierda: ["menisco"], derecha: ["bandeja", "barra"] })
+                    }
+                }
+            }
+
             // ---------------- Barra lateral ----------------
             Pagina {
                 anchors.fill: parent
@@ -1226,7 +1588,6 @@ PanelWindow {
                     }
                     Encabezado { text: "Cómo se abre" }
                     Grupo {
-                        Interruptor { titulo: "Botón de destello"; sub: "Arriba, junto a la isla"; encendido: Estilo.barra.boton; onCambiar: v => Estilo.ponerBarra("boton", v) }
                         Interruptor { titulo: "Borde de la pantalla"; sub: "Al llevar el cursor al borde y esperar un instante"; encendido: Estilo.barra.borde; onCambiar: v => Estilo.ponerBarra("borde", v) }
                         Interruptor { titulo: "Cerrar al hacer clic fuera"; encendido: Estilo.barra.clicFuera; onCambiar: v => Estilo.ponerBarra("clicFuera", v) }
                     }

@@ -1,0 +1,10 @@
+{
+  "version": "2026-11-18",
+  "fecha": "18 nov",
+  "seccion": "esquinas",
+  "lista": [
+    { "icono": "border_top", "titulo": "Botones de las esquinas", "texto": "Elija y ordene los de arriba" },
+    { "icono": "pill", "titulo": "Huecos de la isla", "texto": "Hora, fecha, CPU o carátula" },
+    { "icono": "palette", "titulo": "Perfiles de apariencia", "texto": "Todo el estilo en un clic" }
+  ]
+}

@@ -341,6 +341,13 @@ ShellRoot {
         function toggle(): void { salir.alternar() }
     }
     Salir { id: salir }
+
+    // Novedades tras cada actualizacion (novedades.json); a mano: ipc call novedades abrir
+    IpcHandler {
+        target: "novedades"
+        function abrir(): void { novedades.abrir() }
+    }
+    Novedades { id: novedades; raiz: raiz }
     // Clic derecho en el fondo. Para probar: ... ipc call escritorio menu 400 300 | cerrar
     MenuEscritorio { id: menuEscritorio; raiz: raiz }
     VistaGeneral { raiz: raizShell }   // acompana a la vista general de niri

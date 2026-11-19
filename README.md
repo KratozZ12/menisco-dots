@@ -113,6 +113,9 @@ La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve
 ### Tabla de atajos y salir
 `Super+Shift+/` abre una tabla de atajos propia, en cuatro grupos, que lee las teclas de la config de niri cada vez. `Super+Shift+E` abre un cuadro para salir de niri (`Enter` sale, `Esc` cancela); `Ctrl+Alt+Supr` sigue con el de niri. Los dos siguen el tema de color.
 
+### Novedades
+Después de cada actualización sale una ventanita centrada, encima de todo y siempre en el tema Ónix, con lo nuevo: las tres torres del logo se encienden por turnos y la del centro sale con rebote. Sale una sola vez por versión; la lista está en `quickshell/isla/novedades.json` (al cambiar su `version`, vuelve a salir). A mano: `qs -p ~/.config/quickshell/isla ipc call novedades abrir`.
+
 ### Bandeja
 Píldora con los iconos de las apps en segundo plano. Va en el hueco que tenga en **Ajustes > Botones**. Clic derecho abre el menú de la app.
 

@@ -50,7 +50,8 @@ PanelWindow {
                 required property string modelData
                 sourceComponent: modelData === "bandeja" ? hueco : modelData === "reproductor" ? reproductor : modelData === "minidock" ? miniDock : boton
                 property string clave: modelData
-                visible: !item || item.visible
+                // no item.visible: hereda el del Loader y, una vez apagado, no vuelve a encenderse
+                visible: !item || item.mostrar === undefined || item.mostrar
             }
         }
     }
@@ -60,7 +61,8 @@ PanelWindow {
         id: hueco
         Item {
             id: h
-            width: Estilo.anchoBandeja; height: 34; visible: width > 0
+            readonly property bool mostrar: width > 0
+            width: Estilo.anchoBandeja; height: 34; visible: mostrar
             // La bandeja se pone sola encima: le dice cuanto hay entre el borde y este hueco.
             Binding { target: Estilo; property: "sepBandeja"; value: esq.derecha ? esq.width - (fila.x + h.parent.x + h.width) : fila.x + h.parent.x }
         }
@@ -71,40 +73,98 @@ PanelWindow {
     readonly property bool micMudo: !!Pipewire.defaultAudioSource?.audio?.muted
     readonly property bool volMudo: !!Pipewire.defaultAudioSink?.audio?.muted
 
-    // ---- Mini reproductor: carátula y pausa; con el cursor encima, título y controles ----
+    // ---- Mini reproductor: caratula y pausa; con el cursor encima, titulo y controles ----
     readonly property var musica: Mpris.players.values.find(p => p.isPlaying) ?? Mpris.players.values[0] ?? null
+    readonly property bool pildora: Estilo.valor("reproductorForma") === "pildora"
+    readonly property string modoTinte: Estilo.valor("reproductorTinte")
+    // Color de la caratula (mismo calculo que la isla). ColorQuantizer solo lee archivos locales.
+    readonly property string arte: musica && modoTinte !== "nada" ? musica.trackArtUrl || "" : ""
+    property string arteLocal: ""
+    onArteChanged: {
+        if (!arte) arteLocal = "";
+        else if (arte.startsWith("file://")) arteLocal = arte;
+        else {
+            const destino = Estilo.tmp + "/menisco-arte-" + Qt.md5(arte);
+            bajarArte.command = ["sh", "-c", "[ -s \"$2\" ] || curl -sfL --max-time 8 -o \"$2\" \"$1\"", "sh", arte, destino];
+            bajarArte.destino = destino;
+            bajarArte.running = true;
+        }
+    }
+    Process { id: bajarArte; property string destino; onExited: code => { if (code === 0) esq.arteLocal = "file://" + destino; } }
+    ColorQuantizer { id: cuantizador; source: esq.arteLocal; depth: 3; rescaleSize: 64 }
+    property color tinte: Estilo.fondo
+    readonly property color tinteNuevo: {
+        let mejor = null, puntos = -1;
+        for (const c of cuantizador.colors) {
+            const p = c.hsvSaturation * Math.min(1, c.hsvValue * 2);
+            if (p > puntos) { puntos = p; mejor = c; }
+        }
+        if (!mejor || mejor.hsvSaturation < 0.08) return mejor ? Qt.hsva(0, 0, 0.3, 1) : Estilo.fondo;
+        return Qt.hsva(mejor.hsvHue, Math.min(mejor.hsvSaturation, 0.7), 0.45, 1);
+    }
+    onTinteNuevoChanged: tinte = tinteNuevo
+    Behavior on tinte { ColorAnimation { duration: Estilo.t(600) } }
+
     Component {
         id: reproductor
         Rectangle {
             id: rp
-            visible: !!esq.musica
-            readonly property bool abierto: zonaRp.containsMouse
-            width: filaRp.width + 10; height: 34; radius: 12
+            readonly property bool mostrar: !!esq.musica
+            visible: mostrar
+            // abre: el ancho, con la curva de los paneles y sin rebote. Titulo y botones entran
+            // despues, cada uno con su retraso; al cerrar se van sin esperar.
+            readonly property bool encima: zonaRp.containsMouse
+            property real abre: encima ? 1 : 0
+            Behavior on abre { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+            property real info: encima ? 1 : 0
+            Behavior on info { SequentialAnimation {
+                PauseAnimation { duration: rp.encima ? Estilo.t(90) : 0 }
+                NumberAnimation { duration: Estilo.t(rp.encima ? 380 : 180); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } } }
+            property real ctl1: encima ? 1 : 0
+            Behavior on ctl1 { SequentialAnimation {
+                PauseAnimation { duration: rp.encima ? Estilo.t(120) : 0 }
+                NumberAnimation { duration: Estilo.t(rp.encima ? 320 : 140); easing.type: rp.encima ? Easing.OutBack : Easing.OutCubic; easing.overshoot: Estilo.o(2) } } }
+            property real ctl2: encima ? 1 : 0
+            Behavior on ctl2 { SequentialAnimation {
+                PauseAnimation { duration: rp.encima ? Estilo.t(170) : 0 }
+                NumberAnimation { duration: Estilo.t(rp.encima ? 320 : 140); easing.type: rp.encima ? Easing.OutBack : Easing.OutCubic; easing.overshoot: Estilo.o(2) } } }
+            readonly property real anchoInfo: Math.min(140, Math.max(tituloRp.implicitWidth, artistaRp.implicitWidth))
+            width: 64 + abre * (anchoInfo + 9 + 12 + 56); height: 34
+            radius: esq.pildora ? 17 : 12
             color: Estilo.fondo
             clip: true
-            Behavior on width { NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
             MouseArea { id: zonaRp; anchors.fill: parent; hoverEnabled: true }
-            Row {
-                id: filaRp
-                x: 5; anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
-                ClippingRectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 24; height: 24; radius: 7; color: Estilo.hover
-                    Text { anchors.centerIn: parent; text: "music_note"; font { family: "Material Symbols Rounded"; pixelSize: 15 } color: Estilo.texto2; visible: !arteRp.source.toString() }
-                    Image { id: arteRp; anchors.fill: parent; source: esq.musica ? esq.musica.trackArtUrl || "" : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64) }
+            // Tinte de la caratula: desde ella hacia el centro, o subiendo desde abajo.
+            Rectangle {
+                id: tinteRp
+                anchors.fill: parent; radius: parent.radius
+                visible: esq.modoTinte !== "nada"
+                readonly property bool abajo: esq.modoTinte === "abajo"
+                gradient: Gradient {
+                    orientation: tinteRp.abajo ? Gradient.Vertical : Gradient.Horizontal
+                    GradientStop { position: 0; color: tinteRp.abajo ? Qt.alpha(esq.tinte, 0) : esq.tinte }
+                    GradientStop { position: tinteRp.abajo ? 0.3 : 0.45; color: Qt.alpha(esq.tinte, tinteRp.abajo ? 0 : 0.35) }
+                    GradientStop { position: 1; color: tinteRp.abajo ? esq.tinte : Qt.alpha(esq.tinte, 0) }
                 }
-                Column {
-                    visible: rp.abierto
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(140, Math.max(tituloRp.implicitWidth, artistaRp.implicitWidth))
-                    Text { id: tituloRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackTitle : ""; color: Estilo.texto; font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold } }
-                    Text { id: artistaRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackArtist : ""; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 11 } }
-                }
-                BotonMini { visible: rp.abierto; icono: "skip_previous"; onPulsado: if (esq.musica) esq.musica.previous() }
-                BotonMini { icono: esq.musica && esq.musica.isPlaying ? "pause" : "play_arrow"; tam: 20; onPulsado: if (esq.musica) esq.musica.togglePlaying() }
-                BotonMini { visible: rp.abierto; icono: "skip_next"; onPulsado: if (esq.musica) esq.musica.next() }
             }
+            ClippingRectangle {
+                x: 5; anchors.verticalCenter: parent.verticalCenter
+                width: 24; height: 24; radius: esq.pildora ? 12 : 7; color: Estilo.hover
+                Text { anchors.centerIn: parent; text: "music_note"; font { family: "Material Symbols Rounded"; pixelSize: 15 } renderType: Text.NativeRendering; color: Estilo.texto2; visible: !arteRp.source.toString() }
+                Image { id: arteRp; anchors.fill: parent; source: esq.musica ? esq.musica.trackArtUrl || "" : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(64, 64) }
+            }
+            Column {
+                x: 38 - 8 * (1 - rp.info); anchors.verticalCenter: parent.verticalCenter
+                width: rp.anchoInfo
+                opacity: rp.info
+                visible: opacity > 0.01
+                Text { id: tituloRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackTitle : ""; color: Estilo.texto; font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold } }
+                Text { id: artistaRp; width: parent.width; elide: Text.ElideRight; text: esq.musica ? esq.musica.trackArtist : ""; color: Qt.alpha(Estilo.texto, 0.65); font { family: Estilo.letra; pixelSize: 11 } }
+            }
+            // Pausa siempre a la vista; al abrirse le deja el borde a "siguiente" y "anterior" sale a su izquierda.
+            BotonMini { x: rp.width - 30 - 28 * rp.abre; icono: esq.musica && esq.musica.isPlaying ? "pause" : "play_arrow"; tam: 20; onPulsado: if (esq.musica) esq.musica.togglePlaying() }
+            BotonMini { x: rp.width - 30 - 56 * rp.abre; icono: "skip_previous"; opacity: rp.ctl1; scale: 0.6 + 0.4 * rp.ctl1; visible: opacity > 0.01; onPulsado: if (esq.musica) esq.musica.previous() }
+            BotonMini { x: rp.width - 30; icono: "skip_next"; opacity: rp.ctl2; scale: 0.6 + 0.4 * rp.ctl2; visible: opacity > 0.01; onPulsado: if (esq.musica) esq.musica.next() }
         }
     }
     component BotonMini: Text {
@@ -113,47 +173,42 @@ PanelWindow {
         property int tam: 18
         signal pulsado()
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+        width: 20
+        horizontalAlignment: Text.AlignHCenter
         text: icono
         font { family: "Material Symbols Rounded"; pixelSize: tam }
         font.variableAxes: { "FILL": 1, "wght": 500, "opsz": 24 }
         renderType: Text.NativeRendering   // sin esto el relleno no se aplica y salen huecos
         color: zonaBm.containsMouse ? Estilo.texto : Qt.alpha(Estilo.texto, 0.85)
-        scale: zonaBm.pressed ? 0.85 : 1
-        Behavior on scale { NumberAnimation { duration: Estilo.t(160) } }
         MouseArea { id: zonaBm; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bm.pulsado() }
     }
 
-    // ---- Mini dock: las apps ancladas del dock (dock.json), con un punto si estan abiertas ----
-    property var ancladas: []
-    FileView {
-        path: Estilo.carpeta + "/dock.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: { try { esq.ancladas = JSON.parse(text()); } catch (e) {} }
-    }
+    // ---- Mini dock: las apps que se eligen en Ajustes > Botones (ids de .desktop), con un punto si estan abiertas ----
+    readonly property var appsDock: Estilo.valor("miniDockApps") || []
     Component {
         id: miniDock
         Rectangle {
-            visible: esq.ancladas.length > 0
-            width: filaDock.width + 10; height: 34; radius: 12
+            readonly property bool mostrar: esq.appsDock.length > 0
+            visible: mostrar
+            width: filaDock.width + 10; height: 34; radius: esq.pildora ? 17 : 12
             color: Estilo.fondo
             Row {
                 id: filaDock
                 x: 5; anchors.verticalCenter: parent.verticalCenter
                 spacing: 4
                 Repeater {
-                    model: esq.ancladas
+                    model: esq.appsDock
                     delegate: Item {
                         id: app
-                        required property var modelData
-                        readonly property var entrada: DesktopEntries.applications.values.find(e => e.id === modelData.escritorio)
-                                                       ?? DesktopEntries.heuristicLookup(modelData.ventana)
-                        readonly property var ventanas: ToplevelManager.toplevels.values.filter(t => t.appId === modelData.ventana)
+                        required property string modelData
+                        readonly property var entrada: DesktopEntries.applications.values.find(e => e.id === modelData) ?? null
+                        readonly property var ventanas: ToplevelManager.toplevels.values.filter(t => t.appId === modelData
+                            || (DesktopEntries.heuristicLookup(t.appId) || {}).id === modelData)
                         width: 26; height: 30
                         IconImage {
                             anchors.horizontalCenter: parent.horizontalCenter; y: 2
                             implicitSize: 22
-                            source: Quickshell.iconPath(app.entrada ? app.entrada.icon : app.modelData.ventana, "application-x-executable")
+                            source: Quickshell.iconPath(app.entrada ? app.entrada.icon : app.modelData, "application-x-executable")
                             scale: zonaApp.pressed ? 0.85 : zonaApp.containsMouse ? 1.12 : 1
                             Behavior on scale { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2) } }
                         }

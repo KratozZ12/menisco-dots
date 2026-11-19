@@ -1449,6 +1449,16 @@ PanelWindow {
                 id: paginaEsquinas
                 anchors.fill: parent
                 clave: "esquinas"; activa: ventana.seccion === clave
+                partes: ["Botones", "Reproductor y dock"]
+                property bool agregandoApp: false
+                readonly property var appsDock: Estilo.valor("miniDockApps") || []
+                function entradaDe(id) { return DesktopEntries.applications.values.find(e => e.id === id) ?? null }
+                function moverApp(i, j) {
+                    const l = appsDock.slice();
+                    if (j < 0 || j >= l.length) return;
+                    const [x] = l.splice(i, 1); l.splice(j, 0, x);
+                    Estilo.poner("miniDockApps", l);
+                }
                 function info(c) { return Estilo.botonesCatalogo.find(x => x[0] === c) || [c, c, "help"]; }
                 function mover(lado, i, j) {
                     const b = { izquierda: Estilo.botones.izquierda.slice(), derecha: Estilo.botones.derecha.slice() };
@@ -1586,6 +1596,98 @@ PanelWindow {
                         onPulsado: Estilo.ponerBotones(Estilo.barra.lado === "izquierda"
                             ? { izquierda: ["barra", "bandeja"], derecha: ["menisco"] }
                             : { izquierda: ["menisco"], derecha: ["bandeja", "barra"] })
+                    }
+                }
+                Desplazable {
+                    parte: 1
+                    Encabezado { text: "Mini reproductor" }
+                    Grupo {
+                        Segmentos { titulo: "Forma"; sub: "También la usa el mini dock"; opciones: ["Redondeado", "Píldora"]; claves: ["redondeada", "pildora"]; elegida: Estilo.valor("reproductorForma"); onElegir: c => Estilo.poner("reproductorForma", c) }
+                        Segmentos { titulo: "Color de la carátula"; sub: "Tiñe el reproductor con el color del disco"; opciones: ["Ninguno", "Al lado", "Abajo"]; claves: ["nada", "lado", "abajo"]; elegida: Estilo.valor("reproductorTinte"); onElegir: c => Estilo.poner("reproductorTinte", c) }
+                    }
+                    Encabezado { text: "Mini dock" }
+                    Grupo {
+                        Fila {
+                            visible: paginaEsquinas.appsDock.length === 0
+                            titulo: "Sin apps todavía"; sub: "Agregue las que quiera tener a mano arriba"
+                        }
+                        Repeater {
+                            model: paginaEsquinas.appsDock
+                            delegate: Fila {
+                                id: filaApp
+                                required property string modelData
+                                required property int index
+                                readonly property var entrada: paginaEsquinas.entradaDe(modelData)
+                                titulo: entrada ? entrada.name : modelData
+                                icono: entrada ? entrada.icon : ""; iconoEsApp: true
+                                Row {
+                                    spacing: 2
+                                    Repeater {
+                                        model: [["arrow_upward", -1], ["arrow_downward", 1], ["close", 0]]
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            width: 28; height: 28; radius: 8
+                                            color: zApp.containsMouse ? Estilo.realce : Estilo.nada
+                                            Simbolo { anchors.centerIn: parent; text: parent.modelData[0]; font.pixelSize: 16; color: Estilo.texto2 }
+                                            MouseArea {
+                                                id: zApp; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: parent.modelData[1] === 0
+                                                    ? Estilo.poner("miniDockApps", paginaEsquinas.appsDock.filter((a, k) => k !== filaApp.index))
+                                                    : paginaEsquinas.moverApp(filaApp.index, filaApp.index + parent.modelData[1])
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Fila {
+                            visible: !paginaEsquinas.agregandoApp
+                            icono: "add"; titulo: "Agregar app"; clicable: true
+                            onPulsada: { paginaEsquinas.agregandoApp = true; buscaDock.text = ""; buscaDock.forceActiveFocus(); }
+                            Simbolo { text: "chevron_right"; color: Estilo.texto2 }
+                        }
+                        Item {
+                            visible: paginaEsquinas.agregandoApp
+                            width: parent.width; height: visible ? sugDock.y + sugDock.height + 10 : 0
+                            Rectangle {
+                                x: 12; y: 8; width: parent.width - 24; height: 28; radius: 8; color: Estilo.hundido
+                                border.width: 1; border.color: buscaDock.activeFocus ? Estilo.texto3 : "transparent"
+                                TextInput {
+                                    id: buscaDock
+                                    anchors { fill: parent; leftMargin: 10; rightMargin: 10 }
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    clip: true
+                                    color: Estilo.texto; selectionColor: Estilo.texto3
+                                    font { family: Estilo.letra; pixelSize: 12 }
+                                    Keys.onEscapePressed: paginaEsquinas.agregandoApp = false
+                                    Texto { visible: !parent.text; text: "Busque una app instalada"; color: Estilo.texto3; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                }
+                            }
+                            Flow {
+                                id: sugDock
+                                x: 12; y: 44; width: parent.width - 24; spacing: 6
+                                Repeater {
+                                    model: !paginaEsquinas.agregandoApp || !buscaDock.text.trim() ? []
+                                        : DesktopEntries.applications.values
+                                            .filter(e => !e.noDisplay && !paginaEsquinas.appsDock.includes(e.id) && e.name.toLowerCase().includes(buscaDock.text.trim().toLowerCase()))
+                                            .slice(0, 8)
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        width: filaSug.implicitWidth + 18; height: 28; radius: 9; color: zSugD.containsMouse ? Estilo.realce : Estilo.hundido
+                                        Row {
+                                            id: filaSug
+                                            anchors.centerIn: parent; spacing: 6
+                                            IconImage { implicitSize: 16; anchors.verticalCenter: parent.verticalCenter; source: Quickshell.iconPath(parent.parent.modelData.icon, "application-x-executable") }
+                                            Texto { text: parent.parent.modelData.name; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                        }
+                                        MouseArea {
+                                            cursorShape: Qt.PointingHandCursor; id: zSugD; anchors.fill: parent; hoverEnabled: true
+                                            onClicked: { Estilo.poner("miniDockApps", paginaEsquinas.appsDock.concat([parent.modelData.id])); paginaEsquinas.agregandoApp = false; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

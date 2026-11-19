@@ -272,6 +272,16 @@ PanelWindow {
                             GradientStop { position: 1; color: Qt.alpha(Estilo.fondo, 0.94) }
                         }
                     }
+                    Rectangle {   // y a los lados, para que no quede un marco recto contra el borde
+                        anchors.fill: parent
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: Qt.alpha(Estilo.fondo, 0.94) }
+                            GradientStop { position: 0.14; color: Qt.alpha(Estilo.fondo, 0) }
+                            GradientStop { position: 0.86; color: Qt.alpha(Estilo.fondo, 0) }
+                            GradientStop { position: 1; color: Qt.alpha(Estilo.fondo, 0.94) }
+                        }
+                    }
                 }
             }
 

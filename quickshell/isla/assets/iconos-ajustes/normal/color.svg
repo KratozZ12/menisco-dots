@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<defs>
+<linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9580ba"/><stop offset="1" stop-color="#6b5297"/></linearGradient>
+<linearGradient id="h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<filter id="s" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="#000" flood-opacity="0.28"/></filter>
+</defs>
+<path fill="url(#f)" d="M32 2C55 2 62 9 62 32S55 62 32 62 2 55 2 32 9 2 32 2Z"/>
+<path fill="none" stroke="url(#h)" stroke-width="1.5" d="M32 2.75C54.4 2.75 61.25 9.6 61.25 32S54.4 61.25 32 61.25 2.75 54.4 2.75 32 9.6 2.75 32 2.75Z"/>
+<g filter="url(#s)">
+<circle cx="26.5" cy="27" r="10" fill="#FFFFFF" fill-opacity="0.6"/>
+<circle cx="37.5" cy="27" r="10" fill="#FFFFFF" fill-opacity="0.6"/>
+<circle cx="32" cy="37" r="10" fill="#FFFFFF" fill-opacity="0.6"/>
+</g>
+</svg>

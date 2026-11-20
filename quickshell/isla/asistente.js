@@ -55,6 +55,10 @@ function personalizar(forma, color, cambia) {
 
 function azar(a, b) { return a + Math.random() * (b - a); }
 
+// Mirada fija ({ y, p }) o null para que mire libre. Fija, solo parpadea.
+var fija = null;
+function fijarMirada(m) { fija = m; }
+
 // Que hace la mirada a continuacion. Tranquilo casi siempre; los arranques vivos son ocasionales.
 function planear(t) {
     var r = Math.random();
@@ -94,7 +98,9 @@ function avanzar(t, dt) {
     dt = Math.min(dt || 1, 3);
     if (actual === "pensar") { S.ty = 0.5; S.tp = 0.42; cola = []; S.rapido = false; }
     else {
-        if (t > proximoPlan) proximoPlan = planear(t);
+        if (fija) { S.ty = fija.y; S.tp = fija.p; cola = []; S.rapido = false;
+                    if (t > proximoPlan) { parpadear(t, Math.random() < 0.3 ? 2 : 1); proximoPlan = t + azar(2500, 6000) * ritmo; } }
+        else if (t > proximoPlan) proximoPlan = planear(t);
         while (cola.length && cola[0].t <= t) { var c = cola.shift(); S.ty = c.y; S.tp = c.p; S.rapido = true; }
     }
     var sp = S.rapido ? 0.26 : 0.09, dm = S.rapido ? 0.52 : 0.7;

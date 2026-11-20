@@ -19,7 +19,7 @@ Singleton {
         rebote: "suave",                // nada | suave | mucho
         tema: "onix",                   // ver ordenTemas
         superficies: "suave",           // suave | negro
-        seguirFondo: true, fondoAcento: "",   // tema "delfondo"
+        seguirFondo: true, fondoAcento: "", fondoAcento2: "",   // tema "delfondo"
         letra: "SF Pro",                // SF Pro | Inter
         esquinas: 20, espacio: 16, borde: 40, marco: false, dockPegado: true,
         islaAsistente: true, islaVisualizador: true, reloj12: false, segundos: false,
@@ -154,7 +154,18 @@ Singleton {
         path: estilo.carpeta + "/menisco.json"
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: { try { estilo.datos = JSON.parse(text()); } catch (e) {} }
+        onLoaded: {
+            let d;
+            try { d = JSON.parse(text()); } catch (e) { return; }
+            // Temas quitados el 20/11/2026: pasan a su pariente mas cercano, en el archivo y en los perfiles.
+            const viejos = { jade: "agave", rubi: "obsidiana", medianoche: "tinta", niebla: "onix", grafito: "champan" };
+            let cambio = false;
+            if (viejos[d.tema]) { d.tema = viejos[d.tema]; cambio = true; }
+            for (const p of d.perfiles || [])
+                if (p.datos && viejos[p.datos.tema]) { p.datos.tema = viejos[p.datos.tema]; cambio = true; }
+            estilo.datos = d;
+            if (cambio) setText(JSON.stringify(d, null, 2));
+        }
     }
 
     // ---- Movimiento ----
@@ -171,61 +182,60 @@ Singleton {
         : [0.3, 1 + 0.55 * factorRebote, 0.5, 1, 1, 1]
 
     // ---- Color ----
-    // Diez temas oscuros. Las piezas leen solo estos nombres, nunca un gris escrito a mano:
+    // Doce temas oscuros (con "Del fondo"). Las piezas leen solo estos nombres, nunca un gris escrito a mano:
     // fondo (paneles), tarjeta (bloques dentro del panel), hover, hundido (campos y pistas),
     // borde y linea (filos finos), texto/texto2/texto3, apagado (interruptor sin activar),
     // activo + enActivo + iconoActivo + activoBorde (lo que esta encendido), acento (deslizadores,
     // interruptores, seleccion) y sobreAcento (la perilla encima del acento).
+    // acento2: segundo tono, solo decorativo (franja de la tarjeta del tema, rayo y halo de la Gota).
+    // texto2/texto3 pasan 4.5:1 sobre fondo y tarjeta en todos.
     readonly property var temasFijos: ({
         // El original: negro de verdad; el blanco marca lo que se toca.
         onix:       { nombre: "Ónix", desc: "El original", fondo: "#000000", tarjeta: "#141416", hover: "#1c1c1f", hundido: "#0c0c0e",
                       lateral: "#060607", luz: "#ffffff",
                       borde: "#1fffffff", linea: "#14ffffff", texto: "#f2f2f3", texto2: "#a1a1a6", texto3: "#7e7e84",
                       apagado: "#2a2a2d", activo: "#f2f2f3", enActivo: "#000000", iconoActivo: "#000000",
-                      activoBorde: "#00000000", acento: "#f2f2f3", sobreAcento: "#000000" },
-        champan:    { nombre: "Champán", desc: "Dorado", fondo: "#000000", tarjeta: "#0f0f0f", hover: "#1c1c1c", hundido: "#171717",
-                      borde: "#1affffff", linea: "#12ffffff", texto: "#f5f5f5", texto2: "#8c8c8c", texto3: "#7c7c7c",
-                      apagado: "#2a2a2a", activo: "#1d1810", enActivo: "#f2e6d0", iconoActivo: "#d9b77e",
-                      activoBorde: "#59d9b77e", acento: "#d9b77e", sobreAcento: "#000000" },
-        medianoche: { nombre: "Medianoche", desc: "Azul frío", fondo: "#06070a", tarjeta: "#0e1016", hover: "#1a1e27", hundido: "#151821",
-                      borde: "#1aa0b4ff", linea: "#12a0b4ff", texto: "#eef1f7", texto2: "#858c9b", texto3: "#767c8c",
-                      apagado: "#262a35", activo: "#121a2c", enActivo: "#e3eaff", iconoActivo: "#8fb0ff",
-                      activoBorde: "#598fb0ff", acento: "#8fb0ff", sobreAcento: "#06070a" },
-        // Rubi y Jade: dos tonos. El acento va en interruptores y barras; lo encendido es una tarjeta
-        // oscura con el icono de color y un filo de otro tono (oro rosa, oro viejo).
-        rubi:       { nombre: "Rubí", desc: "Rojo suave", fondo: "#0b0607", tarjeta: "#150b0d", hover: "#231316", hundido: "#1c0f12",
-                      borde: "#1fffd0d6", linea: "#12ffd0d6", texto: "#f7ecee", texto2: "#a08a8e", texto3: "#8b767a",
-                      apagado: "#2e1a1e", activo: "#2a0e14", enActivo: "#ffe3e6", iconoActivo: "#ff5a6e",
-                      activoBorde: "#8ce9a88f", acento: "#e8384f", sobreAcento: "#ffffff" },
-        jade:       { nombre: "Jade", desc: "Verde calmo", fondo: "#040907", tarjeta: "#0a1410", hover: "#13211b", hundido: "#0f1a15",
-                      borde: "#1fbfe8d2", linea: "#12bfe8d2", texto: "#eaf4ef", texto2: "#8aa39a", texto3: "#6c827a",
-                      apagado: "#1d2c26", activo: "#0f2a20", enActivo: "#e3f6ec", iconoActivo: "#7fe0b5",
-                      activoBorde: "#99c9a45c", acento: "#4fc497", sobreAcento: "#04140d" },
-        // Pantalla de terminal vieja: hasta el texto va en ambar.
+                      activoBorde: "#00000000", acento: "#f2f2f3", acento2: "#8e8e93", sobreAcento: "#000000" },
+        champan:     { nombre: "Champán", desc: "Dorado y burbujas", fondo: "#050403", tarjeta: "#13110d", hover: "#1b1812", hundido: "#0b0a08",
+                      borde: "#1ff5e8d0", linea: "#14f5e8d0", texto: "#f5f1ea", texto2: "#96938d", texto3: "#827f79",
+                      apagado: "#232018", activo: "#e6c68a", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#e6c68a", acento2: "#f5e9d0", sobreAcento: "#000000" },
+        mercurio:    { nombre: "Mercurio", desc: "Plata líquida", fondo: "#050507", tarjeta: "#131418", hover: "#1b1c21", hundido: "#0b0c0f",
+                      borde: "#1fe9ebef", linea: "#14e9ebef", texto: "#eef0f4", texto2: "#96989c", texto3: "#7e8084",
+                      apagado: "#23252c", activo: "#c9ced6", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#c9ced6", acento2: "#8e96a3", sobreAcento: "#000000" },
+        tinta:       { nombre: "Tinta", desc: "Azul de pluma", fondo: "#04050a", tarjeta: "#0f1220", hover: "#15192c", hundido: "#090b14",
+                      borde: "#1fbdcbfd", linea: "#14bdcbfd", texto: "#eef1fb", texto2: "#9598a3", texto3: "#7c7f8b",
+                      apagado: "#1c2139", activo: "#5b7cfa", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#5b7cfa", acento2: "#2b3a8c", sobreAcento: "#000000" },
+        aurora:      { nombre: "Aurora", desc: "Verde y violeta", fondo: "#040807", tarjeta: "#0d1614", hover: "#121e1b", hundido: "#080e0d",
+                      borde: "#1fcbfae6", linea: "#14cbfae6", texto: "#ecf7f3", texto2: "#939d9a", texto3: "#78827f",
+                      apagado: "#172623", activo: "#7cf2c0", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#7cf2c0", acento2: "#b59cff", sobreAcento: "#000000" },
+        cempasuchil: { nombre: "Cempasúchil", desc: "Flor y papel picado", fondo: "#080503", tarjeta: "#17100a", hover: "#1f160e", hundido: "#0f0a06",
+                      borde: "#1fffd0a5", linea: "#14ffd0a5", texto: "#fbf0e6", texto2: "#a0968e", texto3: "#877e76",
+                      apagado: "#281d12", activo: "#ff8a1f", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#ff8a1f", acento2: "#9b5cf0", sobreAcento: "#000000" },
         fosforo:    { nombre: "Fósforo", desc: "Ámbar de terminal", fondo: "#0a0702", tarjeta: "#130e05", hover: "#21180a", hundido: "#1a1307",
                       borde: "#26ffb347", linea: "#14ffb347", texto: "#ffd9a0", texto2: "#b08a52", texto3: "#977645",
                       apagado: "#2c2210", activo: "#ffb347", enActivo: "#1a1003", iconoActivo: "#1a1003",
-                      activoBorde: "#00000000", acento: "#ffb347", sobreAcento: "#1a1003" },
-        // Violeta de noche: el acento en lo que se toca, las superficies apenas teñidas.
-        aurora:     { nombre: "Aurora", desc: "Violeta", fondo: "#07060c", tarjeta: "#110f1a", hover: "#1c1929", hundido: "#0d0b15",
-                      borde: "#24b59cff", linea: "#14b59cff", texto: "#f0edff", texto2: "#a39cbf", texto3: "#8a83a6",
-                      apagado: "#29243d", activo: "#b59cff", enActivo: "#0b0814", iconoActivo: "#0b0814",
-                      activoBorde: "#00000000", acento: "#b59cff", sobreAcento: "#0b0814" },
-        // Gris calido de lapiz con piezas de cobre.
-        grafito:    { nombre: "Grafito", desc: "Gris y cobre", fondo: "#0c0b0a", tarjeta: "#171513", hover: "#24211e", hundido: "#1d1a17",
-                      borde: "#1fffe2c8", linea: "#12ffe2c8", texto: "#f1ebe5", texto2: "#9a918a", texto3: "#867e78",
-                      apagado: "#2e2a26", activo: "#c87941", enActivo: "#140b04", iconoActivo: "#140b04",
-                      activoBorde: "#00000000", acento: "#d98a52", sobreAcento: "#140b04" },
-        // Tokio de noche: icono magenta, filo e interruptores cian.
-        neon:       { nombre: "Neón", desc: "Tokio de noche", fondo: "#050308", tarjeta: "#0e0a14", hover: "#1a1324", hundido: "#140f1d",
-                      borde: "#26ff4fd8", linea: "#14ff4fd8", texto: "#f6eefe", texto2: "#9a8bb0", texto3: "#827598",
-                      apagado: "#261c33", activo: "#1a0b24", enActivo: "#ffe6fb", iconoActivo: "#ff4fd8",
-                      activoBorde: "#9922e5ff", acento: "#22e5ff", sobreAcento: "#050308" },
-        // El unico sin negro puro: gris azulado suave, poco contraste.
-        niebla:     { nombre: "Niebla", desc: "Gris azulado", fondo: "#101317", tarjeta: "#181c21", hover: "#232830", hundido: "#1d2228",
-                      borde: "#24dbe7f5", linea: "#16dbe7f5", texto: "#dfe6ee", texto2: "#8b96a3", texto3: "#7a8591",
-                      apagado: "#2c323b", activo: "#dfe6ee", enActivo: "#101317", iconoActivo: "#101317",
-                      activoBorde: "#00000000", acento: "#a9c3dc", sobreAcento: "#101317" }
+                      activoBorde: "#00000000", acento: "#ffb347", acento2: "#b8701c", sobreAcento: "#1a1003" },
+        neon:        { nombre: "Neón", desc: "Tokio de noche", fondo: "#050308", tarjeta: "#0e0a14", hover: "#130e1b", hundido: "#09060d",
+                      borde: "#1fa3f5fa", linea: "#14a3f5fa", texto: "#f6eefe", texto2: "#9993a0", texto3: "#807a87",
+                      apagado: "#181222", activo: "#19e6f2", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#19e6f2", acento2: "#ff3dcb", sobreAcento: "#000000" },
+        obsidiana:   { nombre: "Obsidiana", desc: "Vidrio volcánico", fondo: "#070404", tarjeta: "#160d0c", hover: "#1e1210", hundido: "#0e0808",
+                      borde: "#1fffc3b1", linea: "#14ffc3b1", texto: "#f8edeb", texto2: "#9e9392", texto3: "#857b79",
+                      apagado: "#271715", activo: "#ff6a3d", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#ff6a3d", acento2: "#8c2f1c", sobreAcento: "#000000" },
+        agave:       { nombre: "Agave", desc: "Verde del campo", fondo: "#040706", tarjeta: "#0e1614", hover: "#141e1c", hundido: "#080e0c",
+                      borde: "#1fcce9dd", linea: "#14cce9dd", texto: "#eaf4f0", texto2: "#929b98", texto3: "#7a8380",
+                      apagado: "#1a2724", activo: "#7fc8a9", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#7fc8a9", acento2: "#3e7d6a", sobreAcento: "#000000" },
+        pitahaya:    { nombre: "Pitahaya", desc: "Rosa y verde", fondo: "#08040a", tarjeta: "#170e19", hover: "#1f1421", hundido: "#0f0811",
+                      borde: "#1fffb9da", linea: "#14ffb9da", texto: "#f9edf6", texto2: "#9f949e", texto3: "#867b85",
+                      apagado: "#281a2a", activo: "#ff4fa3", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#ff4fa3", acento2: "#7bd88f", sobreAcento: "#000000" }
     })
     // "Del fondo": el acento sale del fondo de pantalla; las superficies son negro con un 4-5 % de el.
     // Con "Seguir al fondo" apagado se queda el ultimo acento calculado (fondoAcento).
@@ -239,17 +249,31 @@ Singleton {
         return Qt.hsla(mejor.hslHue, Math.min(0.8, Math.max(0.45, mejor.hslSaturation)), 0.72, 1);
     }
     readonly property color acentoFondo: valor("seguirFondo") || !valor("fondoAcento") ? colorVivo(cuantizador.colors) : Qt.color(valor("fondoAcento"))
+    // acento2 de "Del fondo": el segundo color mas vivo del mismo cuantizador, con otro matiz si lo hay;
+    // si el fondo solo tiene uno, el acento oscurecido.
+    function colorVivo2(colores, a) {
+        let mejor = null, puntos = -1;
+        for (const c of colores) {
+            const d = Math.abs(c.hslHue - a.hslHue), dh = Math.min(d, 1 - d);
+            const p = c.hsvSaturation * Math.min(1, c.hsvValue * 2);
+            if (dh > 0.08 && c.hsvSaturation > 0.12 && p > puntos) { puntos = p; mejor = c; }
+        }
+        if (!mejor) return Qt.hsla(a.hslHue, a.hslSaturation * 0.8, 0.42, 1);
+        return Qt.hsla(mejor.hslHue, Math.min(0.75, Math.max(0.4, mejor.hslSaturation)), 0.6, 1);
+    }
+    readonly property color acento2Fondo: valor("seguirFondo") || !valor("fondoAcento2") ? colorVivo2(cuantizador.colors, acentoFondo) : Qt.color(valor("fondoAcento2"))
     readonly property var temaFondo: {
         const a = acentoFondo, t = (base, k) => Qt.tint(base, Qt.alpha(a, k));
         return { nombre: "Del fondo", desc: "Automático", fondo: t("#000000", 0.045), tarjeta: t("#141416", 0.05), hover: t("#1c1c1f", 0.06),
                  hundido: t("#0c0c0e", 0.05), lateral: t("#060607", 0.045), luz: a,
                  borde: Qt.alpha(t("#ffffff", 0.3), 0.12), linea: Qt.alpha(t("#ffffff", 0.3), 0.08),
-                 texto: "#f2f2f3", texto2: "#a1a1a6", texto3: "#7c7c82", apagado: t("#2a2a2d", 0.08),
-                 activo: a, enActivo: "#000000", iconoActivo: "#000000", activoBorde: "#00000000", acento: a, sobreAcento: "#000000" };
+                 texto: "#f2f2f3", texto2: "#a1a1a6", texto3: "#86868c", apagado: t("#2a2a2d", 0.08),
+                 activo: a, enActivo: "#000000", iconoActivo: "#000000", activoBorde: "#00000000", acento: a, acento2: acento2Fondo, sobreAcento: "#000000" };
     }
     readonly property var temas: Object.assign({ delfondo: temaFondo }, temasFijos)
     // Los seis de arriba se ven siempre en Ajustes; el resto, con "Mostrar más".
-    readonly property var ordenTemas: ["onix", "delfondo", "medianoche", "jade", "rubi", "aurora", "champan", "fosforo", "grafito", "neon", "niebla"]
+    readonly property var ordenTemas: ["onix", "delfondo", "champan", "mercurio", "tinta", "aurora",
+        "cempasuchil", "fosforo", "neon", "obsidiana", "agave", "pitahaya"]
     // Superficies "negro": fondo, tarjetas y menu de Ónix con el acento del tema elegido.
     readonly property var tema: {
         const t = temas[valor("tema")] || temas.onix;
@@ -298,6 +322,8 @@ Singleton {
     Behavior on activoBorde { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     property color acento: tema.acento
     Behavior on acento { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color acento2: tema.acento2 ?? Qt.darker(tema.acento, 1.6)
+    Behavior on acento2 { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     property color sobreAcento: tema.sobreAcento
     Behavior on sobreAcento { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     readonly property color peligro: "#ff6b6b"

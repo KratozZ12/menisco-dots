@@ -31,7 +31,7 @@ ATAJOS = {
     "lanzador": '"lanzador" "toggle"',
     "ajustes": '"ajustes" "toggle"',
     "captura": "Mod+Shift+S",          # se busca por la tecla actual (Print hace lo mismo)
-    "bloquear": 'spawn "swaylock"',
+    "bloquear": '"bloqueo" "bloquear"',
     "terminal": 'spawn "alacritty"',
     "cerrar": "close-window",
     "vista": "toggle-overview",

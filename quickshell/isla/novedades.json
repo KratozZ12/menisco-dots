@@ -1,27 +1,27 @@
 {
-  "version": "2026-11-20b",
+  "version": "2026-11-20c",
   "fecha": "20 nov",
-  "seccion": "inicio",
+  "seccion": "apariencia",
   "lista": [
     {
-      "icono": "home",
-      "titulo": "Inicio nuevo",
-      "texto": "Saludo, tu equipo en vivo y más"
-    },
-    {
       "icono": "palette",
-      "titulo": "Color y estilo",
-      "texto": "Ónix de verdad y ajuste fino"
+      "titulo": "Doce temas",
+      "texto": "Seis nuevos, como Cempasúchil"
     },
     {
-      "icono": "wallpaper",
-      "titulo": "Color del fondo",
-      "texto": "El acento sale de tu fondo"
+      "icono": "gradient",
+      "titulo": "Un segundo color",
+      "texto": "En el rayo y el halo de la Gota"
     },
     {
-      "icono": "water_drop",
-      "titulo": "La Gota da la luz",
-      "texto": "Y Aurora ahora es violeta"
+      "icono": "pin",
+      "titulo": "La ficha rueda",
+      "texto": "Número y nombre al cambiar"
+    },
+    {
+      "icono": "expand_more",
+      "titulo": "Mostrar más",
+      "texto": "Ahora se despliega suave"
     }
   ]
 }

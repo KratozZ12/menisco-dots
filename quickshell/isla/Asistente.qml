@@ -10,6 +10,9 @@ Canvas {
     property real ritmo: 1
     property bool fondoNegro: false
     onRitmoChanged: Motor.ponerRitmo(ritmo)
+    // { y, p }: mirada fija (y = izquierda/derecha, p = arriba/abajo); null = mira libre.
+    property var mirada: null
+    onMiradaChanged: { Motor.fijarMirada(mirada); despierto = true }
     // Gota elegida en Ajustes > Asistente. Con la isla negra, una gota casi negra se perderia:
     // se aclara un poco.
     property var gota: Estilo.gota
@@ -22,7 +25,7 @@ Canvas {
     }
     onGotaChanged: aplicarGota()
     onFondoNegroChanged: aplicarGota()
-    Component.onCompleted: aplicarGota()
+    Component.onCompleted: { aplicarGota(); Motor.fijarMirada(mirada); }
     property bool despierto: true
     readonly property real radio: Math.min(width, height) * 0.38
 

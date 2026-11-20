@@ -17,7 +17,9 @@ Singleton {
     readonly property var porDefecto: ({
         velocidad: "normal",            // lenta | normal | rapida
         rebote: "suave",                // nada | suave | mucho
-        tema: "champan",               // ver ordenTemas
+        tema: "onix",                   // ver ordenTemas
+        superficies: "suave",           // suave | negro
+        seguirFondo: true, fondoAcento: "",   // tema "delfondo"
         letra: "SF Pro",                // SF Pro | Inter
         esquinas: 20, espacio: 16, borde: 40, marco: false, dockPegado: true,
         islaAsistente: true, islaVisualizador: true, reloj12: false, segundos: false,
@@ -174,57 +176,87 @@ Singleton {
     // borde y linea (filos finos), texto/texto2/texto3, apagado (interruptor sin activar),
     // activo + enActivo + iconoActivo + activoBorde (lo que esta encendido), acento (deslizadores,
     // interruptores, seleccion) y sobreAcento (la perilla encima del acento).
-    readonly property var temas: ({
-        onix:       { nombre: "Ónix", fondo: "#000000", tarjeta: "#0f0f0f", hover: "#1c1c1c", hundido: "#171717",
-                      borde: "#1affffff", linea: "#12ffffff", texto: "#f5f5f5", texto2: "#8c8c8c", texto3: "#5c5c5c",
-                      apagado: "#2a2a2a", activo: "#f5f5f5", enActivo: "#000000", iconoActivo: "#000000",
-                      activoBorde: "#00000000", acento: "#f5f5f5", sobreAcento: "#000000" },
-        champan:    { nombre: "Champán", fondo: "#000000", tarjeta: "#0f0f0f", hover: "#1c1c1c", hundido: "#171717",
-                      borde: "#1affffff", linea: "#12ffffff", texto: "#f5f5f5", texto2: "#8c8c8c", texto3: "#5c5c5c",
+    readonly property var temasFijos: ({
+        // El original: negro de verdad; el blanco marca lo que se toca.
+        onix:       { nombre: "Ónix", desc: "El original", fondo: "#000000", tarjeta: "#141416", hover: "#1c1c1f", hundido: "#0c0c0e",
+                      lateral: "#060607", luz: "#ffffff",
+                      borde: "#1fffffff", linea: "#14ffffff", texto: "#f2f2f3", texto2: "#a1a1a6", texto3: "#7e7e84",
+                      apagado: "#2a2a2d", activo: "#f2f2f3", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#f2f2f3", sobreAcento: "#000000" },
+        champan:    { nombre: "Champán", desc: "Dorado", fondo: "#000000", tarjeta: "#0f0f0f", hover: "#1c1c1c", hundido: "#171717",
+                      borde: "#1affffff", linea: "#12ffffff", texto: "#f5f5f5", texto2: "#8c8c8c", texto3: "#7c7c7c",
                       apagado: "#2a2a2a", activo: "#1d1810", enActivo: "#f2e6d0", iconoActivo: "#d9b77e",
                       activoBorde: "#59d9b77e", acento: "#d9b77e", sobreAcento: "#000000" },
-        medianoche: { nombre: "Medianoche", fondo: "#06070a", tarjeta: "#0e1016", hover: "#1a1e27", hundido: "#151821",
-                      borde: "#1aa0b4ff", linea: "#12a0b4ff", texto: "#eef1f7", texto2: "#858c9b", texto3: "#5a6070",
+        medianoche: { nombre: "Medianoche", desc: "Azul frío", fondo: "#06070a", tarjeta: "#0e1016", hover: "#1a1e27", hundido: "#151821",
+                      borde: "#1aa0b4ff", linea: "#12a0b4ff", texto: "#eef1f7", texto2: "#858c9b", texto3: "#767c8c",
                       apagado: "#262a35", activo: "#121a2c", enActivo: "#e3eaff", iconoActivo: "#8fb0ff",
                       activoBorde: "#598fb0ff", acento: "#8fb0ff", sobreAcento: "#06070a" },
         // Rubi y Jade: dos tonos. El acento va en interruptores y barras; lo encendido es una tarjeta
         // oscura con el icono de color y un filo de otro tono (oro rosa, oro viejo).
-        rubi:       { nombre: "Rubí", fondo: "#0b0607", tarjeta: "#150b0d", hover: "#231316", hundido: "#1c0f12",
-                      borde: "#1fffd0d6", linea: "#12ffd0d6", texto: "#f7ecee", texto2: "#a08a8e", texto3: "#6e5a5e",
+        rubi:       { nombre: "Rubí", desc: "Rojo suave", fondo: "#0b0607", tarjeta: "#150b0d", hover: "#231316", hundido: "#1c0f12",
+                      borde: "#1fffd0d6", linea: "#12ffd0d6", texto: "#f7ecee", texto2: "#a08a8e", texto3: "#8b767a",
                       apagado: "#2e1a1e", activo: "#2a0e14", enActivo: "#ffe3e6", iconoActivo: "#ff5a6e",
                       activoBorde: "#8ce9a88f", acento: "#e8384f", sobreAcento: "#ffffff" },
-        jade:       { nombre: "Jade", fondo: "#040907", tarjeta: "#0a1410", hover: "#13211b", hundido: "#0f1a15",
-                      borde: "#1fbfe8d2", linea: "#12bfe8d2", texto: "#eaf4ef", texto2: "#8aa39a", texto3: "#5b6f68",
+        jade:       { nombre: "Jade", desc: "Verde calmo", fondo: "#040907", tarjeta: "#0a1410", hover: "#13211b", hundido: "#0f1a15",
+                      borde: "#1fbfe8d2", linea: "#12bfe8d2", texto: "#eaf4ef", texto2: "#8aa39a", texto3: "#6c827a",
                       apagado: "#1d2c26", activo: "#0f2a20", enActivo: "#e3f6ec", iconoActivo: "#7fe0b5",
                       activoBorde: "#99c9a45c", acento: "#4fc497", sobreAcento: "#04140d" },
         // Pantalla de terminal vieja: hasta el texto va en ambar.
-        fosforo:    { nombre: "Fósforo", fondo: "#0a0702", tarjeta: "#130e05", hover: "#21180a", hundido: "#1a1307",
-                      borde: "#26ffb347", linea: "#14ffb347", texto: "#ffd9a0", texto2: "#b08a52", texto3: "#6e5530",
+        fosforo:    { nombre: "Fósforo", desc: "Ámbar de terminal", fondo: "#0a0702", tarjeta: "#130e05", hover: "#21180a", hundido: "#1a1307",
+                      borde: "#26ffb347", linea: "#14ffb347", texto: "#ffd9a0", texto2: "#b08a52", texto3: "#977645",
                       apagado: "#2c2210", activo: "#ffb347", enActivo: "#1a1003", iconoActivo: "#1a1003",
                       activoBorde: "#00000000", acento: "#ffb347", sobreAcento: "#1a1003" },
-        // Noche azulada: verde agua en lo encendido y filo violeta.
-        aurora:     { nombre: "Aurora", fondo: "#05060c", tarjeta: "#0c0f1a", hover: "#171b2b", hundido: "#121524",
-                      borde: "#1f9fb0ff", linea: "#129fb0ff", texto: "#eef0ff", texto2: "#8a90b0", texto3: "#5a5f7a",
-                      apagado: "#232842", activo: "#141533", enActivo: "#e8e4ff", iconoActivo: "#3ee0c5",
-                      activoBorde: "#80a77bff", acento: "#3ee0c5", sobreAcento: "#05060c" },
+        // Violeta de noche: el acento en lo que se toca, las superficies apenas teñidas.
+        aurora:     { nombre: "Aurora", desc: "Violeta", fondo: "#07060c", tarjeta: "#110f1a", hover: "#1c1929", hundido: "#0d0b15",
+                      borde: "#24b59cff", linea: "#14b59cff", texto: "#f0edff", texto2: "#a39cbf", texto3: "#8a83a6",
+                      apagado: "#29243d", activo: "#b59cff", enActivo: "#0b0814", iconoActivo: "#0b0814",
+                      activoBorde: "#00000000", acento: "#b59cff", sobreAcento: "#0b0814" },
         // Gris calido de lapiz con piezas de cobre.
-        grafito:    { nombre: "Grafito", fondo: "#0c0b0a", tarjeta: "#171513", hover: "#24211e", hundido: "#1d1a17",
-                      borde: "#1fffe2c8", linea: "#12ffe2c8", texto: "#f1ebe5", texto2: "#9a918a", texto3: "#66605a",
+        grafito:    { nombre: "Grafito", desc: "Gris y cobre", fondo: "#0c0b0a", tarjeta: "#171513", hover: "#24211e", hundido: "#1d1a17",
+                      borde: "#1fffe2c8", linea: "#12ffe2c8", texto: "#f1ebe5", texto2: "#9a918a", texto3: "#867e78",
                       apagado: "#2e2a26", activo: "#c87941", enActivo: "#140b04", iconoActivo: "#140b04",
                       activoBorde: "#00000000", acento: "#d98a52", sobreAcento: "#140b04" },
         // Tokio de noche: icono magenta, filo e interruptores cian.
-        neon:       { nombre: "Neón", fondo: "#050308", tarjeta: "#0e0a14", hover: "#1a1324", hundido: "#140f1d",
-                      borde: "#26ff4fd8", linea: "#14ff4fd8", texto: "#f6eefe", texto2: "#9a8bb0", texto3: "#64587a",
+        neon:       { nombre: "Neón", desc: "Tokio de noche", fondo: "#050308", tarjeta: "#0e0a14", hover: "#1a1324", hundido: "#140f1d",
+                      borde: "#26ff4fd8", linea: "#14ff4fd8", texto: "#f6eefe", texto2: "#9a8bb0", texto3: "#827598",
                       apagado: "#261c33", activo: "#1a0b24", enActivo: "#ffe6fb", iconoActivo: "#ff4fd8",
                       activoBorde: "#9922e5ff", acento: "#22e5ff", sobreAcento: "#050308" },
         // El unico sin negro puro: gris azulado suave, poco contraste.
-        niebla:     { nombre: "Niebla", fondo: "#101317", tarjeta: "#181c21", hover: "#232830", hundido: "#1d2228",
-                      borde: "#24dbe7f5", linea: "#16dbe7f5", texto: "#dfe6ee", texto2: "#8b96a3", texto3: "#5f6874",
+        niebla:     { nombre: "Niebla", desc: "Gris azulado", fondo: "#101317", tarjeta: "#181c21", hover: "#232830", hundido: "#1d2228",
+                      borde: "#24dbe7f5", linea: "#16dbe7f5", texto: "#dfe6ee", texto2: "#8b96a3", texto3: "#7a8591",
                       apagado: "#2c323b", activo: "#dfe6ee", enActivo: "#101317", iconoActivo: "#101317",
                       activoBorde: "#00000000", acento: "#a9c3dc", sobreAcento: "#101317" }
     })
-    readonly property var ordenTemas: ["onix", "champan", "medianoche", "rubi", "jade", "fosforo", "aurora", "grafito", "neon", "niebla"]
-    readonly property var tema: temas[valor("tema")] || temas.champan
+    // "Del fondo": el acento sale del fondo de pantalla; las superficies son negro con un 4-5 % de el.
+    // Con "Seguir al fondo" apagado se queda el ultimo acento calculado (fondoAcento).
+    function colorVivo(colores) {
+        let mejor = null, puntos = -1;
+        for (const c of colores) {
+            const p = c.hsvSaturation * Math.min(1, c.hsvValue * 2);
+            if (p > puntos) { puntos = p; mejor = c; }
+        }
+        if (!mejor || mejor.hsvSaturation < 0.12) return Qt.color("#d8d8dc");
+        return Qt.hsla(mejor.hslHue, Math.min(0.8, Math.max(0.45, mejor.hslSaturation)), 0.72, 1);
+    }
+    readonly property color acentoFondo: valor("seguirFondo") || !valor("fondoAcento") ? colorVivo(cuantizador.colors) : Qt.color(valor("fondoAcento"))
+    readonly property var temaFondo: {
+        const a = acentoFondo, t = (base, k) => Qt.tint(base, Qt.alpha(a, k));
+        return { nombre: "Del fondo", desc: "Automático", fondo: t("#000000", 0.045), tarjeta: t("#141416", 0.05), hover: t("#1c1c1f", 0.06),
+                 hundido: t("#0c0c0e", 0.05), lateral: t("#060607", 0.045), luz: a,
+                 borde: Qt.alpha(t("#ffffff", 0.3), 0.12), linea: Qt.alpha(t("#ffffff", 0.3), 0.08),
+                 texto: "#f2f2f3", texto2: "#a1a1a6", texto3: "#7c7c82", apagado: t("#2a2a2d", 0.08),
+                 activo: a, enActivo: "#000000", iconoActivo: "#000000", activoBorde: "#00000000", acento: a, sobreAcento: "#000000" };
+    }
+    readonly property var temas: Object.assign({ delfondo: temaFondo }, temasFijos)
+    // Los seis de arriba se ven siempre en Ajustes; el resto, con "Mostrar más".
+    readonly property var ordenTemas: ["onix", "delfondo", "medianoche", "jade", "rubi", "aurora", "champan", "fosforo", "grafito", "neon", "niebla"]
+    // Superficies "negro": fondo, tarjetas y menu de Ónix con el acento del tema elegido.
+    readonly property var tema: {
+        const t = temas[valor("tema")] || temas.onix;
+        if (valor("superficies") !== "negro" || t === temas.onix) return t;
+        const o = temas.onix;
+        return Object.assign({}, t, { fondo: o.fondo, tarjeta: o.tarjeta, hover: o.hover, hundido: o.hundido, lateral: o.lateral });
+    }
     // Al cambiar de tema cada color pasa al nuevo en un fundido (Behavior), no de golpe.
     property color fondo: tema.fondo
     Behavior on fondo { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
@@ -235,6 +267,12 @@ Singleton {
     readonly property color nada: Qt.alpha(hover, 0)     // hover apagado: transparente del mismo tono
     property color hundido: tema.hundido
     Behavior on hundido { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    // Menu lateral de Ajustes: el fondo apenas mas claro (Ónix: #060607).
+    property color lateral: tema.lateral ?? Qt.tint(tema.fondo, Qt.alpha(tema.texto, 0.025))
+    Behavior on lateral { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    // La unica luz de Ajustes (rayo y halo de la Gota, luz de arriba): blanca en Ónix, el acento en los demas.
+    property color luz: tema.luz ?? tema.acento
+    Behavior on luz { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     // Hover: el tono de hover aclarado para que se note sobre cualquier fondo del tema.
     readonly property color realce: Qt.tint(hover, Qt.alpha(texto, 0.09))
     function aclarar(c) { return Qt.tint(c, Qt.alpha(texto, 0.14)) }
@@ -447,7 +485,13 @@ tokens {
         command: ["sh", "-c", "awww query 2>/dev/null | sed -n 's/.*image: //p' | head -1"]
         stdout: StdioCollector { onStreamFinished: estilo.fondoPantalla = text.trim() }
     }
-    Timer { running: estilo.valor("dockMaterial") === "materialyou"; repeat: true; triggeredOnStart: true; interval: 5000; onTriggered: leerFondo.running = true }
+    // Cada 5 s cuando el color depende del fondo (dock Material You o tema "Del fondo"); si no, una vez
+    // por minuto, para que la muestra de "Del fondo" en Ajustes ya tenga su color.
+    Timer {
+        readonly property bool importa: estilo.valor("dockMaterial") === "materialyou" || (estilo.valor("tema") === "delfondo" && estilo.valor("seguirFondo"))
+        running: true; repeat: true; triggeredOnStart: true; interval: importa ? 5000 : 60000
+        onTriggered: leerFondo.running = true
+    }
     ColorQuantizer { id: cuantizador; source: estilo.fondoPantalla ? "file://" + estilo.fondoPantalla : ""; depth: 3; rescaleSize: 64 }
     readonly property color tonoDock: tonoMaterialYou(cuantizador.colors)
     // Dock pegado al borde de abajo del marco: hace falta el marco y un material sin vidrio

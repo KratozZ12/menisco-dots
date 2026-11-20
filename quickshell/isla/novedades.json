@@ -1,27 +1,27 @@
 {
-  "version": "2026-11-20",
+  "version": "2026-11-20b",
   "fecha": "20 nov",
-  "seccion": "esquinas",
+  "seccion": "inicio",
   "lista": [
     {
-      "icono": "tune",
-      "titulo": "Ajustes más fáciles",
-      "texto": "Menú en grupos y tarjetas plegables"
+      "icono": "home",
+      "titulo": "Inicio nuevo",
+      "texto": "Saludo, tu equipo en vivo y más"
     },
     {
-      "icono": "crop_free",
-      "titulo": "Botones junto a la isla",
-      "texto": "Cada botón elige su sitio"
+      "icono": "palette",
+      "titulo": "Color y estilo",
+      "texto": "Ónix de verdad y ajuste fino"
     },
     {
-      "icono": "calendar_today",
-      "titulo": "Reloj con fecha",
-      "texto": "La hora primero y la fecha en gris"
+      "icono": "wallpaper",
+      "titulo": "Color del fondo",
+      "texto": "El acento sale de tu fondo"
     },
     {
-      "icono": "animation",
-      "titulo": "Cambios con animación",
-      "texto": "Color, marco, botones y widgets"
+      "icono": "water_drop",
+      "titulo": "La Gota da la luz",
+      "texto": "Y Aurora ahora es violeta"
     }
   ]
 }

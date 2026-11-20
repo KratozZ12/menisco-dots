@@ -405,17 +405,17 @@ ShellRoot {
             color: "transparent"
             RectangularShadow {
                 visible: capaSombra.modelData === ajustes.screen
-                anchors.centerIn: parent
-                width: 760; height: 556                 // el panel de Ajustes.qml
+                x: ajustes.xPanel; y: ajustes.yPanel   // donde va el panel de Ajustes.qml
+                width: ajustes.anchoPanel; height: ajustes.altoPanel
                 radius: 16
                 offset.y: 20
                 blur: 70; spread: 20
                 color: "#cc000000"
                 opacity: ajustes.abierta ? 1 : 0
                 scale: ajustes.abierta ? 1 : 0.9
-                transform: Translate { y: ajustes.abierta ? 0 : 20; Behavior on y { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 560 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } } }
+                transform: Translate { y: ajustes.abierta ? 0 : 20; Behavior on y { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 420 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaIos } } }
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 260 : 160); easing.type: ajustes.abierta ? Easing.OutCubic : Easing.InCubic } }
-                Behavior on scale { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 580 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } }
+                Behavior on scale { NumberAnimation { duration: Estilo.t(ajustes.abierta ? 420 : 180); easing.type: ajustes.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaIos } }
             }
             MouseArea { anchors.fill: parent; onClicked: ajustes.cerrar() }
         }

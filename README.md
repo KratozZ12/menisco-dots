@@ -24,7 +24,7 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 ## Qué trae
 
 ### Colores
-Diez temas oscuros, que se eligen en **Ajustes > Color y estilo**: Ónix, Champán, Medianoche, Rubí, Jade, Fósforo (terminal ámbar), Aurora, Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema. Al cambiar de tema, todo pasa al color nuevo con un fundido.
+Once temas oscuros, que se eligen en **Ajustes > Color y estilo**: Ónix (el original, negro de verdad y blanco en lo que se toca; el de fábrica), Del fondo (el acento sale del fondo de pantalla; con «Seguir al fondo» cambia con él), Medianoche, Jade, Rubí, Aurora (violeta), Champán, Fósforo (terminal ámbar), Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). «Superficies» decide si fondos y tarjetas van en negro puro o con un toque del color. Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema. Al cambiar de tema, todo pasa al color nuevo con un fundido.
 
 ### La isla
 Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la de la vista grande, que se elige aparte en **Ajustes > Isla > Isla abierta**: Clásica (de fábrica), Recta u Octágono. La imagen de fondo y el tinte de la música siguen la forma elegida.
@@ -65,7 +65,7 @@ Una carita con ojos proyectados en 3D sobre una esfera. Mira a su alrededor, par
   | `confuso` | trébol | café |
 
   Para probarlas: `qs -p ~/.config/quickshell/isla ipc call asistente emocion feliz`
-- **Gotas:** en Ajustes > Asistente se crean asistentes propios con nombre, una de 14 formas y uno de 11 colores. Se puede elegir que cambie de forma con las emociones o que solo cambien los ojos.
+- **Gotas:** en Ajustes > Gota se crean asistentes propios con nombre, una de 14 formas y uno de 11 colores. Se puede elegir que cambie de forma con las emociones o que solo cambien los ojos.
 - En la isla abierta tiene un botón vertical con luz azul que gira y chispas (se puede apagar). Al pulsarlo se abre la conversación.
 
 ### Gota (el asistente que hace cosas)
@@ -133,14 +133,14 @@ Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi,
 
 ### Ajustes (`Super+.`)
 Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar). El menú va en tres grupos (Aspecto, Partes de Menisco y Sistema) con el buscador siempre arriba: lleva a cualquier ajuste, aunque esté guardado, y lo ilumina. Cada sección es una sola página: arriba lo básico, y lo demás en tarjetas que se pliegan con un resumen de lo que guardan; las listas largas muestran lo más usado y el resto con «Mostrar más». Dock conserva sus dos pestañas.
-- **Inicio:** fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
+- **Inicio:** la portada. Saludo según la hora con la Gota y un reloj grande; el fondo de pantalla actual con sus miniaturas (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); **Este equipo** en vivo (procesador, memoria, disco, gráfica, red, tiempo encendido y versión), y seis tarjetas con una vista de lo que más se cambia que se anima al pasar el cursor.
 - También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
-- **Color y estilo:** tema de color, **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tipografía, velocidad y rebote de las animaciones.
+- **Color y estilo:** cabecera con la Gota y la ficha del tema, los temas, y una tabla de **Ajuste fino** (superficies, letra, movimiento y seguir al fondo); **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tipografía, velocidad y rebote de las animaciones.
 - **Ventanas y marco:** marco de pantalla, esquinas, espacio entre ventanas y borde de la ventana activa.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
 - **Isla:** qué muestra cada hueco (al cambiarlo, lo viejo se encoge y lo nuevo asoma apartando a los demás; «Fecha y hora» pone la hora y detrás la fecha en gris), reloj, forma, cómo se abre y en qué pestaña, y opciones de las pestañas Música y Acciones.
 - **Notificaciones:** No molestar (también automático en pantalla completa y al grabar), qué avisos salen en la isla, qué apps no avisan de la canción que suena, y lo de Hokum: posición, duración, cuántas a la vista y, por app, ocultarla o dejarla pasar aunque esté No molestar. Lo de Hokum lo escribe `menisco-hokum.py` en `~/.config/hokum/config.kdl` (lo valida con `hokum check` antes de guardar).
-- **Asistente:** sus gotas, carácter y el botón de luz.
+- **Gota:** sus gotas, carácter y el botón de luz.
 - **Barra lateral:** lado, alto, ancho, y una miniatura donde se reordenan las secciones arrastrándolas.
 
 ### Aviso de volumen

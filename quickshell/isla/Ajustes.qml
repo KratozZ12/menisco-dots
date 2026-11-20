@@ -37,8 +37,20 @@ PanelWindow {
 
     // Sigue mapeada mientras corre la animacion de cierre.
     visible: abierta || panel.opacity > 0.01
-    implicitWidth: 880
-    implicitHeight: 676
+    // Ocupa el monitor entero pero solo el panel recibe clics (mask): fuera de el, el clic
+    // llega a la capa de sombra de shell.qml, que cierra Ajustes. El panel se mide con la
+    // pantalla y se centra en el espacio util, entre la isla y el dock.
+    anchors { top: true; bottom: true; left: true; right: true }
+    // La zona de clics sale de este rectangulo quieto y no del panel: el panel entra escalado
+    // (0.9 -> 1) y la region se quedaba con el tamaño de ese momento, dejando los bordes sin clic.
+    mask: Region { item: zonaClics }
+    Item { id: zonaClics; x: ventana.xPanel; y: ventana.yPanel; width: ventana.anchoPanel; height: ventana.altoPanel }
+    readonly property int topReserve: 44
+    readonly property int bottomReserve: 96
+    readonly property int anchoPanel: Math.round(Math.min(1280, Math.max(900, (screen ? screen.width : 1920) * 0.62)))
+    readonly property int altoPanel: Math.round(Math.min(860, Math.max(640, ((screen ? screen.height : 1080) - topReserve - bottomReserve) * 0.88)))
+    readonly property real xPanel: Math.round((width - anchoPanel) / 2)
+    readonly property real yPanel: Math.round(topReserve + (height - topReserve - bottomReserve - altoPanel) / 2)
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -281,7 +293,7 @@ PanelWindow {
         if (e.modifiers & Qt.ControlModifier) mods.push("Ctrl");
         if (e.modifiers & Qt.AltModifier) mods.push("Alt");
         if (e.modifiers & Qt.ShiftModifier) mods.push("Shift");
-        if (!mods.length && !tecla.startsWith("F")) { errorAtajo = "Use al menos una tecla como Super, Ctrl o Alt."; return; }
+        if (!mods.length && !tecla.startsWith("F")) { errorAtajo = "Usa al menos una tecla como Super, Ctrl o Alt."; return; }
         cambiarAtajo.command = ["python3", Estilo.carpeta + "/menisco-niri.py", "atajo", capturando, mods.concat([tecla]).join("+")];
         cambiarAtajo.running = true;
         capturando = "";
@@ -301,9 +313,9 @@ PanelWindow {
 
     Rectangle {
         id: panel
-        width: 840
-        height: 636
-        anchors.centerIn: parent
+        x: ventana.xPanel; y: ventana.yPanel
+        width: ventana.anchoPanel
+        height: ventana.altoPanel
         radius: 16
         color: Estilo.fondo
         border.color: Estilo.borde
@@ -313,9 +325,9 @@ PanelWindow {
         // Entra creciendo desde 0.9 y subiendo 20 px, con rebote; sale encogiendo un poco.
         opacity: ventana.abierta ? 1 : 0
         scale: ventana.abierta ? 1 : 0.9
-        transform: Translate { y: ventana.abierta ? 0 : 20; Behavior on y { NumberAnimation { duration: Estilo.t(ventana.abierta ? 560 : 180); easing.type: ventana.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } } }
+        transform: Translate { y: ventana.abierta ? 0 : 20; Behavior on y { NumberAnimation { duration: Estilo.t(ventana.abierta ? 420 : 180); easing.type: ventana.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaIos } } }
         Behavior on opacity { NumberAnimation { duration: Estilo.t(ventana.abierta ? 260 : 160); easing.type: ventana.abierta ? Easing.OutCubic : Easing.InCubic } }
-        Behavior on scale { NumberAnimation { duration: Estilo.t(ventana.abierta ? 580 : 180); easing.type: ventana.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaRebote } }
+        Behavior on scale { NumberAnimation { duration: Estilo.t(ventana.abierta ? 420 : 180); easing.type: ventana.abierta ? Easing.BezierSpline : Easing.InCubic; easing.bezierCurve: Estilo.curvaIos } }
 
         focus: ventana.abierta
         Keys.onPressed: e => {
@@ -323,82 +335,77 @@ PanelWindow {
             else if (e.key === Qt.Key_Escape) { if (dialogoGota.abierto) dialogoGota.cerrar(); else ventana.cerrar(); e.accepted = true; }
         }
 
+        // Luz de arriba: muy tenue (blanco al 7 % en Ónix, el color del tema en los demas). Quieta.
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: -1
+                fillGradient: RadialGradient {
+                    centerX: lateral.width + (panel.width - lateral.width) / 2; centerY: -40
+                    centerRadius: panel.width * 0.55; focalX: centerX; focalY: centerY
+                    GradientStop { position: 0; color: Qt.alpha(Estilo.luz, 0.07) }
+                    GradientStop { position: 1; color: Qt.alpha(Estilo.luz, 0) }
+                }
+                PathRectangle { width: panel.width; height: panel.height }
+            }
+        }
+
         // Barra lateral
         Rectangle {
             id: lateral
-            width: 196
+            width: 240
             z: 2    // los resultados del buscador se salen por encima del contenido
             anchors { top: parent.top; bottom: parent.bottom; left: parent.left; margins: 1 }
             radius: 15
-            color: Estilo.hundido
+            color: Estilo.lateral
             Rectangle { width: 16; anchors { top: parent.top; bottom: parent.bottom; right: parent.right } color: parent.color }
+            Rectangle { width: 1; anchors { top: parent.top; bottom: parent.bottom; right: parent.right } color: Estilo.linea }
 
-            // Menu en tres grupos; las entradas con "cab" son los titulos de grupo.
+            // Menu en tres grupos; las entradas con "cab" son los titulos de grupo. "tono": el color
+            // apagado del cuadro de cada icono (el mismo en todos los temas; la elegida va en el acento).
             readonly property var menu: [
-                { id: "inicio", texto: "Inicio", icono: "home" },
+                { id: "inicio", texto: "Inicio", icono: "home", tono: "#55595f" },
                 { cab: "Aspecto" },
-                { id: "apariencia", texto: "Color y estilo", icono: "palette" },
-                { id: "vidrio", texto: "Liquid glass", icono: "water_drop" },
-                { id: "ventanas", texto: "Ventanas y marco", icono: "select_window" },
+                { id: "apariencia", texto: "Color y estilo", icono: "palette", tono: "#6f5a96" },
+                { id: "vidrio", texto: "Liquid glass", icono: "water_drop", tono: "#3d6890" },
+                { id: "ventanas", texto: "Ventanas y marco", icono: "select_window", tono: "#525e76" },
                 { cab: "Partes de Menisco" },
-                { id: "isla", texto: "Isla", icono: "pill" },
-                { id: "esquinas", texto: "Botones de arriba", icono: "crop_free" },
-                { id: "dock", texto: "Dock", icono: "dock_to_bottom" },
-                { id: "barra", texto: "Barra lateral", icono: "view_sidebar" },
+                { id: "isla", texto: "Isla", icono: "pill", tono: "#3b3e45" },
+                { id: "esquinas", texto: "Botones de arriba", icono: "grid_view", tono: "#625890" },
+                { id: "dock", texto: "Dock", icono: "dock_to_bottom", tono: "#3a7564" },
+                { id: "barra", texto: "Barra lateral", icono: "view_sidebar", tono: "#806a3e" },
                 { cab: "Sistema" },
-                { id: "notificaciones", texto: "Notificaciones", icono: "notifications" },
-                { id: "asistente", texto: "Asistente", icono: "smart_toy" },
-                { id: "pantallas", texto: "Pantallas", icono: "desktop_windows" },
-                { id: "atajos", texto: "Atajos", icono: "keyboard" }
+                { id: "notificaciones", texto: "Notificaciones", icono: "notifications", tono: "#94504c" },
+                { id: "asistente", texto: "Gota", icono: "water_drop", tono: "#467f52" },
+                { id: "pantallas", texto: "Pantallas", icono: "desktop_windows", tono: "#3d6399" },
+                { id: "atajos", texto: "Atajos", icono: "keyboard", tono: "#5a5e66" }
             ]
             readonly property var secciones: menu.filter(m => m.id)
             readonly property int indice: menu.findIndex(s => s.id === ventana.seccion)
 
-            // Marca: los tres tubos del logo y el nombre en Archivo Expanded Black, como en el banner.
-            FontLoader { id: letraMarca; source: Qt.resolvedUrl("fuentes/Archivo-ExpandedBlack.ttf") }
+            // Marca: el logo y la palabra oficiales (assets/menisco-logo-white.svg y la version recta
+            // de assets/readme/readme-encabezado-oscuro.svg).
             Row {
-                id: tituloLateral
-                x: 22; y: 12
-                spacing: 6
-                bottomPadding: 8
-                Shape {
-                    id: tubos
-                    // Trazos de assets/menisco-logo-white.svg: tubos en x 23.5-76.5, y 28-72.
-                    width: 53 * 0.27; height: 44 * 0.27
-                    anchors.verticalCenter: marca.verticalCenter
-                    preferredRendererType: Shape.CurveRenderer
-                    transform: Scale { xScale: 0.27; yScale: 0.27 }
-                    ShapePath {
-                        strokeWidth: -1
-                        fillColor: Qt.alpha(Estilo.texto2, 0.45)
-                        startX: 0; startY: 0
-                        PathSvg { path: "M0 16Q7.5 21.25 15 16V39A5 5 0 0 1 10 44H5A5 5 0 0 1 0 39ZM38 16Q45.5 21.25 53 16V39A5 5 0 0 1 48 44H43A5 5 0 0 1 38 39Z" }
-                    }
-                    ShapePath {
-                        strokeWidth: -1
-                        fillColor: Estilo.texto2
-                        PathSvg { path: "M19 0Q26.5 5.25 34 0V39A5 5 0 0 1 29 44H24A5 5 0 0 1 19 39Z" }
-                    }
-                }
-                Text {
-                    id: marca
-                    text: "MENISCO"; color: Estilo.texto2
-                    font { family: letraMarca.name; pixelSize: 11; weight: Font.Black; letterSpacing: 0.4 }
-                }
+                id: marcaLateral
+                x: 20; y: 20
+                spacing: 9
+                LogoMenisco { tam: 22; anchors.verticalCenter: parent.verticalCenter }
+                PalabraMenisco { alto: 13; anchors.verticalCenter: parent.verticalCenter }
             }
 
             // Buscador: encuentra cualquier fila de cualquier seccion y lleva hasta ella.
             Item {
                 id: buscador
                 z: 10
-                x: 12; y: tituloLateral.y + tituloLateral.height
-                width: lateral.width - 24
-                height: 32
+                x: 14; y: marcaLateral.y + marcaLateral.height + 16
+                width: lateral.width - 28
+                height: 36
                 property var resultados: []
                 Rectangle {
                     anchors.fill: parent
-                    radius: 9
-                    color: Estilo.fondo
+                    radius: 10
+                    color: Estilo.tarjeta
                     border.width: 1; border.color: campoBuscar.activeFocus ? Estilo.texto3 : "transparent"
                     Simbolo { x: 11; anchors.verticalCenter: parent.verticalCenter; text: "search"; color: Estilo.texto2; font.pixelSize: 17 }
                     TextInput {
@@ -462,23 +469,23 @@ PanelWindow {
                 }
             }
 
-            // Una sola pastilla de seleccion que se desliza entre secciones.
+            // Una sola pastilla de seleccion que se desliza entre secciones, sin rebote.
             Rectangle {
-                x: 12
+                x: 14
                 y: listaLateral.y + (repMenu.count > lateral.indice && lateral.indice >= 0 ? repMenu.itemAt(lateral.indice).y : 0)
-                width: lateral.width - 24
-                height: 34
-                radius: 9
-                color: Estilo.hover
-                Behavior on y { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                width: lateral.width - 28
+                height: 38
+                radius: 10
+                color: Qt.alpha(Estilo.acento, 0.1)
+                Behavior on y { NumberAnimation { duration: Estilo.t(360); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
             }
 
             Column {
                 id: listaLateral
-                x: 12
-                y: buscador.y + buscador.height + 8
-                width: lateral.width - 24
-                spacing: 2
+                x: 14
+                y: buscador.y + buscador.height + 4
+                width: lateral.width - 28
+                spacing: 1
 
                 Repeater {
                     id: repMenu
@@ -488,42 +495,42 @@ PanelWindow {
                         required property var modelData
                         readonly property bool cab: !!modelData.cab
                         readonly property bool elegida: !cab && ventana.seccion === modelData.id
-                        // De 0 a 1: rellena el icono de forma progresiva.
-                        property real relleno: elegida ? 1 : 0
-                        Behavior on relleno { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.OutCubic } }
 
                         width: parent.width
-                        height: cab ? 28 : 34
-                        radius: 9
+                        height: cab ? 34 : 38
+                        radius: 10
                         color: !cab && !elegida && zona.containsMouse ? Qt.alpha(Estilo.realce, 0.6) : Estilo.nada
                         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
 
                         Text {   // titulo de grupo
                             visible: fila.cab
-                            anchors { left: parent.left; leftMargin: 10; bottom: parent.bottom; bottomMargin: 5 }
-                            text: (fila.modelData.cab || "").toUpperCase(); color: Estilo.texto3
-                            font { family: Estilo.letra; pixelSize: 10; weight: Font.DemiBold; letterSpacing: 0.7 }
+                            anchors { left: parent.left; leftMargin: 10; bottom: parent.bottom; bottomMargin: 6 }
+                            text: (fila.modelData.cab || "").toUpperCase(); color: Estilo.texto2
+                            font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.8 }
                         }
-                        Text {
-                            id: iconoLateral
+                        // Icono dentro de su cuadro: color apagado propio; la elegida, en el acento.
+                        Rectangle {
+                            id: cuadroIcono
                             visible: !fila.cab
-                            anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
-                            text: modelData.icono || ""
-                            color: fila.elegida ? Estilo.acento : Estilo.texto2
+                            anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 8 }
+                            width: 26; height: 26; radius: 7
+                            color: fila.elegida ? Estilo.acento : (fila.modelData.tono || Estilo.hover)
                             Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
-                            font { family: "Material Symbols Rounded"; pixelSize: 19 }
-                            font.variableAxes: { "FILL": fila.relleno, "wght": 500, "opsz": 20 }
-                            renderType: Text.NativeRendering   // sin esto Qt ignora los ejes de la fuente variable
-                            scale: zona.pressed ? 0.85 : 1
-                            Behavior on scale { NumberAnimation { duration: Estilo.t(zona.pressed ? 80 : 340); easing.type: zona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.5) } }
+                            Text {
+                                anchors.centerIn: parent
+                                text: fila.modelData.icono || ""
+                                color: fila.elegida ? Estilo.sobreAcento : "#f2f2f3"
+                                font { family: "Material Symbols Rounded"; pixelSize: 16 }
+                                font.variableAxes: { "FILL": 0, "wght": 500, "opsz": 20 }
+                                renderType: Text.NativeRendering   // sin esto Qt ignora los ejes de la fuente variable
+                            }
                         }
                         Text {
                             visible: !fila.cab
-                            anchors { verticalCenter: parent.verticalCenter; left: iconoLateral.right; leftMargin: 10 }
+                            anchors { verticalCenter: parent.verticalCenter; left: cuadroIcono.right; leftMargin: 11 }
                             text: modelData.texto || ""
-                            color: fila.elegida ? Estilo.texto : Estilo.texto2
-                            Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
-                            font { family: Estilo.letra; pixelSize: 13; weight: Font.Normal; letterSpacing: -0.08 }
+                            color: Estilo.texto
+                            font { family: Estilo.letra; pixelSize: 14; weight: fila.elegida ? Font.DemiBold : Font.Normal; letterSpacing: -0.1 }
                         }
                         MouseArea { cursorShape: Qt.PointingHandCursor; id: zona; enabled: !fila.cab; anchors.fill: parent; hoverEnabled: true; onClicked: ventana.seccion = modelData.id }
                     }
@@ -546,58 +553,228 @@ PanelWindow {
                 property int perfilMenu: -1
                 readonly property var nombresMaterial: ({ vidrio: "vidrio", solido: "sólido", ahumado: "ahumado", escarcha: "escarcha",
                                                           tinte: "tinte", contorno: "contorno", materialyou: "Material You" })
+                // Si el tema elegido es de los de "Mostrar más", la lista se abre sola al entrar.
+                property bool masTemas: false
+                onActivaChanged: if (activa && Estilo.ordenTemas.indexOf(Estilo.valor("tema")) >= 6) masTemas = true
                 Desplazable {
-                    Cabecera { titulo: "Color y estilo"; descripcion: "El color de todo Menisco, la letra y cómo se mueve." }
-                    Encabezado { text: "Color" }
-                    // Una muestra por tema, pintada con sus propios colores; al tocarla cambia todo Menisco.
+                    // Encabezado de la pagina: el grupo en pequeño y el titulo grande.
+                    Column {
+                        width: parent.width; topPadding: 14; spacing: 2
+                        Texto { text: "Aspecto"; color: Estilo.texto2; font.pixelSize: 13 }
+                        Texto { text: "Color y estilo"; font { pixelSize: 30; weight: Font.Bold; letterSpacing: -0.6 } }
+                    }
+                    Item { width: 1; height: 18 }
+
+                    // Cabecera: logo y nombre, la Gota (la unica luz) con su rayo y su halo, y la ficha del tema.
+                    Rectangle {
+                        id: tarjetaMarca
+                        width: parent.width; height: 210; radius: 18
+                        color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
+                        clip: true
+                        readonly property real xGota: width * 0.66
+                        readonly property real yGota: height / 2
+                        // Halo: luz suave alrededor de la Gota. Quieto.
+                        Halo { anchors.fill: parent; cx: tarjetaMarca.xGota; cy: tarjetaMarca.yGota; radio: 130 }
+                        // Rayo: una linea fina que llega a la Gota desde abajo a la izquierda. Quieto.
+                        Rectangle {
+                            readonly property real x1: tarjetaMarca.width * 0.04
+                            readonly property real y1: tarjetaMarca.height
+                            readonly property real x2: tarjetaMarca.xGota - 50
+                            readonly property real y2: tarjetaMarca.yGota + 8
+                            x: x1; y: y1 - height / 2
+                            width: Math.hypot(x2 - x1, y2 - y1); height: 1.6; radius: 0.8
+                            transformOrigin: Item.Left
+                            rotation: Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI
+                            antialiasing: true
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: Qt.alpha(Estilo.luz, 0) }
+                                GradientStop { position: 1; color: Qt.alpha(Estilo.luz, 0.75) }
+                            }
+                        }
+                        Column {
+                            x: 40; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -6
+                            spacing: 16
+                            Row {
+                                spacing: 18
+                                LogoMenisco { tam: 56; anchors.verticalCenter: parent.verticalCenter }
+                                PalabraMenisco { alto: 38; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            Texto { text: "Lo justo, en su sitio."; color: Estilo.texto2; font.pixelSize: 17 }
+                        }
+                        // La Gota de verdad: solo su dibujo, con el color del tema (oscura en Ónix).
+                        Asistente {
+                            width: 110; height: 110
+                            x: tarjetaMarca.xGota - width / 2; y: tarjetaMarca.yGota - height / 2
+                            emocion: "normal"; fondoNegro: true
+                            gota: ({ forma: Estilo.gota.forma, cambia: false,
+                                     color: Estilo.valor("tema") === "onix" ? "#2c2c2e" : String(Estilo.acento) })
+                        }
+                        // Ficha del tema, como una etiqueta de especificaciones.
+                        Rectangle {
+                            id: ficha
+                            anchors { right: parent.right; rightMargin: 22; verticalCenter: parent.verticalCenter }
+                            width: 176; height: 162; radius: 12; color: "#ececec"
+                            readonly property int numero: Math.max(0, Estilo.ordenTemas.indexOf(Estilo.valor("tema"))) + 1
+                            Column {
+                                x: 16; y: 16; spacing: 2
+                                Repeater {
+                                    model: ["MENISCO", "APARIENCIA", (Estilo.temas[Estilo.valor("tema")] || Estilo.temas.onix).nombre.toUpperCase()]
+                                    Text { required property string modelData; text: modelData; color: "#1c1c1e"; font { family: "JetBrains Mono"; pixelSize: 11; letterSpacing: 0.6 } }
+                                }
+                            }
+                            Rectangle {
+                                x: 16; anchors { bottom: parent.bottom; bottomMargin: 18 }
+                                width: 18; height: 18; radius: 9
+                                color: Estilo.valor("tema") === "onix" ? "#2c2c2e" : Estilo.acento
+                            }
+                            Text {
+                                anchors { right: parent.right; rightMargin: 16; bottom: parent.bottom; bottomMargin: 8 }
+                                text: String(ficha.numero).padStart(2, "0"); color: "#111113"
+                                font { family: Estilo.letra; pixelSize: 58; weight: Font.Bold; letterSpacing: -1.5 }
+                                font.features: { "tnum": 1 }
+                            }
+                        }
+                    }
+
+                    // Color: seis temas a la vista y el resto con "Mostrar más".
+                    Item {
+                        width: parent.width; height: 52
+                        Texto { anchors { left: parent.left; bottom: parent.bottom; bottomMargin: 10 } text: "Color"; font { pixelSize: 17; weight: Font.DemiBold } }
+                        Texto { anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 11 } text: "Un toque y cambia todo"; color: Estilo.texto2 }
+                    }
                     Grid {
-                        width: parent.width; columns: 5; spacing: 8
+                        id: rejillaTemas
+                        width: parent.width; columns: 6; spacing: 12
+                        readonly property real ancho: (width - spacing * 5) / 6
                         Repeater {
-                            model: Estilo.ordenTemas
+                            model: paginaApariencia.masTemas ? Estilo.ordenTemas : Estilo.ordenTemas.slice(0, 6)
                             delegate: Rectangle {
                                 id: muestra
                                 required property string modelData
                                 readonly property var t: Estilo.temas[modelData]
                                 readonly property bool elegido: Estilo.valor("tema") === modelData
-                                // Segundo tono: el filo de lo encendido o, si coincide con el acento, el icono encendido
-                                readonly property var segundo: {
-                                    const c = [];
-                                    if (t.activoBorde !== "#00000000") c.push(Qt.alpha(t.activoBorde, 1));
-                                    if (!Qt.colorEqual(t.iconoActivo, t.enActivo)) c.push(t.iconoActivo);
-                                    return c.find(x => !Qt.colorEqual(x, t.acento)) ?? null;
-                                }
-                                width: (parent.width - 32) / 5; height: 84; radius: 12
-                                color: t.fondo
-                                border.width: elegido ? 2 : 1; border.color: elegido ? t.acento : zonaTema.containsMouse ? t.texto2 : t.borde
-                                scale: zonaTema.pressed ? 0.95 : 1
-                                Behavior on scale { NumberAnimation { duration: Estilo.t(zonaTema.pressed ? 80 : 340); easing.type: zonaTema.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-                                Rectangle {
-                                    x: 10; y: 10; width: parent.width - 20; height: 26; radius: 8
-                                    color: muestra.t.tarjeta; border.width: 1; border.color: muestra.t.borde
-                                    Rectangle {
-                                        visible: muestra.segundo !== null
-                                        x: 15; anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; radius: 7
-                                        color: muestra.segundo ?? "transparent"
-                                        border.width: 2; border.color: muestra.t.tarjeta
-                                    }
-                                    Rectangle { x: 6; anchors.verticalCenter: parent.verticalCenter; width: 14; height: 14; radius: 7; color: muestra.t.acento }
-                                    Rectangle { x: 34; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 44; height: 4; radius: 2; color: muestra.t.texto3 }
-                                }
+                                readonly property bool esOnix: modelData === "onix"
+                                function mezcla(a, b, k) { const x = Qt.color(a), y = Qt.color(b); return Qt.rgba(x.r + (y.r - x.r) * k, x.g + (y.g - x.g) * k, x.b + (y.b - x.b) * k, 1); }
+                                // Franja de cuatro tonos: el acento, dos pasos hacia el fondo y uno claro.
+                                readonly property var tonos: esOnix ? ["#f2f2f3", "#8e8e93", "#3a3a3c", "#000000"]
+                                    : [t.acento, mezcla(t.acento, t.fondo, 0.35), mezcla(t.acento, t.fondo, 0.7), mezcla(t.acento, "#ffffff", 0.45)]
+                                width: rejillaTemas.ancho; height: 152; radius: 14
+                                color: zonaTema.containsMouse && !elegido ? Estilo.realce : Estilo.tarjeta
+                                border.width: elegido ? 2 : 1
+                                border.color: elegido ? (esOnix ? "#f2f2f3" : t.acento) : Estilo.borde
+                                Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
                                 Text {
-                                    anchors { left: parent.left; bottom: parent.bottom; margins: 10 }
-                                    text: muestra.t.nombre; color: muestra.t.texto
-                                    font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold; letterSpacing: -0.08 }
+                                    x: 16; y: 12
+                                    text: "Aa"; color: muestra.esOnix ? "#f2f2f3" : muestra.t.acento
+                                    font { family: Estilo.letra; pixelSize: 34; weight: Font.DemiBold; letterSpacing: -0.5 }
+                                }
+                                Row {
+                                    x: 16; y: 66; spacing: 5
+                                    Repeater {
+                                        model: muestra.tonos
+                                        Rectangle {
+                                            required property var modelData
+                                            width: (muestra.width - 32 - 15) / 4; height: 5; radius: 2.5
+                                            color: modelData
+                                            border.width: Qt.colorEqual(modelData, "#000000") ? 1 : 0; border.color: Estilo.borde
+                                        }
+                                    }
+                                }
+                                Column {
+                                    x: 16; anchors { bottom: parent.bottom; bottomMargin: 16 }
+                                    width: parent.width - 32; spacing: 2
+                                    Texto { text: muestra.t.nombre; font { pixelSize: 15; weight: Font.DemiBold }
+                                    width: parent.width; elide: Text.ElideRight }
+                                    Texto { text: muestra.t.desc || ""; color: Estilo.texto2; font.pixelSize: 12; width: parent.width; elide: Text.ElideRight }
                                 }
                                 MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaTema; anchors.fill: parent; hoverEnabled: true; onClicked: Estilo.poner("tema", muestra.modelData) }
                             }
                         }
                     }
-                    Encabezado { text: "Más opciones" }
+                    MostrarMas {
+                        linea: false; abierto: paginaApariencia.masTemas; cuantas: Estilo.ordenTemas.length - 6
+                        onPulsado: paginaApariencia.masTemas = !paginaApariencia.masTemas
+                    }
+
+                    // Ajuste fino, en tabla: numero, ajuste, que hace y como esta ahora.
+                    Texto { text: "Ajuste fino"; topPadding: 10; bottomPadding: 10; font { pixelSize: 17; weight: Font.DemiBold } }
+                    Item {
+                        width: parent.width; height: 32
+                        Repeater {
+                            model: [["#", 8], ["AJUSTE", 62], ["QUÉ HACE", 0.3]]
+                            Texto {
+                                required property var modelData
+                                x: modelData[1] < 1 ? parent.width * modelData[1] : modelData[1]
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData[0]; color: Estilo.texto2; font { pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.8 }
+                            }
+                        }
+                        Texto { anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: "AHORA"; color: Estilo.texto2; font { pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.8 } }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Estilo.linea }
+                    }
+                    FilaTabla {
+                        numero: 1; titulo: "Superficies"; que: "Qué tan negro es el fondo de ventanas y tarjetas"
+                        Desplegable {
+                            readonly property bool esOnix: Estilo.valor("tema") === "onix"
+                            enabled: !esOnix; opacity: esOnix ? 0.55 : 1
+                            opciones: [["negro", "Negro puro"], ["suave", "Suave"]]
+                            elegida: esOnix ? "negro" : Estilo.valor("superficies")
+                            onElegir: c => Estilo.poner("superficies", c)
+                        }
+                    }
+                    FilaTabla {
+                        numero: 2; titulo: "Letra"; que: "La misma letra en todo el shell"
+                        Desplegable {
+                            opciones: [["SF Pro", "SF Pro"], ["Inter", "Inter"]]
+                            elegida: Estilo.valor("letra"); onElegir: c => Estilo.poner("letra", c)
+                        }
+                    }
+                    FilaTabla {
+                        numero: 3; titulo: "Movimiento"
+                        // Tres maneras de moverse; cada una pone la velocidad y el rebote de siempre.
+                        readonly property var modos: ({ calmado: ["normal", "nada"], normal: ["normal", "suave"], vivo: ["rapida", "mucho"] })
+                        readonly property string modo: Object.keys(modos).find(k => modos[k][0] === Estilo.valor("velocidad") && modos[k][1] === Estilo.valor("rebote")) ?? "personalizado"
+                        que: ({ calmado: "Tranquilo: una sola cosa se mueve a la vez", normal: "Con un rebote suave al llegar", vivo: "Rápido y con más rebote" })[modo]
+                            ?? "Velocidad y rebote elegidos a mano"
+                        Desplegable {
+                            opciones: [["calmado", "Calmado"], ["normal", "Normal"], ["vivo", "Vivo"]]
+                            elegida: parent.parent.modo
+                            textoOtro: "Personalizado"
+                            onElegir: c => { const m = parent.parent.modos[c]; Estilo.poner("velocidad", m[0]); Estilo.poner("rebote", m[1]); }
+                        }
+                    }
+                    FilaTabla {
+                        numero: 4; titulo: "Seguir al fondo"
+                        readonly property bool conFondo: Estilo.valor("tema") === "delfondo"
+                        que: conFondo ? "Si cambias de fondo, el color cambia con él" : "Solo con el color Del fondo"
+                        Rectangle {
+                            id: interFondo
+                            readonly property bool encendido: Estilo.valor("seguirFondo")
+                            enabled: parent.parent.conFondo; opacity: enabled ? 1 : 0.4
+                            width: 46; height: 26; radius: 13
+                            color: encendido ? Estilo.acento : Estilo.apagado
+                            Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
+                            Rectangle {
+                                y: 3; width: 20; height: 20; radius: 10
+                                color: interFondo.encendido ? Estilo.sobreAcento : Estilo.texto2
+                                x: interFondo.encendido ? 23 : 3
+                                Behavior on x { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor
+                                // Al apagarlo se guarda el color de ahora, para que no cambie mas.
+                                onClicked: { if (interFondo.encendido) Estilo.poner("fondoAcento", String(Estilo.acentoFondo)); Estilo.poner("seguirFondo", !interFondo.encendido); }
+                            }
+                        }
+                    }
+
+                    Encabezado { text: "Perfiles"; topPadding: 22 }
                     Plegable {
                         icono: "bookmarks"; titulo: "Perfiles guardados"; relleno: 12
                         resumen: Estilo.perfiles.length + (Estilo.perfiles.length === 1 ? " perfil" : " perfiles") + " · guardan color, dock, isla, botones y marco"
                         Texto {
-                            text: "Un perfil guarda toda la apariencia: tema, dock, isla, botones, marco, ventanas y vidrio. Clic para aplicarlo; clic derecho para renombrarlo, actualizarlo o borrarlo."
+                            text: "Un perfil guarda toda la apariencia: tema, dock, isla, botones, marco, ventanas y vidrio. Haz clic para aplicarlo; clic derecho para renombrarlo, actualizarlo o borrarlo."
                             color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
                         }
                         Item { width: 1; height: 10 }
@@ -737,26 +914,6 @@ PanelWindow {
                             }
                         }
                     }
-                    Plegable {
-                        icono: "text_fields"; titulo: "Letra"; resumen: Estilo.valor("letra")
-                        Segmentos {
-                            titulo: "Letra"; opciones: ["SF Pro", "Inter"]; claves: ["SF Pro", "Inter"]
-                            elegida: Estilo.valor("letra"); onElegir: c => Estilo.poner("letra", c)
-                        }
-                    }
-                    Plegable {
-                        icono: "animation"; titulo: "Movimiento"
-                        resumen: "Velocidad " + (({ lenta: "lenta", normal: "normal", rapida: "rápida" })[Estilo.valor("velocidad")] ?? "")
-                            + " · rebote " + (({ nada: "ninguno", suave: "suave", mucho: "mucho" })[Estilo.valor("rebote")] ?? "")
-                        Segmentos {
-                            titulo: "Velocidad de animaciones"; opciones: ["Lenta", "Normal", "Rápida"]; claves: ["lenta", "normal", "rapida"]
-                            elegida: Estilo.valor("velocidad"); onElegir: c => Estilo.poner("velocidad", c)
-                        }
-                        Segmentos {
-                            titulo: "Rebote"; opciones: ["Nada", "Suave", "Mucho"]; claves: ["nada", "suave", "mucho"]
-                            elegida: Estilo.valor("rebote"); onElegir: c => Estilo.poner("rebote", c)
-                        }
-                    }
                 }
             }
 
@@ -805,7 +962,7 @@ PanelWindow {
                     }
                     Encabezado { text: "Con vidrio" }
                     Texto { width: parent.width; wrapMode: Text.Wrap; bottomPadding: 8; color: Estilo.texto2; font.pixelSize: 12
-                        text: "niri desenfoca lo que hay detrás; en Lniri, además, lleva el liquid glass." }
+                        text: "niri desenfoca lo que hay detrás; en la sesión Lniri, además, lleva liquid glass." }
                     Grid {
                         width: parent.width; columns: 4; columnSpacing: 10; rowSpacing: 10
                         Repeater {
@@ -819,7 +976,7 @@ PanelWindow {
                         width: parent.width; columns: 3; columnSpacing: 10; rowSpacing: 10
                         Repeater {
                             model: [["solido", "Sólido", "Negro del tema, como la isla"], ["contorno", "Contorno", "Solo el filo"],
-                                    ["materialyou", "Material You", "Del color de su fondo"]]
+                                    ["materialyou", "Material You", "Del color de tu fondo"]]
                             delegate: TarjetaMaterial { width: (parent.width - 20) / 3 }
                         }
                     }
@@ -936,7 +1093,7 @@ PanelWindow {
                                 }
                             }
                         }
-                        Texto { x: 12; anchors { bottom: parent.bottom; bottomMargin: 8 } text: "Arrastre los monitores para acomodarlos"; color: Estilo.texto2; font.pixelSize: 11 }
+                        Texto { x: 12; anchors { bottom: parent.bottom; bottomMargin: 8 } text: "Arrastra los monitores para acomodarlos"; color: Estilo.texto2; font.pixelSize: 11 }
                     }
                     Encabezado { text: ventana.salidaActual ? ventana.salidaActual.modelo : "" }
                     Grupo {
@@ -985,7 +1142,7 @@ PanelWindow {
                 // Las cinco primeras se ven siempre; las demas, con "Mostrar más".
                 readonly property var catalogo: [["hora", "Hora", "schedule"], ["fecha", "Fecha y hora", "calendar_today"], ["volumen", "Volumen", "volume_up"],
                     ["visualizador", "Visualizador", "graphic_eq"], ["caratula", "Reproductor", "play_circle"],
-                    ["asistente", "Asistente", "face"], ["temperatura", "Temperatura", "thermostat"], ["cpu", "Uso de CPU", "memory"],
+                    ["asistente", "Gota", "face"], ["temperatura", "Temperatura", "thermostat"], ["cpu", "Uso de CPU", "memory"],
                     ["escritorios", "Escritorios", "view_week"], ["clima", "Clima", "partly_cloudy_day"], ["red", "Red", "arrow_downward"], ["ram", "RAM", "memory_alt"],
                     ["micro", "Micrófono", "mic_off"], ["bateria", "Batería", "headphones"], ["nada", "Nada", "block"]]
                 function nombreForma(k) { return ((Estilo.formasIsla.find(f => f[0] === k) || ["", k])[1] || "").toLowerCase() }
@@ -1066,7 +1223,7 @@ PanelWindow {
                         }
                     }
                     Texto {
-                        text: "Pulse un hueco y elija qué muestra. Si ya estaba en otro hueco, se cambian."
+                        text: "Pulsa un hueco y elige qué muestra. Si ya estaba en otro hueco, se cambian."
                         color: Estilo.texto2; font.pixelSize: 12; width: parent.width; wrapMode: Text.WordWrap
                         topPadding: 10; bottomPadding: 6
                     }
@@ -1153,8 +1310,8 @@ PanelWindow {
                     }
                     Plegable {
                         icono: "bolt"; titulo: "Pestaña Acciones"
-                        resumen: (Estilo.valor("botEnPaginas") ? "Con botón del asistente" : "Sin botón del asistente") + " · " + (Estilo.valor("islaImagen") ? "con imagen de fondo" : "sin imagen de fondo")
-                            Interruptor { titulo: "Botón del asistente"; sub: "La Gota grande a la izquierda de Acciones"; encendido: Estilo.valor("botEnPaginas"); onCambiar: v => Estilo.poner("botEnPaginas", v) }
+                        resumen: (Estilo.valor("botEnPaginas") ? "Con botón de la Gota" : "Sin botón de la Gota") + " · " + (Estilo.valor("islaImagen") ? "con imagen de fondo" : "sin imagen de fondo")
+                            Interruptor { titulo: "Botón de la Gota"; sub: "La Gota grande a la izquierda de Acciones"; encendido: Estilo.valor("botEnPaginas"); onCambiar: v => Estilo.poner("botEnPaginas", v) }
                         Texto { x: 12; text: "Imagen de fondo"; color: Estilo.texto2; font.pixelSize: 12; topPadding: 10; bottomPadding: 6 }
                         Item {
                             width: parent.width; height: fondosAcciones.height + 12
@@ -1285,7 +1442,7 @@ PanelWindow {
                     Grupo {
                         Interruptor { titulo: "No molestar"; sub: "Calla a Hokum y los avisos de la isla"; encendido: Estilo.noMolestar; onCambiar: v => Estilo.ponerNoMolestar(v) }
                         Interruptor { titulo: "Automático en pantalla completa"; sub: "Juegos y videos: se enciende solo y se apaga al salir"; encendido: Estilo.valor("dndPantallaCompleta"); onCambiar: v => Estilo.poner("dndPantallaCompleta", v) }
-                        Interruptor { titulo: "Mientras grabo la pantalla"; sub: "Que no salga nada en el video"; encendido: Estilo.valor("dndGrabando"); onCambiar: v => Estilo.poner("dndGrabando", v) }
+                        Interruptor { titulo: "Mientras grabas la pantalla"; sub: "Que no salga nada en el video"; encendido: Estilo.valor("dndGrabando"); onCambiar: v => Estilo.poner("dndGrabando", v) }
                     }
 
                     Encabezado { text: "Avisos en la isla" }
@@ -1316,7 +1473,7 @@ PanelWindow {
                                 id: textoFichas
                                 x: 12; y: 9
                                 Texto { text: "Apps que avisan" }
-                                Texto { text: "Toque una para callarla. Salen las abiertas y las ya calladas"; color: Estilo.texto2; font.pixelSize: 11 }
+                                Texto { text: "Toca una para callarla. Salen las abiertas y las ya calladas"; color: Estilo.texto2; font.pixelSize: 11 }
                             }
                             Flow {
                                 id: fichas
@@ -1351,7 +1508,7 @@ PanelWindow {
                                         }
                                     }
                                 }
-                                Texto { visible: repFichas.count === 0; text: "Ponga algo a sonar y aparecerá aquí"; color: Estilo.texto3; font.pixelSize: 12 }
+                                Texto { visible: repFichas.count === 0; text: "Pon algo a sonar y aparecerá aquí"; color: Estilo.texto3; font.pixelSize: 12 }
                             }
                             Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: Estilo.linea }
                         }
@@ -1468,7 +1625,7 @@ PanelWindow {
                 clave: "asistente"; activa: ventana.seccion === clave
                 property string prueba: "feliz"     // emocion de la vista previa (solo se ve aqui)
                 Desplazable {
-                    Cabecera { titulo: "Asistente"; descripcion: "La Gota: su nombre, su carácter y su botón en la isla." }
+                    Cabecera { titulo: "Gota"; descripcion: "Tu mascota: su nombre, su carácter y su botón en la isla." }
                     Item { width: 1; height: 12 }
                     Rectangle {
                         width: parent.width; height: 170; radius: 16
@@ -1626,53 +1783,14 @@ PanelWindow {
                     Cabecera { titulo: "Botones de arriba"; descripcion: "Los botones a la altura de la isla. Cada uno elige su sitio: en una esquina o junto a la isla." }
                     Item { width: 1; height: 12 }
                     // Vista previa: franja de pantalla con la isla y los cuatro sitios.
-                    Rectangle {
-                        id: previaBotones
-                        width: parent.width; height: 64; radius: 12; color: "#3a3f4a"
-                        clip: true
-                        Rectangle {
-                            id: islaPreviaB
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: -12; width: 116; height: 44; radius: 14; color: Estilo.fondo
-                            Texto { anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 8 } text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font.weight: Font.DemiBold }
-                        }
-                        Repeater {
-                            model: Estilo.zonasBotones
-                            delegate: Rectangle {
-                                id: sitioPrevia
-                                required property string modelData
-                                required property int index
-                                readonly property bool junto: modelData.endsWith("Isla")
-                                readonly property var lista: Estilo.botones[modelData]
-                                visible: lista.length > 0
-                                width: filaPrevia.width + (junto ? 8 : 0); height: 28; radius: 14; y: 6
-                                color: junto ? Estilo.fondo : "transparent"
-                                x: index === 0 ? 8 : index === 3 ? parent.width - 8 - width
-                                    : index === 1 ? islaPreviaB.x - 8 - width : islaPreviaB.x + islaPreviaB.width + 8
-                                Behavior on x { NumberAnimation { duration: Estilo.t(380); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
-                                Row {
-                                    id: filaPrevia
-                                    anchors.centerIn: parent; spacing: sitioPrevia.junto ? 0 : 4
-                                    Repeater {
-                                        model: sitioPrevia.lista
-                                        delegate: Rectangle {
-                                            required property string modelData
-                                            width: 26; height: 26; radius: 9
-                                            color: sitioPrevia.junto ? "transparent" : Estilo.fondo
-                                            Simbolo { anchors.centerIn: parent; text: paginaEsquinas.info(parent.modelData)[2]; font.pixelSize: 15 }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    PreviaBotones { width: parent.width; height: 64; radius: 12; color: "#3a3f4a" }
                     Encabezado { text: "Botones puestos" }
                     Grupo {
                         Item {
                             width: parent.width; height: 40
                             Texto {
                                 x: 12; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 150
-                                text: "Elija el sitio de cada botón con los cuadritos; los dos del medio son junto a la isla. Arrastre el asa para cambiar el orden."
+                                text: "Elige el sitio de cada botón con los cuadritos; los dos del medio son junto a la isla. Arrastra el asa para cambiar el orden."
                                 color: Estilo.texto2; font.pixelSize: 11; wrapMode: Text.WordWrap
                             }
                             Rectangle { anchors { left: parent.left; leftMargin: 12; right: parent.right; bottom: parent.bottom } height: 1; color: Estilo.linea }
@@ -1826,7 +1944,7 @@ PanelWindow {
                             : paginaEsquinas.appsDock.length + (paginaEsquinas.appsDock.length === 1 ? " app" : " apps")
                             Fila {
                                 visible: paginaEsquinas.appsDock.length === 0
-                                titulo: "Sin apps todavía"; sub: "Agregue las que quiera tener a mano arriba"
+                                titulo: "Sin apps todavía"; sub: "Agrega las que quieras tener a mano arriba"
                             }
                             Repeater {
                                 model: paginaEsquinas.appsDock
@@ -1877,7 +1995,7 @@ PanelWindow {
                                         color: Estilo.texto; selectionColor: Estilo.texto3
                                         font { family: Estilo.letra; pixelSize: 12 }
                                         Keys.onEscapePressed: paginaEsquinas.agregandoApp = false
-                                        Texto { visible: !parent.text; text: "Busque una app instalada"; color: Estilo.texto3; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                                        Texto { visible: !parent.text; text: "Busca una app instalada"; color: Estilo.texto3; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                                     }
                                 }
                                 Flow {
@@ -1996,7 +2114,7 @@ PanelWindow {
                 anchors.fill: parent
                 clave: "vidrio"; activa: ventana.seccion === clave
                 Desplazable {
-                    Cabecera { titulo: "Liquid glass"; descripcion: "Vidrio que deforma lo que hay detrás. Solo funciona en la sesión Lniri." }
+                    Cabecera { titulo: "Liquid glass"; descripcion: "Vidrio que deforma lo que hay detrás. Solo funciona en la sesión Lniri (niri con liquid glass): elígela al iniciar sesión." }
                     Item { width: 1; height: 12 }
                     ClippingRectangle {
                         width: parent.width; height: 90; radius: 12; color: "#2b3a4a"
@@ -2019,7 +2137,7 @@ PanelWindow {
                     Encabezado { text: "Lo básico" }
                     Grupo {
                         Interruptor {
-                            titulo: "Liquid glass"; sub: "Solo en la sesión Lniri"; encendido: ventana.vidrio
+                            titulo: "Liquid glass"; sub: "Solo en la sesión Lniri, que se elige al iniciar sesión"; encendido: ventana.vidrio
                             onCambiar: v => ventana.alternarVidrio(v)
                         }
                     }
@@ -2047,7 +2165,7 @@ PanelWindow {
                 clave: "atajos"; activa: ventana.seccion === clave
                 onActivaChanged: if (activa) leerAtajos.running = true
                 Desplazable {
-                    Cabecera { titulo: "Atajos"; descripcion: "Pulse un atajo y luego la nueva combinación. Escape cancela." }
+                    Cabecera { titulo: "Atajos"; descripcion: "Pulsa un atajo y luego la nueva combinación. Escape cancela." }
                     Encabezado { text: "Menisco" }
                     Grupo {
                         Repeater {
@@ -2076,97 +2194,122 @@ PanelWindow {
             Pagina {
                 anchors.fill: parent
                 clave: "inicio"; activa: ventana.seccion === clave
+                // La tarjeta de Atajos enseña el atajo real del lanzador.
+                onActivaChanged: if (activa) leerAtajos.running = true
+                Connections { target: ventana; function onAbiertaChanged() { if (ventana.abierta) leerAtajos.running = true } }
 
                 Desplazable {
                     id: paginaInicio
-                    Item { width: 1; height: 14 }
+                    // Nombre de quien usa el equipo (campo de nombre del usuario); sin nombre, solo el saludo.
+                    property string nombre: ""
+                    Process {
+                        running: true
+                        command: ["sh", "-c", "getent passwd \"$USER\" | cut -d: -f5 | cut -d, -f1"]
+                        stdout: StdioCollector { onStreamFinished: paginaInicio.nombre = text.trim().split(/\s+/)[0] || "" }
+                    }
+                    readonly property int horaDia: reloj.date.getHours()
+                    readonly property string saludo: horaDia >= 6 && horaDia < 12 ? "Buenos días" : horaDia >= 12 && horaDia < 20 ? "Buenas tardes" : "Buenas noches"
 
-
-
-                    // Hero: fondo actual con la isla en miniatura encima
-                    Rectangle {
-                        id: marcoHero
-                        width: parent.width
-                        height: 220
-                        radius: 12
-                        color: Estilo.tarjeta
-                        clip: true
-
-                        // Debajo queda el fondo anterior; el nuevo aparece encima con un fundido
-                        // y un leve acercamiento hacia atras (de 1.06 a 1).
-                        property string rutaVieja: ""
-                        Redondeada {
-                            anchors.fill: parent
-                            radio: 12
-                            ruta: marcoHero.rutaVieja
-                            ancho: 1000
+                    // ---- Encabezado: la Gota con su halo, el saludo y el reloj ----
+                    Item {
+                        width: parent.width; height: 80
+                        // Cabe entera arriba (el desplazable corta) y se sale hacia abajo sin borde.
+                        Halo { width: 180; height: 200; cx: 34; cy: 50; radio: 42; fuerza: 0.26 }
+                        Asistente {
+                            x: 4; y: 20; width: 60; height: 60
+                            emocion: "normal"; fondoNegro: true
+                            gota: ({ forma: Estilo.gota.forma, cambia: false, color: Estilo.valor("tema") === "onix" ? "#2c2c2e" : String(Estilo.acento) })
                         }
-                        Redondeada {
-                            id: hero
-                            anchors.fill: parent
-                            radio: 12
-                            ruta: ventana.fondoActual
-                            ancho: 1000
-                            opacity: 0
-                            onListoChanged: if (listo) llegada.restart()
-                        }
-                        ParallelAnimation {
-                            id: llegada
-                            NumberAnimation { target: hero; property: "opacity"; from: 0; to: 1; duration: Estilo.t(420); easing.type: Easing.OutCubic }
-                            NumberAnimation { target: hero; property: "scale"; from: 1.06; to: 1; duration: Estilo.t(700); easing.type: Easing.BezierSpline; easing.bezierCurve: ventana.curvaIos }
-                            onFinished: marcoHero.rutaVieja = ventana.fondoActual
-                        }
-
-                        Rectangle {
-                            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-                            width: 130; height: 18
-                            radius: 9
-                            color: Estilo.fondo
-                            Rectangle { width: parent.width; height: 9; color: parent.color }
-                            Text {
-                                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
-                                text: Qt.formatTime(reloj.date, "h:mm")
-                                color: Estilo.texto
-                                font { family: Estilo.letra; pixelSize: 11; weight: Font.DemiBold; letterSpacing: 0.06 }
-                                renderType: Text.NativeRendering
-                            }
-                        }
-
                         Column {
-                            anchors { left: parent.left; bottom: fondos.top; leftMargin: 14; bottomMargin: 10 }
-                            TextoCambiante {
-                                text: ventana.fondoActual ? ventana.fondoActual.split("/").pop().replace(/\.[^.]+$/, "") : "Sin fondo"
-                                color: "#fff"
-                                font { family: Estilo.letra; pixelSize: 15; weight: Font.DemiBold; letterSpacing: -0.23 }
+                            x: 82; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 4
+                            spacing: 2
+                            Texto { text: paginaInicio.saludo + (paginaInicio.nombre ? ", " + paginaInicio.nombre : ""); font { pixelSize: 30; weight: Font.Bold; letterSpacing: -0.6 } }
+                            Texto { text: "Todo está en su sitio."; color: Estilo.texto2; font.pixelSize: 15 }
+                        }
+                        Column {
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter; verticalCenterOffset: 4 }
+                            spacing: 0
+                            Texto {
+                                anchors.right: parent.right
+                                text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm")
+                                font { pixelSize: 40; weight: Font.Bold; letterSpacing: -1 }
+                                font.features: { "tnum": 1 }
                             }
-                            TextoCambiante {
-                                text: ventana.resolucion
-                                color: Estilo.texto
-                                font { family: Estilo.letra; pixelSize: 11; weight: Font.Normal; letterSpacing: 0.06 }
+                            Texto {
+                                anchors.right: parent.right
+                                text: Qt.locale("es_MX").toString(reloj.date, "dddd d 'de' MMMM").replace(/^./, c => c.toUpperCase())
+                                color: Estilo.texto2; font.pixelSize: 14
                             }
                         }
+                    }
+                    Item { width: 1; height: 12 }
 
+                    // ---- Fila principal: el fondo de pantalla y el equipo en vivo ----
+                    Row {
+                        width: parent.width; spacing: 12
+                        readonly property real alto: 280
                         Rectangle {
-                            id: abrirCarpeta
-                            anchors { right: parent.right; bottom: parent.bottom; margins: 14 }
-                            width: textoCarpeta.implicitWidth + 20; height: 26; radius: 9
-                            color: abrirZona.containsMouse ? "#99000000" : "#66000000"
-                            Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
-                            scale: abrirZona.pressed ? 0.94 : 1
-                            Behavior on scale { NumberAnimation { duration: Estilo.t(abrirZona.pressed ? 90 : 320); easing.type: abrirZona.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
-                            Text {
-                                id: textoCarpeta
-                                anchors.centerIn: parent
-                                text: "Abrir carpeta"; color: "#fff"
-                                font { family: Estilo.letra; pixelSize: 11; weight: Font.Medium; letterSpacing: 0.06 }
+                            id: marcoHero
+                            width: (parent.width - 12) * 0.6; height: parent.alto; radius: 16
+                            color: Estilo.tarjeta; border.width: 1; border.color: Estilo.borde
+                            clip: true
+                            // Debajo queda el fondo anterior; el nuevo aparece encima con un fundido
+                            // y un leve acercamiento hacia atras (de 1.06 a 1).
+                            property string rutaVieja: ""
+                            Item {
+                                id: marcoImagen
+                                x: 1; y: 1; width: parent.width - 2; height: parent.height - 68
+                                Redondeada { anchors.fill: parent; radio: 15; ruta: marcoHero.rutaVieja; ancho: 1000 }
+                                Redondeada {
+                                    id: hero
+                                    anchors.fill: parent; radio: 15; ruta: ventana.fondoActual; ancho: 1000
+                                    opacity: 0
+                                    onListoChanged: if (listo) llegada.restart()
+                                }
+                                // Sombra abajo para que se lea el texto sobre cualquier fondo.
+                                Rectangle {
+                                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                                    height: 90; radius: 15
+                                    gradient: Gradient {
+                                        GradientStop { position: 0; color: "#00000000" }
+                                        GradientStop { position: 1; color: "#b3000000" }
+                                    }
+                                }
+                                Column {
+                                    anchors { left: parent.left; bottom: parent.bottom; leftMargin: 18; bottomMargin: 14 }
+                                    spacing: 1
+                                    Text { text: "Fondo actual"; color: "#ffffff"; font { family: Estilo.letra; pixelSize: 16; weight: Font.DemiBold } }
+                                    TextoCambiante {
+                                        text: ventana.fondoActual ? ventana.fondoActual.split("/").pop().replace(/\.[^.]+$/, "") : "Sin fondo"
+                                        color: "#e6e6e6"; font { family: "JetBrains Mono"; pixelSize: 12 }
+                                    }
+                                }
+                                Rectangle {
+                                    id: abrirCarpeta
+                                    anchors { right: parent.right; bottom: parent.bottom; margins: 14 }
+                                    width: textoCarpeta.implicitWidth + 28; height: 32; radius: 16
+                                    color: abrirZona.containsMouse ? "#e6000000" : "#b3000000"
+                                    border.width: 1; border.color: "#33ffffff"
+                                    Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                                    Text {
+                                        id: textoCarpeta
+                                        anchors.centerIn: parent
+                                        text: "Abrir carpeta"; color: "#ffffff"
+                                        font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold }
+                                    }
+                                    MouseArea { cursorShape: Qt.PointingHandCursor; id: abrirZona; anchors.fill: parent; hoverEnabled: true; onClicked: ventana.ejecutar(["xdg-open", ventana.carpetaFondos]) }
+                                }
                             }
-                            MouseArea { cursorShape: Qt.PointingHandCursor; id: abrirZona; anchors.fill: parent; hoverEnabled: true; onClicked: ventana.ejecutar(["xdg-open", ventana.carpetaFondos]) }
-                        }
-
+                            ParallelAnimation {
+                                id: llegada
+                                NumberAnimation { target: hero; property: "opacity"; from: 0; to: 1; duration: Estilo.t(420); easing.type: Easing.OutCubic }
+                                NumberAnimation { target: hero; property: "scale"; from: 1.06; to: 1; duration: Estilo.t(700); easing.type: Easing.BezierSpline; easing.bezierCurve: ventana.curvaIos }
+                                onFinished: marcoHero.rutaVieja = ventana.fondoActual
+                            }
                     ListView {
                             id: fondos
-                            anchors { left: parent.left; right: abrirCarpeta.left; bottom: parent.bottom; leftMargin: 10; rightMargin: 8; bottomMargin: 10 }
-                            height: 44
+                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 14; rightMargin: 14; bottomMargin: 10 }
+                            height: 46
                             orientation: ListView.Horizontal
                             spacing: 8
                             clip: true
@@ -2181,7 +2324,7 @@ PanelWindow {
                             delegate: Item {
                                 id: miniatura
                                 required property string filePath
-                                width: 66; height: 44
+                                width: 70; height: 46
                                 readonly property bool actual: filePath === ventana.fondoActual
     
                                 // Anillo de seleccion: aparece cerrandose sobre la miniatura.
@@ -2220,101 +2363,63 @@ PanelWindow {
                             }
     
                         }
-                    }
+                                            }
 
-                    // ---- Este equipo: se lee cada 5 s mientras el Inicio esta a la vista ----
-                    property var equipo: ({ memoria: "—", grafica: "—", encendido: "—", menisco: "—" })
-                    Timer {
-                        interval: 5000; repeat: true; triggeredOnStart: true
-                        running: ventana.abierta && ventana.seccion === "inicio"
-                        onTriggered: leerEquipo.running = true
-                    }
-                    Process {
-                        id: leerEquipo
-                        // ponytail: la version sale del repo clonado en ~/menisco-dots; sin el, muestra "—".
-                        command: ["sh", "-c", "free -b | awk '/^Mem:/{print $2-$7, $2}'; "
-                            + "nvidia-smi --query-gpu=name,temperature.gpu --format=csv,noheader 2>/dev/null | head -1; echo; "
-                            + "cut -d. -f1 /proc/uptime; git -C \"$HOME/menisco-dots\" log -1 --format=%h 2>/dev/null"]
-                        stdout: StdioCollector {
-                            onStreamFinished: {
-                                const l = text.split("\n");
-                                const gb = n => (n / 1073741824).toFixed(1).replace(/\.0$/, "");
-                                const [usada, total] = (l[0] || "").split(" ").map(Number);
-                                const [nombre, temp] = (l[1] || "").split(",").map(s => s.trim());
-                                const s = parseInt(l.find((x, i) => i >= 2 && /^\d+$/.test(x)) || "0");
-                                const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
-                                const ver = l.filter(x => /^[0-9a-f]{7,}$/.test(x)).pop();
-                                paginaInicio.equipo = {
-                                    memoria: total ? gb(usada) + " / " + Math.round(total / 1073741824) + " GB" : "—",
-                                    grafica: nombre ? nombre.replace(/^NVIDIA (GeForce )?/, "") + (temp ? " · " + temp + "°" : "") : "—",
-                                    encendido: d ? d + " d " + h + " h" : h ? h + " h " + m + " min" : m + " min",
-                                    menisco: ver || "—"
-                                };
-                            }
-                        }
-                    }
-
-                    // Accesos: llevan directo a la fila, no solo a la seccion.
-                    Encabezado { text: "Lo que más se cambia" }
-                    Grid {
-                        id: accesos
-                        width: parent.width
-                        columns: 2
-                        spacing: 8
-                        readonly property var lados: ({ left: "izquierda", center: "al centro", right: "derecha" })
-                        Acceso {
-                            icono: "schedule"; titulo: "Reloj de la isla"
-                            detalle: (Estilo.valor("reloj12") ? "12 h" : "24 h") + (Estilo.valor("segundos") ? ", con segundos" : ", sin segundos")
-                            onPulsado: ventana.irATitulo("isla", "Reloj")
-                        }
-                        Acceso {
-                            icono: "smart_toy"; titulo: "Asistente"
-                            detalle: Estilo.gota.nombre + " · " + Estilo.valor("personalidad")
-                            onPulsado: ventana.irATitulo("asistente", "Personalidad")
-                        }
-                        Acceso {
-                            icono: "notifications"; titulo: "Avisos de Hokum"
-                            detalle: (paginaNotif.alto === "top" ? "Arriba " : "Abajo ") + accesos.lados[paginaNotif.lado]
-                            onPulsado: ventana.irATitulo("notificaciones", "Posición")
-                        }
-                        Acceso {
-                            icono: "keyboard"; titulo: "Atajos"
-                            detalle: "Super + D, A, punto…"
-                            onPulsado: ventana.irA("atajos", null)
-                        }
-                        Acceso {
-                            icono: "palette"; titulo: "Color"
-                            detalle: (Estilo.temas[Estilo.valor("tema")] || Estilo.temas.champan).nombre
-                            onPulsado: ventana.irA("apariencia", null)
-                        }
-                        Acceso {
-                            icono: "crop_free"; titulo: "Botones de arriba"
-                            detalle: { const n = Estilo.zonasBotones.reduce((k, z) => k + Estilo.botones[z].length, 0); return n + (n === 1 ? " botón puesto" : " botones puestos"); }
-                            onPulsado: ventana.irA("esquinas", null)
-                        }
-                    }
-                    Item { width: 1; height: 6 }
-                    Plegable {
-                        icono: "memory"; titulo: "Este equipo"; relleno: 12
-                        resumen: "Memoria " + paginaInicio.equipo.memoria + " · " + paginaInicio.equipo.grafica
-                        Row {
+                        // Este equipo: abierto y en vivo.
+                        Rectangle {
                             id: filaEquipo
-                            width: parent.width
-                            spacing: 8
-                            readonly property real ancho: (width - spacing * 3) / 4
-                            Repeater {
-                                model: [["Memoria", "memoria"], ["Gráfica", "grafica"], ["Encendido", "encendido"], ["Menisco", "menisco"]]
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    width: filaEquipo.ancho; height: 48; radius: 10
-                                    color: Estilo.tarjeta
-                                    Column {
-                                        anchors { left: parent.left; right: parent.right; margins: 10; verticalCenter: parent.verticalCenter }
-                                        Texto { text: modelData[0]; color: Estilo.texto2; font.pixelSize: 11 }
+                            width: (parent.width - 12) * 0.4; height: parent.alto; radius: 16
+                            color: Estilo.tarjeta; border.width: 1; border.color: Estilo.borde
+                            Column {
+                                x: 20; y: 12; width: parent.width - 40
+                                Item {
+                                    width: parent.width; height: 32
+                                    Texto { anchors.verticalCenter: parent.verticalCenter; text: "Este equipo"; font { pixelSize: 17; weight: Font.DemiBold } }
+                                    Row {
+                                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                                        spacing: 6
+                                        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 8; height: 8; radius: 4; color: "#30d158" }
+                                        Texto { text: "En vivo"; color: Estilo.texto2; font.pixelSize: 13 }
+                                    }
+                                }
+                                Repeater {
+                                    model: [["Procesador", "cpu"], ["Memoria", "mem"], ["Disco", "disco"]]
+                                    delegate: Item {
+                                        required property var modelData
+                                        width: parent.width; height: 42
+                                        Texto { y: 6; text: modelData[0]; color: Estilo.texto2; font.pixelSize: 14 }
                                         TextoCambiante {
-                                            width: parent.width; elide: Text.ElideRight
+                                            anchors.right: parent.right; y: 6
                                             text: paginaInicio.equipo[modelData[1]]
-                                            color: Estilo.texto; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
+                                            color: Estilo.texto; font { family: Estilo.letra; pixelSize: 14; weight: Font.DemiBold }
+                                        }
+                                        Rectangle {
+                                            y: 31; width: parent.width; height: 4; radius: 2; color: Estilo.apagado
+                                            Rectangle {
+                                                width: parent.width * Math.max(0, Math.min(1, paginaInicio.equipo[modelData[1] + "F"] || 0))
+                                                height: parent.height; radius: 2; color: Estilo.acento
+                                                Behavior on width { NumberAnimation { duration: Estilo.t(600); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                                            }
+                                        }
+                                    }
+                                }
+                                Item { width: 1; height: 8 }
+                                Rectangle { width: parent.width; height: 1; color: Estilo.linea }
+                                Item { width: 1; height: 10 }
+                                Grid {
+                                    width: parent.width; columns: 2; rowSpacing: 8
+                                    Repeater {
+                                        model: [["Gráfica", "grafica"], ["Encendido", "encendido"], ["Red", "red"], ["Versión", "version"]]
+                                        delegate: Column {
+                                            required property var modelData
+                                            width: parent.width / 2; spacing: 1
+                                            Texto { text: modelData[0]; color: Estilo.texto2; font.pixelSize: 12 }
+                                            TextoCambiante {
+                                                width: parent.width - 8; elide: Text.ElideRight
+                                                text: paginaInicio.equipo[modelData[1]]
+                                                color: Estilo.texto
+                                                font { family: modelData[1] === "version" ? "JetBrains Mono" : Estilo.letra; pixelSize: 14; weight: Font.DemiBold }
+                                            }
                                         }
                                     }
                                 }
@@ -2322,6 +2427,211 @@ PanelWindow {
                         }
                     }
 
+                    // ---- Este equipo: se lee cada 4 s mientras el Inicio esta a la vista ----
+                    // Procesador: /proc/stat (dos lecturas) y k10temp/coretemp; disco: df de /; red: la interfaz
+                    // de la ruta por defecto (wifi si tiene carpeta wireless). La version, del repo en ~/menisco-dots.
+                    property var equipo: ({ cpu: "—", cpuF: 0, mem: "—", memF: 0, disco: "—", discoF: 0, grafica: "—", encendido: "—", red: "—", version: "—" })
+                    property var cpuAntes: null
+                    Timer {
+                        id: relojEquipo
+                        interval: 4000; repeat: true; triggeredOnStart: true
+                        running: ventana.abierta && ventana.seccion === "inicio"
+                        onTriggered: leerEquipo.running = true
+                    }
+                    Timer { id: segundaLectura; interval: 900; onTriggered: leerEquipo.running = true }
+                    Process {
+                        id: leerEquipo
+                        command: ["sh", "-c", `echo "mem $(free -b | awk '/^Mem:/{print $2-$7, $2}')"
+echo "cpu $(head -1 /proc/stat | cut -d' ' -f2-)"
+for h in /sys/class/hwmon/hwmon*; do case "$(cat $h/name 2>/dev/null)" in k10temp|coretemp|zenpower) echo "ctemp $(cat $h/temp1_input)"; break;; esac; done
+echo "disco $(df -B1 --output=used,size / | tail -1)"
+d=$(ip route get 1.1.1.1 2>/dev/null | sed -n 's/.* dev \\([^ ]*\\).*/\\1/p')
+if [ -z "$d" ]; then echo "red nada"; elif [ -d "/sys/class/net/$d/wireless" ]; then echo "red wifi"; else echo "red eth"; fi
+echo "gpu $(nvidia-smi --query-gpu=name,temperature.gpu --format=csv,noheader 2>/dev/null | head -1)"
+echo "up $(cut -d. -f1 /proc/uptime)"
+echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
+                        stdout: StdioCollector {
+                            onStreamFinished: {
+                                const v = {};
+                                for (const l of text.split("\n")) { const k = l.indexOf(" "); if (k > 0) v[l.slice(0, k)] = l.slice(k + 1).trim(); }
+                                const gb = n => (n / 1073741824).toFixed(1).replace(/\.0$/, "");
+                                const e = Object.assign({}, paginaInicio.equipo);
+                                const [usada, total] = (v.mem || "").split(" ").map(Number);
+                                if (total) { e.mem = gb(usada) + " / " + Math.round(total / 1073741824) + " GB"; e.memF = usada / total; }
+                                // Uso del procesador: diferencia entre dos lecturas de /proc/stat.
+                                const n = (v.cpu || "").split(/\s+/).map(Number);
+                                const cpuTotal = n.reduce((a, b) => a + (b || 0), 0), cpuLibre = (n[3] || 0) + (n[4] || 0);
+                                const temp = v.ctemp ? Math.round(Number(v.ctemp) / 1000) + "°" : "";
+                                if (paginaInicio.cpuAntes && cpuTotal > paginaInicio.cpuAntes[0]) {
+                                    const uso = Math.round(100 * (1 - (cpuLibre - paginaInicio.cpuAntes[1]) / (cpuTotal - paginaInicio.cpuAntes[0])));
+                                    e.cpu = uso + " %" + (temp ? " · " + temp : ""); e.cpuF = uso / 100;
+                                } else {
+                                    e.cpu = temp ? "— · " + temp : "—";
+                                    segundaLectura.restart();
+                                }
+                                if (cpuTotal) paginaInicio.cpuAntes = [cpuTotal, cpuLibre];
+                                const [dUsado, dTotal] = (v.disco || "").split(/\s+/).map(Number);
+                                if (dTotal) { e.disco = Math.round(dUsado / 1073741824) + " / " + Math.round(dTotal / 1073741824) + " GB"; e.discoF = dUsado / dTotal; }
+                                e.red = ({ eth: "Ethernet", wifi: "Wi-Fi", nada: "Sin conexión" })[v.red] || "—";
+                                const [nombre, gtemp] = (v.gpu || "").split(",").map(x => x.trim());
+                                e.grafica = nombre ? nombre.replace(/^NVIDIA (GeForce )?/, "") + (gtemp ? " · " + gtemp + "°" : "") : "—";
+                                const sg = parseInt(v.up || "0"), dd = Math.floor(sg / 86400), hh = Math.floor(sg % 86400 / 3600), mm = Math.floor(sg % 3600 / 60);
+                                e.encendido = sg ? (dd ? dd + " d " + hh + " h" : hh ? hh + " h " + mm + " min" : mm + " min") : "—";
+                                e.version = /^[0-9a-f]{7,}$/.test(v.ver || "") ? v.ver : "—";
+                                paginaInicio.equipo = e;
+                            }
+                        }
+                    }
+
+                    // ---- Lo que mas se cambia: cada tarjeta enseña la pieza que configura ----
+                    Item {
+                        width: parent.width; height: 46
+                        Texto { anchors { left: parent.left; bottom: parent.bottom; bottomMargin: 10 } text: "Lo que más se cambia"; font { pixelSize: 17; weight: Font.DemiBold } }
+                        Texto { anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 11 } text: "Pasa el cursor para verlo en acción"; color: Estilo.texto2 }
+                    }
+                    Grid {
+                        id: accesos
+                        width: parent.width; columns: 3; spacing: 12
+                        readonly property real ancho: (width - spacing * 2) / 3
+                        readonly property var lados: ({ left: "a la izquierda", center: "al centro", right: "a la derecha" })
+                        // Reloj de la isla: la isla con la hora; con el cursor, se abre.
+                        TarjetaPieza {
+                            id: tReloj
+                            width: accesos.ancho
+                            titulo: "Reloj de la isla"
+                            valor: (Estilo.valor("reloj12") ? "12 h" : "24 h") + (Estilo.valor("segundos") ? ", con segundos" : ", sin segundos")
+                            onPulsado: ventana.irATitulo("isla", "Reloj")
+                            IslaMini {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                ancho: 160 + 80 * tReloj.fase; alto: 46 + 30 * tReloj.fase; esquina: 22 + 6 * tReloj.fase; hombro: 18
+                                Column {
+                                    anchors.centerIn: parent
+                                    Texto {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm")
+                                        font { pixelSize: 22; weight: Font.DemiBold; letterSpacing: -0.4 }
+                                        font.features: { "tnum": 1 }
+                                    }
+                                    Texto {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: tReloj.fase > 0.05; opacity: tReloj.fase
+                                        text: Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, "")
+                                        color: Estilo.texto2; font.pixelSize: 13
+                                    }
+                                }
+                            }
+                        }
+                        // Gota: la de verdad, asomandose desde abajo; con el cursor, parpadea.
+                        TarjetaPieza {
+                            id: tGota
+                            width: accesos.ancho
+                            titulo: "Gota"
+                            valor: ({ tranquilo: "Tranquila", normal: "Normal", inquieto: "Inquieta" })[Estilo.valor("personalidad")] ?? ""
+                            onPulsado: ventana.irATitulo("asistente", "Personalidad")
+                            Halo { anchors.fill: parent; cx: width / 2; cy: height - 6; radio: 110 }
+                            Asistente {
+                                id: gotaTarjeta
+                                width: 110; height: 110
+                                anchors.horizontalCenter: parent.horizontalCenter; y: parent.height - 62
+                                emocion: "normal"; fondoNegro: true
+                                gota: ({ forma: Estilo.gota.forma, cambia: false, color: Estilo.valor("tema") === "onix" ? "#2c2c2e" : String(Estilo.acento) })
+                            }
+                            Timer { running: tGota.activo; repeat: true; interval: 1400; triggeredOnStart: true; onTriggered: gotaTarjeta.parpadear() }
+                        }
+                        // Avisos de Hokum: un aviso con su forma de capsula; con el cursor, entra y sale.
+                        TarjetaPieza {
+                            id: tAviso
+                            width: accesos.ancho
+                            titulo: "Avisos de Hokum"
+                            valor: (paginaNotif.alto === "top" ? "Arriba " : "Abajo ") + accesos.lados[paginaNotif.lado]
+                            onPulsado: ventana.irATitulo("notificaciones", "Posición")
+                            AvisoMini {
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: (parent.width - width) / 2 + 40 * tAviso.fase
+                                opacity: 1 - tAviso.fase
+                            }
+                        }
+                        // Atajos: la tira de teclas con las del lanzador encendidas; con el cursor, se pulsan.
+                        TarjetaPieza {
+                            id: tAtajos
+                            width: accesos.ancho
+                            readonly property var combo: (ventana.atajos.lanzador || "Mod+D").replace(/^Mod\b/, "Super").split("+")
+                            titulo: "Atajos"
+                            valor: combo.join(" + ") + " abre el lanzador"
+                            onPulsado: ventana.irA("atajos", null)
+                            Row {
+                                anchors.centerIn: parent; spacing: 6
+                                Repeater {
+                                    model: ["Esc"].concat(tAtajos.combo).concat(["A", "."])
+                                    delegate: Rectangle {
+                                        required property string modelData
+                                        required property int index
+                                        readonly property bool encendida: index > 0 && index <= tAtajos.combo.length
+                                        readonly property real pulsada: encendida ? Math.max(0, Math.min(1, (tAtajos.fase - 0.25) * 3)) : 0
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: Math.max(36, teclaTexto.implicitWidth + 22); height: 38; radius: 9
+                                        color: encendida ? Qt.tint(Estilo.tarjeta, Qt.alpha(Estilo.texto, 0.06 + 0.06 * pulsada)) : Estilo.hundido
+                                        border.width: 1; border.color: encendida ? Qt.alpha(Estilo.texto, 0.45) : Estilo.borde
+                                        scale: 1 - 0.07 * pulsada
+                                        transform: Translate { y: 2 * pulsada }
+                                        Texto {
+                                            id: teclaTexto
+                                            anchors.centerIn: parent
+                                            text: modelData
+                                            color: parent.encendida ? Estilo.texto : Estilo.texto3
+                                            font { pixelSize: 14; weight: parent.encendida ? Font.DemiBold : Font.Normal }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Color: los temas en abanico, el actual al frente; con el cursor, el abanico se abre.
+                        TarjetaPieza {
+                            id: tColor
+                            width: accesos.ancho
+                            readonly property string actual: Estilo.valor("tema")
+                            readonly property var abanico: [actual].concat(Estilo.ordenTemas.filter(k => k !== actual)).slice(0, 6)
+                            titulo: "Color"
+                            valor: (Estilo.temas[actual] || Estilo.temas.onix).nombre
+                            onPulsado: ventana.irA("apariencia", null)
+                            Item {
+                                anchors.centerIn: parent
+                                readonly property real paso: 30 + 12 * tColor.fase
+                                width: 60 + paso * 5; height: 60
+                                Repeater {
+                                    model: tColor.abanico
+                                    delegate: Rectangle {
+                                        required property string modelData
+                                        required property int index
+                                        readonly property bool frente: index === 0
+                                        z: 10 - index
+                                        width: frente ? 60 : 44; height: width; radius: width / 2
+                                        x: frente ? 0 : 60 + parent.paso * (index - 1) - 22 + 6
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        color: modelData === "onix" ? "#f2f2f3" : (Estilo.temas[modelData] || {}).acento || "#888888"
+                                        border.width: frente ? 3 : 2; border.color: frente ? Estilo.texto : Estilo.hundido
+                                    }
+                                }
+                            }
+                        }
+                        // Botones de arriba: la franja de arriba con la isla y los botones puestos;
+                        // con el cursor, los botones se separan de la isla.
+                        TarjetaPieza {
+                            id: tBotones
+                            width: accesos.ancho
+                            titulo: "Botones de arriba"
+                            valor: { const n = Estilo.zonasBotones.reduce((k, z) => k + Estilo.botones[z].length, 0); return n + (n === 1 ? " botón puesto" : " botones puestos"); }
+                            onPulsado: ventana.irA("esquinas", null)
+                            // Se dibuja con el ancho de una franja de pantalla y se reduce para que quepa entera.
+                            PreviaBotones {
+                                width: 360; height: 60
+                                anchors.centerIn: parent
+                                scale: parent.width / 360
+                                separacion: 8 + 16 * tBotones.fase
+                            }
+                        }
+                    }
+                    Item { width: 1; height: 12 }
                 }
             }
         }
@@ -2504,6 +2814,287 @@ PanelWindow {
         }
     }
 
+    // Logo oficial (assets/menisco-logo-white.svg, lienzo de 100x100): el marco y los tres tubos.
+    component LogoMenisco: Item {
+        id: logo
+        property real tam: 22
+        property color color: Estilo.texto
+        width: tam; height: tam
+        Shape {
+            width: 100; height: 100
+            scale: logo.tam / 100; transformOrigin: Item.TopLeft
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: -1; fillColor: logo.color; fillRule: ShapePath.OddEvenFill
+                PathSvg { path: "M34 10H66A24 24 0 0 1 90 34V66A24 24 0 0 1 66 90H34A24 24 0 0 1 10 66V34A24 24 0 0 1 34 10ZM34 15.5H66A18.5 18.5 0 0 1 84.5 34V66A18.5 18.5 0 0 1 66 84.5H34A18.5 18.5 0 0 1 15.5 66V34A18.5 18.5 0 0 1 34 15.5Z" }
+            }
+            ShapePath {
+                strokeWidth: -1; fillColor: Qt.alpha(logo.color, 0.45)
+                PathSvg { path: "M23.5 44Q31 49.25 38.5 44V67A5 5 0 0 1 33.5 72H28.5A5 5 0 0 1 23.5 67ZM61.5 44Q69 49.25 76.5 44V67A5 5 0 0 1 71.5 72H66.5A5 5 0 0 1 61.5 67Z" }
+            }
+            ShapePath {
+                strokeWidth: -1; fillColor: logo.color
+                PathSvg { path: "M42.5 28Q50 33.25 57.5 28V67A5 5 0 0 1 52.5 72H47.5A5 5 0 0 1 42.5 67Z" }
+            }
+        }
+    }
+    // La palabra MENISCO, version recta (los siete glifos de assets/readme/readme-encabezado-oscuro.svg,
+    // sin la curva del banner). Mide 590.4 x 68.35 en su lienzo; alto = altura de la letra.
+    component PalabraMenisco: Item {
+        id: palabra
+        property real alto: 13
+        property color color: Estilo.texto
+        width: alto * 590.4 / 68.35; height: alto
+        Shape {
+            width: 590.4; height: 68.35
+            scale: palabra.alto / 68.35; transformOrigin: Item.TopLeft
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath { strokeWidth: -1; fillColor: palabra.color; PathSvg { path: "M0.00 67.20L0.00 1.15L37.25 1.15L45.41 25.34Q46.18 27.36 46.95 30.00Q47.72 32.64 48.44 35.28Q49.16 37.92 49.64 39.84L50.31 39.84Q50.79 38.02 51.51 35.52Q52.23 33.02 53.04 30.29Q53.86 27.55 54.63 25.34L62.79 1.15L98.88 1.15L98.88 67.20L75.17 67.20L75.17 38.40Q75.17 36.00 75.22 33.12Q75.27 30.24 75.36 27.46Q75.46 24.67 75.46 22.66L74.69 22.66Q74.02 24.86 73.11 27.79Q72.20 30.72 71.28 33.55Q70.37 36.38 69.60 38.40L59.24 67.20L38.21 67.20L27.84 38.40Q26.79 35.33 25.78 32.30Q24.77 29.28 24.00 26.74Q23.24 24.19 22.76 22.66L21.99 22.66Q22.08 24.19 22.13 26.74Q22.18 29.28 22.23 32.30Q22.28 35.33 22.28 38.40L22.28 67.20ZM113.09 67.20L113.09 1.15L183.65 1.15L183.65 17.57L136.90 17.57L136.90 26.11L177.22 26.11L177.22 41.66L136.90 41.66L136.90 50.78L184.42 50.78L184.42 67.20ZM195.65 67.20L195.65 1.15L216.29 1.15L248.93 28.70Q249.51 29.18 250.57 30.14Q251.62 31.10 252.77 32.16Q253.93 33.22 254.89 34.08L255.85 34.08Q255.85 32.74 255.85 30.48Q255.85 28.22 255.85 26.11L255.85 1.15L278.12 1.15L278.12 67.20L257.67 67.20L226.66 41.18Q224.65 39.55 222.39 37.54Q220.13 35.52 218.79 34.27L217.93 34.27Q217.93 35.62 217.93 38.06Q217.93 40.51 217.93 43.01L217.93 67.20ZM292.32 67.20L292.32 1.15L316.04 1.15L316.04 67.20ZM368.07 68.35Q359.52 68.35 352.13 67.34Q344.74 66.34 339.17 63.89Q333.60 61.44 330.44 57.07Q327.27 52.70 327.27 46.08Q327.27 45.89 327.27 45.55Q327.27 45.22 327.36 44.83L350.50 44.83Q350.40 45.22 350.40 45.55Q350.40 45.89 350.40 46.18Q350.40 49.06 352.32 50.59Q354.24 52.13 357.70 52.66Q361.16 53.18 365.67 53.18Q367.49 53.18 369.46 53.14Q371.43 53.09 373.30 52.85Q375.17 52.61 376.66 52.13Q378.15 51.65 379.06 50.83Q379.97 50.02 379.97 48.77Q379.97 47.04 377.81 46.08Q375.65 45.12 371.96 44.59Q368.26 44.06 363.70 43.58Q359.14 43.10 354.24 42.34Q349.35 41.57 344.79 40.18Q340.23 38.78 336.53 36.38Q332.84 33.98 330.68 30.24Q328.52 26.50 328.52 21.12Q328.52 15.36 331.54 11.33Q334.56 7.30 339.75 4.80Q344.93 2.30 351.65 1.15Q358.37 0.00 365.67 0.00Q373.16 0.00 379.73 1.10Q386.31 2.21 391.35 4.61Q396.39 7.01 399.27 10.90Q402.15 14.78 402.15 20.35L402.15 21.50L379.20 21.50L379.20 21.12Q379.20 19.20 377.96 17.71Q376.71 16.22 373.92 15.31Q371.14 14.40 366.63 14.40Q362.02 14.40 358.95 14.98Q355.88 15.55 354.39 16.56Q352.90 17.57 352.90 18.72Q352.90 20.45 355.06 21.41Q357.22 22.37 360.92 22.90Q364.61 23.42 369.17 23.90Q373.73 24.38 378.63 25.10Q383.52 25.82 388.08 27.12Q392.64 28.42 396.34 30.72Q400.04 33.02 402.20 36.58Q404.36 40.13 404.36 45.31Q404.36 53.47 399.60 58.56Q394.85 63.65 386.64 66.00Q378.44 68.35 368.07 68.35ZM454.56 68.35Q440.26 68.35 430.85 64.46Q421.44 60.58 416.79 52.99Q412.13 45.41 412.13 34.18Q412.13 17.76 422.98 8.88Q433.83 0.00 454.75 0.00Q466.27 0.00 475.01 3.60Q483.75 7.20 488.69 13.58Q493.63 19.97 493.63 28.32L470.59 28.32Q470.59 24.86 468.58 22.18Q466.56 19.49 462.91 17.95Q459.27 16.42 454.37 16.42Q448.23 16.42 444.24 18.62Q440.26 20.83 438.39 24.58Q436.51 28.32 436.51 32.93L436.51 35.33Q436.51 39.74 438.39 43.54Q440.26 47.33 444.10 49.63Q447.94 51.94 453.89 51.94Q459.36 51.94 463.25 50.50Q467.14 49.06 469.20 46.46Q471.27 43.87 471.27 40.42L493.63 40.42Q493.63 48.48 488.98 54.82Q484.32 61.15 475.59 64.75Q466.85 68.35 454.56 68.35ZM546.30 68.35Q532.84 68.35 522.93 64.22Q513.02 60.10 507.65 52.46Q502.27 44.83 502.27 34.22Q502.27 23.52 507.65 15.84Q513.02 8.16 522.93 4.08Q532.84 0.00 546.30 0.00Q559.97 0.00 569.81 4.08Q579.65 8.16 585.02 15.84Q590.40 23.52 590.40 34.22Q590.40 44.83 585.02 52.46Q579.65 60.10 569.81 64.22Q559.97 68.35 546.30 68.35ZM546.33 51.94Q550.85 51.94 554.49 50.74Q558.14 49.54 560.73 47.28Q563.33 45.02 564.67 41.94Q566.01 38.86 566.01 35.23L566.01 32.93Q566.01 29.32 564.67 26.27Q563.33 23.23 560.73 21.02Q558.14 18.82 554.49 17.62Q550.85 16.42 546.33 16.42Q541.82 16.42 538.17 17.62Q534.53 18.82 531.93 21.02Q529.34 23.23 528.00 26.27Q526.65 29.32 526.65 32.93L526.65 35.23Q526.65 38.86 528.00 41.94Q529.34 45.02 531.93 47.28Q534.53 49.54 538.17 50.74Q541.82 51.94 546.33 51.94Z" } }
+        }
+    }
+    // Fila de la tabla de "Ajuste fino": numero, ajuste, que hace y el control a la derecha.
+    // Tiene titulo y destello, asi el buscador la encuentra.
+    component FilaTabla: Item {
+        id: ft
+        property int numero
+        property string titulo
+        property string que
+        property string sub: ""
+        default property alias control: ladoFt.data
+        function destello() { brilloFt.restart() }
+        width: parent ? parent.width : 0; height: 64
+        Rectangle {
+            id: luzFt
+            anchors { fill: parent; topMargin: 4; bottomMargin: 4 }
+            radius: 10; color: Estilo.texto; opacity: 0
+            SequentialAnimation {
+                id: brilloFt
+                PauseAnimation { duration: Estilo.t(260) }
+                NumberAnimation { target: luzFt; property: "opacity"; to: 0.1; duration: Estilo.t(180) }
+                NumberAnimation { target: luzFt; property: "opacity"; to: 0; duration: Estilo.t(900) }
+            }
+        }
+        Text {
+            x: 8; anchors.verticalCenter: parent.verticalCenter
+            text: String(ft.numero).padStart(2, "0"); color: Estilo.texto2
+            font { family: "JetBrains Mono"; pixelSize: 13 }
+        }
+        Texto { x: 62; anchors.verticalCenter: parent.verticalCenter; text: ft.titulo; font { pixelSize: 15; weight: Font.DemiBold } }
+        Texto {
+            x: parent.width * 0.3; anchors.verticalCenter: parent.verticalCenter
+            width: ladoFt.x - x - 16; elide: Text.ElideRight
+            text: ft.que; color: Estilo.texto2; font.pixelSize: 14
+        }
+        Item {
+            id: ladoFt
+            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+            width: childrenRect.width; height: childrenRect.height
+        }
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Estilo.linea }
+    }
+    // Boton con flecha que abre una lista pequeña debajo (ventana emergente: no la corta el desplazable).
+    // opciones: [[clave, texto], ...]; si "elegida" no esta en la lista se muestra textoOtro.
+    component Desplegable: Rectangle {
+        id: desp
+        property var opciones: []
+        property var elegida
+        property string textoOtro: ""
+        signal elegir(var clave)
+        readonly property var actual: opciones.find(o => o[0] === elegida) ?? null
+        width: filaDesp.implicitWidth + 28; height: 40; radius: 10
+        color: zDesp.containsMouse || lista.visible ? Estilo.hover : Estilo.tarjeta
+        border.width: 1; border.color: Estilo.borde
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+        Row {
+            id: filaDesp
+            anchors.centerIn: parent; spacing: 8
+            Texto { anchors.verticalCenter: parent.verticalCenter; text: desp.actual ? desp.actual[1] : desp.textoOtro; font.pixelSize: 15 }
+            Simbolo {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "expand_more"; font.pixelSize: 18; color: Estilo.texto2
+                rotation: lista.visible ? 180 : 0
+                Behavior on rotation { NumberAnimation { duration: Estilo.t(260); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+            }
+        }
+        MouseArea { id: zDesp; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: lista.visible = !lista.visible }
+        PopupWindow {
+            id: lista
+            anchor.item: desp
+            anchor.rect: Qt.rect(0, desp.height + 6, desp.width, 0)
+            anchor.edges: Edges.Top | Edges.Right
+            anchor.gravity: Edges.Bottom | Edges.Left
+            grabFocus: true                 // un clic fuera la cierra
+            implicitWidth: Math.max(desp.width, 170)
+            implicitHeight: columnaLista.implicitHeight + 10
+            color: "transparent"
+            Rectangle {
+                anchors.fill: parent; radius: 12
+                color: Estilo.tarjeta; border.width: 1; border.color: Estilo.borde
+                Column {
+                    id: columnaLista
+                    x: 5; y: 5; width: parent.width - 10
+                    Repeater {
+                        model: desp.opciones
+                        delegate: Rectangle {
+                            required property var modelData
+                            readonly property bool esta: modelData[0] === desp.elegida
+                            width: columnaLista.width; height: 36; radius: 8
+                            color: zOp.containsMouse ? Estilo.realce : Estilo.nada
+                            Texto { x: 12; anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[1]; font.pixelSize: 14 }
+                            Simbolo { visible: parent.esta; anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter } text: "check"; font.pixelSize: 17 }
+                            MouseArea {
+                                id: zOp; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: { const c = parent.modelData[0]; lista.visible = false; desp.elegir(c); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Luz suave y quieta alrededor de la Gota, en el color "luz" del tema.
+    component Halo: Shape {
+        id: halo
+        property real cx
+        property real cy
+        property real radio: 100
+        property real fuerza: 0.22
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeWidth: -1
+            fillGradient: RadialGradient {
+                centerX: halo.cx; centerY: halo.cy; centerRadius: halo.radio
+                focalX: halo.cx; focalY: halo.cy
+                GradientStop { position: 0; color: Qt.alpha(Estilo.luz, halo.fuerza) }
+                GradientStop { position: 0.45; color: Qt.alpha(Estilo.luz, halo.fuerza * 0.32) }
+                GradientStop { position: 1; color: Qt.alpha(Estilo.luz, 0) }
+            }
+            PathRectangle { width: halo.width; height: halo.height }
+        }
+    }
+    // La isla en pequeño, con la forma elegida y las mismas cuentas que Isla.qml (cuelga del borde
+    // de arriba con sus hombros). La isla de verdad es una ventana propia: aqui va su dibujo.
+    component IslaMini: Item {
+        id: im
+        property real ancho: 150
+        property real alto: 42
+        property real esquina: 20
+        property real hombro: 18
+        readonly property string forma: Estilo.valor("islaForma")
+        readonly property var ajuste: Estilo.ajusteForma(forma)
+        default property alias contenido: cuerpoIsla.data
+        width: ancho + 4 * hombro; height: alto
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeWidth: 1; strokeColor: Estilo.borde; fillColor: Estilo.fondo
+                PathSvg { path: Estilo.trazoForma(Estilo.mitadForma(im.forma, (im.width - im.ancho) / 2 - im.ajuste[0], im.alto, im.esquina, Math.min(im.hombro, im.esquina * 0.9)), im.width / 2) }
+            }
+        }
+        Item { id: cuerpoIsla; x: (im.width - im.ancho) / 2; y: im.ajuste[1]; width: im.ancho; height: im.alto - im.ajuste[1] }
+    }
+    // Franja de arriba en pequeño: la isla y los botones puestos en sus cuatro sitios (Esquina.qml).
+    // separacion: aire entre la isla y las pildoras de su lado.
+    component PreviaBotones: Rectangle {
+        id: pb
+        property real separacion: 8
+        color: "transparent"
+        clip: true
+        function icono(c) { return (Estilo.botonesCatalogo.find(x => x[0] === c) || ["", "", "help"])[2] }
+        IslaMini {
+            id: islaPB
+            anchors.horizontalCenter: parent.horizontalCenter
+            ancho: 92; alto: 36; esquina: 16; hombro: 12
+            Texto { anchors.centerIn: parent; text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font { pixelSize: 13; weight: Font.DemiBold } }
+        }
+        Repeater {
+            model: Estilo.zonasBotones
+            delegate: Rectangle {
+                id: sitioPB
+                required property string modelData
+                required property int index
+                readonly property bool junto: modelData.endsWith("Isla")
+                readonly property var lista: Estilo.botones[modelData]
+                visible: lista.length > 0
+                width: filaPB.width + (junto ? 8 : 0); height: 30; radius: 15; y: 3
+                color: junto ? Estilo.fondo : "transparent"
+                border.width: junto ? 1 : 0; border.color: Estilo.borde
+                x: index === 0 ? 8 : index === 3 ? pb.width - 8 - width
+                    : index === 1 ? islaPB.x - pb.separacion - width : islaPB.x + islaPB.width + pb.separacion
+                Behavior on x { enabled: pb.separacion === 8; NumberAnimation { duration: Estilo.t(380); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+                Row {
+                    id: filaPB
+                    anchors.centerIn: parent; spacing: sitioPB.junto ? 0 : 4
+                    Repeater {
+                        model: sitioPB.lista
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: 26; height: 26; radius: 9
+                            color: sitioPB.junto ? "transparent" : Estilo.fondo
+                            border.width: sitioPB.junto ? 0 : 1; border.color: Estilo.borde
+                            LogoMenisco { visible: parent.modelData === "menisco"; anchors.centerIn: parent; tam: 17 }
+                            Simbolo { visible: parent.modelData !== "menisco"; anchors.centerIn: parent; text: pb.icono(parent.modelData); font.pixelSize: 15 }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Un aviso de Hokum de ejemplo, con su tema "capsule" y los colores que Menisco le escribe.
+    // Hokum es otro programa: aqui va su dibujo.
+    component AvisoMini: Rectangle {
+        width: 236; height: 58; radius: 29
+        color: Estilo.tarjeta; border.width: 1; border.color: Estilo.borde
+        Rectangle {
+            x: 12; anchors.verticalCenter: parent.verticalCenter
+            width: 34; height: 34; radius: 17; color: Estilo.acento
+            Simbolo { anchors.centerIn: parent; text: "chat_bubble"; font.pixelSize: 17; color: Estilo.sobreAcento }
+        }
+        Column {
+            x: 56; anchors.verticalCenter: parent.verticalCenter; spacing: 1
+            Texto { text: "Discord"; font { pixelSize: 13; weight: Font.DemiBold } }
+            Texto { text: "Nuevo mensaje"; color: Estilo.texto2; font.pixelSize: 12 }
+        }
+        Texto { anchors { right: parent.right; rightMargin: 18; top: parent.top; topMargin: 11 } text: "ahora"; color: Estilo.texto2; font.pixelSize: 11 }
+    }
+    // Tarjeta de Inicio: arriba la pieza que configura, abajo su nombre y su valor; un clic lleva a
+    // su pagina. Con el cursor encima, "fase" va y viene (0 a 1) y la pieza se anima; sin cursor y en
+    // modo juego, todo quieto.
+    component TarjetaPieza: Rectangle {
+        id: tp
+        property string titulo
+        property string valor
+        property real fase: 0
+        readonly property bool activo: zTp.containsMouse && !Estilo.juego
+        default property alias vista: cajaVista.data
+        signal pulsado()
+        height: 172; radius: 16
+        color: Estilo.tarjeta
+        border.width: 1; border.color: zTp.containsMouse ? Qt.alpha(Estilo.texto, 0.22) : Estilo.borde
+        Behavior on border.color { ColorAnimation { duration: Estilo.t(160) } }
+        SequentialAnimation {
+            running: tp.activo; loops: Animation.Infinite
+            NumberAnimation { target: tp; property: "fase"; to: 1; duration: 900; easing.type: Easing.InOutSine }
+            PauseAnimation { duration: 700 }
+            NumberAnimation { target: tp; property: "fase"; to: 0; duration: 900; easing.type: Easing.InOutSine }
+            PauseAnimation { duration: 500 }
+        }
+        NumberAnimation { id: volverTp; target: tp; property: "fase"; to: 0; duration: 300; easing.type: Easing.OutCubic }
+        onActivoChanged: if (!activo) volverTp.restart()
+        ClippingRectangle {
+            id: cajaVista
+            x: 10; y: 10; width: parent.width - 20; height: 92; radius: 12
+            color: Estilo.hundido
+        }
+        Column {
+            x: 18; anchors { bottom: parent.bottom; bottomMargin: 14 }
+            width: parent.width - 36; spacing: 2
+            Texto { text: tp.titulo; width: parent.width; elide: Text.ElideRight; font { pixelSize: 15; weight: Font.DemiBold } }
+            TextoCambiante { text: tp.valor; width: parent.width; elide: Text.ElideRight; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 13 } }
+        }
+        MouseArea { id: zTp; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tp.pulsado() }
+    }
     // ---- Piezas de las paginas de ajustes (como las listas agrupadas de iOS) ----
     component Texto: Text {
         color: Estilo.texto
@@ -2937,7 +3528,7 @@ PanelWindow {
         Column {
             width: ed.width - 208 - ed.spacing
             spacing: 8
-            Texto { width: parent.width; wrapMode: Text.Wrap; text: "Arrastre los bloques en la vista previa para cambiar su orden."; color: Estilo.texto2; font.pixelSize: 12 }
+            Texto { width: parent.width; wrapMode: Text.Wrap; text: "Arrastra los bloques en la vista previa para cambiar su orden."; color: Estilo.texto2; font.pixelSize: 12 }
             Grupo {
                 Repeater {
                     model: ["rapidos", "sonido", "musica", "calendario", "energia"]
@@ -3011,10 +3602,12 @@ PanelWindow {
                     Texto { id: k; anchors.centerIn: parent; text: modelData === "Period" ? "." : modelData === "Slash" ? "/" : modelData; font.pixelSize: 11; color: Estilo.texto }
                 }
             }
+            // Sin combinacion guardada: lo dice, en vez de dejar el hueco vacio.
+            Texto { visible: !ventana.atajos[fa.clave]; text: "Sin asignar"; color: Estilo.texto2; font.pixelSize: 12 }
         }
         Texto {
             visible: fa.esperando
-            text: "Pulse la combinación…"; color: Estilo.texto; font.pixelSize: 12
+            text: "Pulsa la combinación…"; color: Estilo.texto; font.pixelSize: 12
             SequentialAnimation on opacity { running: fa.esperando; loops: Animation.Infinite; NumberAnimation { to: 0.4; duration: 500 } NumberAnimation { to: 1; duration: 500 } }
         }
         clicable: true
@@ -3133,34 +3726,6 @@ PanelWindow {
     }
 
     // Acceso del Inicio: icono, titulo, valor actual y flecha. Lleva a un ajuste concreto.
-    component Acceso: Rectangle {
-        id: acceso
-        property string icono
-        property string titulo
-        property string detalle
-        signal pulsado()
-        width: (accesos.width - accesos.spacing) / 2
-        height: 52
-        radius: 12
-        color: zonaA.containsMouse ? Estilo.realce : Estilo.tarjeta
-        Behavior on color { ColorAnimation { duration: Estilo.t(200) } }
-        scale: zonaA.pressed ? 0.96 : 1
-        Behavior on scale { NumberAnimation { duration: Estilo.t(zonaA.pressed ? 90 : 420); easing.type: zonaA.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2.2) } }
-        Simbolo { x: 13; anchors.verticalCenter: parent.verticalCenter; text: acceso.icono; color: Estilo.texto; font.pixelSize: 20 }
-        Column {
-            anchors { left: parent.left; leftMargin: 44; right: flecha.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-            Texto { text: acceso.titulo; width: parent.width; elide: Text.ElideRight }
-            TextoCambiante { text: acceso.detalle; width: parent.width; elide: Text.ElideRight; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 11; letterSpacing: 0.06 } }
-        }
-        Simbolo {
-            id: flecha
-            anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
-            text: "chevron_right"; color: Estilo.texto3; font.pixelSize: 18
-            transform: Translate { x: zonaA.containsMouse ? 2 : 0; Behavior on x { NumberAnimation { duration: Estilo.t(200); easing.type: Easing.OutCubic } } }
-        }
-        MouseArea { cursorShape: Qt.PointingHandCursor; id: zonaA; anchors.fill: parent; hoverEnabled: true; onClicked: acceso.pulsado() }
-    }
-
     // Un dock pequeno sobre el fondo de pantalla real, en el material dado. El vidrio se imita
     // desenfocando el trozo de fondo que queda detras del dock.
     component MuestraDock: ClippingRectangle {

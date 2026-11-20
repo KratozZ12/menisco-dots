@@ -7,29 +7,38 @@ import Quickshell.Widgets
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 
-// Botones de una esquina de arriba, a la altura de la isla (Ajustes > Esquinas).
+// Botones de arriba, a la altura de la isla (Ajustes > Botones de arriba). Cuatro sitios:
+// las dos esquinas y los dos lados de la isla (lado "izquierdaIsla" / "derechaIsla").
 // La lista va de izquierda a derecha tal como se ve; "bandeja" deja el hueco donde se
-// pone la ventana de Bandeja.qml. Con marco dibuja ademas la oreja que los guarda.
+// pone la ventana de Bandeja.qml. En las esquinas, con marco, dibuja la oreja que los guarda;
+// junto a la isla, una pildora del color de la isla que se aparta cuando la isla crece.
 PanelWindow {
     id: esq
 
     required property var raiz
     required property var ajustes
-    required property string lado                       // izquierda | derecha
-    readonly property bool derecha: lado === "derecha"
+    required property string lado                       // izquierda | izquierdaIsla | derechaIsla | derecha
+    readonly property bool junto: lado.endsWith("Isla")
+    // "derecha": la fila crece hacia la izquierda (pegada a su borde derecho): la esquina derecha
+    // y el lado izquierdo de la isla.
+    readonly property bool derecha: lado === "derecha" || lado === "izquierdaIsla"
     readonly property var lista: Estilo.botones[lado] || []
 
-    visible: lista.some(b => b !== "bandeja" || Estilo.anchoBandeja > 0)
-    anchors { top: true; left: !derecha; right: derecha }
+    visible: mostrada.some(b => b !== "bandeja" || Estilo.anchoBandeja > 0)
+    // Junto a la isla la ventana ocupa todo el ancho: la pildora se mueve por dentro siguiendo a la
+    // isla, sin cambiar el tamaño de la ventana en cada cuadro.
+    anchors { top: true; left: junto || !derecha; right: junto || derecha }
+    readonly property var isla: junto ? raiz.islaEn(esq.screen) : null
+    readonly property real mitadIsla: isla ? isla.mitadVisible : 0
     // La ventana empieza en la esquina de la pantalla (sin margenes: niri no aplica un margen
     // que cambia antes de mostrarse) y los botones van dentro, a 10 px del borde.
-    readonly property bool conMarco: Estilo.grosorMarco > 0 && !raiz.modoJuego
+    readonly property bool conMarco: Estilo.grosorMarco > 0 && !raiz.modoJuego && !junto
     // Mientras el mini reproductor se estira o se encoge, la ventana ya mide lo que medira abierto
     // (extraRepro = lo que le falta): cambia de tamaño al empezar y al terminar, no en cada cuadro.
     property real extraRepro: 0
-    readonly property real anchoFila: fila.width + extraRepro
+    readonly property real anchoFila: anchoVisible + extraRepro + faltaGota
     implicitWidth: conMarco ? anchoFila + 20 + oreja.s : anchoFila + 10
-    implicitHeight: conMarco ? oreja.height : 38
+    implicitHeight: conMarco ? oreja.height : junto ? 42 + Estilo.grosorMarco : 38
     mask: Region { item: fila }
     exclusionMode: ExclusionMode.Ignore                 // la isla ya reserva esta franja
     color: "transparent"
@@ -41,27 +50,97 @@ PanelWindow {
         visible: esq.conMarco
         espejo: esq.derecha
         x: esq.derecha ? esq.width - width : 0      // pegada a su borde aunque la ventana mida mas
-        ancho: fila.width + 20
+        ancho: esq.anchoVisible + 20
         animar: esq.extraRepro === 0
     }
 
+    // Lo que se dibuja: la lista elegida mas los botones que se estan yendo (en su sitio viejo hasta
+    // que terminan de subir). ScriptModel compara por contenido: solo el boton nuevo o el quitado
+    // se crea o se destruye, no la fila entera cada vez que cambia cualquier ajuste.
+    property var mostrada: []
+    Component.onCompleted: mostrada = lista.slice()
+    property var saliendo: []
+    onListaChanged: {
+        const fuera = mostrada.filter(k => !lista.includes(k));
+        if (!fuera.length && mostrada.length === lista.length && mostrada.every((k, i) => k === lista[i])) return;
+        const r = lista.slice();
+        mostrada.forEach((k, i) => { if (fuera.includes(k)) r.splice(Math.min(i, r.length), 0, k); });
+        saliendo = fuera;
+        mostrada = r;
+        if (fuera.length) limpiar.restart();
+    }
+    Timer { id: limpiar; interval: Estilo.t(560) + 20; onTriggered: { esq.saliendo = []; esq.mostrada = esq.lista.slice(); } }
+    // Al arrancar los botones ya estan; solo cae lo que se añade despues.
+    property bool listo: false
+    Timer { running: true; interval: 800; onTriggered: esq.listo = true }
+
+    // El espacio entre botones va dentro de cada uno (a la derecha en la esquina izquierda, a la
+    // izquierda en la derecha), asi crece y se encoge con el boton. La fila mide 8 de mas.
+    readonly property real anchoVisible: Math.max(0, fila.width - 8)
+    // Lo que les falta a los botones que entran o salen: la ventana mide ya lo de abierto y cambia
+    // de tamaño una vez, no en cada cuadro (como el mini reproductor).
+    readonly property real faltaGota: {
+        let f = 0;
+        for (let i = 0; i < repBotones.count; i++) { const d = repBotones.itemAt(i); if (d && d.visible) f += d.falta; }
+        return f;
+    }
+    // Pildora de fondo junto a la isla. En la fila cada boton lleva 8 px de aire de su lado de afuera.
+    Rectangle {
+        visible: esq.junto && esq.anchoVisible > 0
+        x: esq.derecha ? fila.x + 4 : fila.x - 4
+        y: fila.y - 2
+        width: esq.anchoVisible + 8; height: 38; radius: 19
+        color: Estilo.fondo
+    }
     Row {
         id: fila
-        x: esq.derecha ? esq.width - 10 - width : 10
+        // Junto a la isla: 8 px entre la pildora y los hombros de la isla.
+        x: !esq.junto ? (esq.derecha ? esq.width - 10 - width : 10)
+            : esq.derecha ? esq.width / 2 - esq.mitadIsla - 8 - 4 - width
+            : esq.width / 2 + esq.mitadIsla + 8 + 4
         y: 4 + Estilo.grosorMarco
-        spacing: 8
         Repeater {
             id: repBotones
-            model: esq.lista
-            delegate: Loader {
+            model: ScriptModel { values: esq.mostrada }
+            delegate: Item {
+                id: gota
                 required property string modelData
-                sourceComponent: modelData === "bandeja" ? hueco : modelData === "reproductor" ? reproductor : modelData === "minidock" ? miniDock : boton
-                property string clave: modelData
-                // Medida del Loader = la implicita de lo cargado. Sin esto el Loader crecia con el mini
-                // reproductor pero no se encogia al cerrarse (y empujaba lo de al lado).
-                width: item ? item.implicitWidth : 0; height: 34
-                // no item.visible: hereda el del Loader y, una vez apagado, no vuelve a encenderse
+                readonly property alias item: carga.item
+                readonly property bool fuera: esq.saliendo.includes(modelData)
+                readonly property real lleno: (item ? item.implicitWidth : 0) + 8
+                // 0 = sin sitio y arriba, fuera de la pantalla; 1 = en su sitio. La bandeja es otra
+                // ventana que se pone encima del hueco: no cae.
+                property real abre: 1          // sin enlace: se fija una vez al crearse
+                property real cae: 1
+                readonly property real falta: fuera ? 0 : lleno * (1 - abre)
+                width: lleno * abre; height: 34
                 visible: !item || item.mostrar === undefined || item.mostrar
+                Component.onCompleted: if (esq.listo && modelData !== "bandeja") { abre = 0; cae = 0; entra.start(); }
+                onFueraChanged: if (fuera) { entra.stop(); sale.start(); }
+                // Entra: se abre el hueco y el boton cae desde arriba con rebote, un poco estirado.
+                ParallelAnimation {
+                    id: entra
+                    NumberAnimation { target: gota; property: "abre"; to: 1; duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos }
+                    NumberAnimation { target: gota; property: "cae"; to: 1; duration: Estilo.t(520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.7) }
+                }
+                // Sale: sube y se va por arriba; despues se cierra el hueco.
+                SequentialAnimation {
+                    id: sale
+                    NumberAnimation { target: gota; property: "cae"; to: 0; duration: Estilo.t(260); easing.type: Easing.InBack; easing.overshoot: Estilo.o(1.4) }
+                    NumberAnimation { target: gota; property: "abre"; to: 0; duration: Estilo.t(280); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos }
+                }
+                Loader {
+                    id: carga
+                    sourceComponent: gota.modelData === "bandeja" ? hueco : gota.modelData === "reproductor" ? reproductor : gota.modelData === "minidock" ? miniDock : boton
+                    property string clave: gota.modelData
+                    // Medida del Loader = la implicita de lo cargado. Sin esto el Loader crecia con el mini
+                    // reproductor pero no se encogia al cerrarse (y empujaba lo de al lado).
+                    width: item ? item.implicitWidth : 0; height: 34
+                    x: (esq.derecha ? 8 : 0) + (gota.width - gota.lleno) / 2   // centrado en el hueco que se abre
+                    y: -(38 + Estilo.grosorMarco) * (1 - gota.cae)
+                    transform: Scale { origin.x: carga.width / 2; origin.y: 34; yScale: 1 + 0.25 * (1 - gota.cae); xScale: 1 - 0.12 * (1 - gota.cae) }
+                    // no item.visible: hereda el del Loader y, una vez apagado, no vuelve a encenderse
+                }
             }
         }
     }
@@ -78,15 +157,30 @@ PanelWindow {
             // donde no era). El mini reproductor cuenta ya su ancho final mientras se anima: la bandeja
             // se aparta una vez al empezar a abrirse y vuelve una vez al terminar de cerrarse.
             Binding {
+                when: !esq.junto
                 target: Estilo; property: "sepBandeja"
                 value: {
-                    const idx = esq.lista.indexOf("bandeja");
+                    const idx = esq.mostrada.indexOf("bandeja");
                     let x = 10;
-                    for (let i = 0; i < esq.lista.length; i++) {
+                    for (let i = 0; i < esq.mostrada.length; i++) {
                         if (esq.derecha ? i <= idx : i >= idx) continue;
                         const l = repBotones.count > i ? repBotones.itemAt(i) : null;
                         if (!l || !l.visible || !l.item) continue;
                         x += (l.item.anchoFinal ?? l.item.implicitWidth) + 8;
+                    }
+                    return x;
+                }
+            }
+            // Junto a la isla: x del hueco desde el borde izquierdo de la pantalla (sigue a la isla).
+            Binding {
+                when: esq.junto
+                target: Estilo; property: "xBandeja"
+                value: {
+                    let x = fila.x;
+                    for (let i = 0; i < esq.mostrada.length; i++) {
+                        const l = repBotones.count > i ? repBotones.itemAt(i) : null;
+                        if (esq.mostrada[i] === "bandeja") return x + (esq.derecha ? 8 : 0);
+                        if (l && l.visible) x += l.width;
                     }
                     return x;
                 }

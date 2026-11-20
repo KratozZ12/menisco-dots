@@ -89,11 +89,18 @@ Singleton {
     // Botones de las esquinas de arriba (Esquina.qml), de izquierda a derecha como se ven.
     // Sin la clave guardada: como antes, Menisco enfrente de la barra, que sigue a barra.lado.
     // Las claves que ya no existen (el lanzador se quito) se descartan al leer.
-    readonly property var botones: datos.botonesArriba ? (b => ({ izquierda: (b.izquierda || []).filter(c => botonesCatalogo.some(x => x[0] === c)),
-                                                                  derecha: (b.derecha || []).filter(c => botonesCatalogo.some(x => x[0] === c)) }))(datos.botonesArriba)
+    // Cuatro sitios, de izquierda a derecha: esquina izquierda, junto a la isla por la izquierda,
+    // junto a la isla por la derecha y esquina derecha. Cada boton esta en uno solo.
+    readonly property var zonasBotones: ["izquierda", "izquierdaIsla", "derechaIsla", "derecha"]
+    readonly property var botones: datos.botonesArriba ? (b => {
+            const r = {};
+            for (const z of zonasBotones) r[z] = (b[z] || []).filter(c => botonesCatalogo.some(x => x[0] === c));
+            return r;
+        })(datos.botonesArriba)
         : barra.lado === "izquierda"
-            ? { izquierda: (barra.boton ? ["barra"] : []).concat(["bandeja"]), derecha: ["menisco"] }
-            : { izquierda: ["menisco"], derecha: ["bandeja"].concat(barra.boton ? ["barra"] : []) }
+            ? { izquierda: (barra.boton ? ["barra"] : []).concat(["bandeja"]), izquierdaIsla: [], derechaIsla: [], derecha: ["menisco"] }
+            : { izquierda: ["menisco"], izquierdaIsla: [], derechaIsla: [], derecha: ["bandeja"].concat(barra.boton ? ["barra"] : []) }
+    function zonaDe(c) { return zonasBotones.find(z => botones[z].includes(c)) || "" }
     // [clave, nombre, icono]
     readonly property var botonesCatalogo: [["menisco", "Menisco (ajustes)", "deployed_code"], ["barra", "Barra lateral", "auto_awesome"],
         ["bandeja", "Bandeja de iconos", "more_horiz"], ["reproductor", "Mini reproductor", "play_circle"], ["minidock", "Mini dock", "dock_to_bottom"],
@@ -130,7 +137,7 @@ Singleton {
         niri(["borde", valor("borde")]);
         niri(["vidrio", JSON.stringify(valor("vidrio"))]);
     }
-    function ponerBotones(b) { poner("botonesArriba", { izquierda: b.izquierda.slice(), derecha: b.derecha.slice() }); }
+    function ponerBotones(b) { const r = {}; for (const z of zonasBotones) r[z] = (b[z] || []).slice(); poner("botonesArriba", r); }
     function ponerBarra(clave, v) { const b = Object.assign({}, barra); b[clave] = v; poner("barra", b); }
 
     function poner(clave, v) {
@@ -218,26 +225,43 @@ Singleton {
     })
     readonly property var ordenTemas: ["onix", "champan", "medianoche", "rubi", "jade", "fosforo", "aurora", "grafito", "neon", "niebla"]
     readonly property var tema: temas[valor("tema")] || temas.champan
-    readonly property color fondo: tema.fondo
-    readonly property color tarjeta: tema.tarjeta
-    readonly property color hover: tema.hover
-    readonly property color nada: Qt.alpha(tema.hover, 0)     // hover apagado: transparente del mismo tono
-    readonly property color hundido: tema.hundido
+    // Al cambiar de tema cada color pasa al nuevo en un fundido (Behavior), no de golpe.
+    property color fondo: tema.fondo
+    Behavior on fondo { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color tarjeta: tema.tarjeta
+    Behavior on tarjeta { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color hover: tema.hover
+    Behavior on hover { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    readonly property color nada: Qt.alpha(hover, 0)     // hover apagado: transparente del mismo tono
+    property color hundido: tema.hundido
+    Behavior on hundido { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     // Hover: el tono de hover aclarado para que se note sobre cualquier fondo del tema.
-    readonly property color realce: Qt.tint(tema.hover, Qt.alpha(tema.texto, 0.09))
-    function aclarar(c) { return Qt.tint(c, Qt.alpha(tema.texto, 0.14)) }
-    readonly property color borde: tema.borde
-    readonly property color linea: tema.linea
-    readonly property color texto: tema.texto
-    readonly property color texto2: tema.texto2
-    readonly property color texto3: tema.texto3
-    readonly property color apagado: tema.apagado
-    readonly property color activo: tema.activo
-    readonly property color enActivo: tema.enActivo
-    readonly property color iconoActivo: tema.iconoActivo
-    readonly property color activoBorde: tema.activoBorde
-    readonly property color acento: tema.acento
-    readonly property color sobreAcento: tema.sobreAcento
+    readonly property color realce: Qt.tint(hover, Qt.alpha(texto, 0.09))
+    function aclarar(c) { return Qt.tint(c, Qt.alpha(texto, 0.14)) }
+    property color borde: tema.borde
+    Behavior on borde { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color linea: tema.linea
+    Behavior on linea { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color texto: tema.texto
+    Behavior on texto { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color texto2: tema.texto2
+    Behavior on texto2 { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color texto3: tema.texto3
+    Behavior on texto3 { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color apagado: tema.apagado
+    Behavior on apagado { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color activo: tema.activo
+    Behavior on activo { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color enActivo: tema.enActivo
+    Behavior on enActivo { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color iconoActivo: tema.iconoActivo
+    Behavior on iconoActivo { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color activoBorde: tema.activoBorde
+    Behavior on activoBorde { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color acento: tema.acento
+    Behavior on acento { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
+    property color sobreAcento: tema.sobreAcento
+    Behavior on sobreAcento { ColorAnimation { duration: estilo.t(450); easing.type: Easing.InOutQuad } }
     readonly property color peligro: "#ff6b6b"
 
     // Hokum dibuja las notificaciones: su tema (themes/menisco.kdl, que parte de "capsule") se
@@ -446,8 +470,10 @@ tokens {
 
     // ---- Aspecto ----
     // Marco de pantalla (Marco.qml): grosor real, 0 si esta apagado. La isla baja lo mismo.
-    readonly property int grosorMarco: valor("marco") ? 6 : 0
+    readonly property int anchoMarco: 6
+    readonly property int grosorMarco: valor("marco") ? anchoMarco : 0
     property real sepBandeja: -1           // lo escribe Esquina.qml: distancia del borde al hueco de la bandeja
+    property real xBandeja: 0              // junto a la isla: x del hueco desde el borde izquierdo (Esquina.qml)
     property real anchoBandeja: 0          // lo escribe Bandeja.qml; la oreja del marco se ensancha
     readonly property string letra: valor("letra") === "Inter" ? "Inter Display" : "SF Pro Text"
 

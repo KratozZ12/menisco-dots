@@ -24,7 +24,7 @@ Funciona en niri normal (con desenfoque) y en **Lniri**, un niri modificado que 
 ## Qué trae
 
 ### Colores
-Diez temas oscuros, que se eligen en **Ajustes > Apariencia > Color**: Ónix, Champán, Medianoche, Rubí, Jade, Fósforo (terminal ámbar), Aurora, Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema.
+Diez temas oscuros, que se eligen en **Ajustes > Color y estilo**: Ónix, Champán, Medianoche, Rubí, Jade, Fósforo (terminal ámbar), Aurora, Grafito (con cobre), Neón y Niebla (gris azulado, sin negro puro). Casi todos llevan dos tonos: uno para interruptores y barras, otro para el filo de lo encendido. Todo Menisco lee sus colores de una sola paleta (`Estilo.qml`), incluidas las notificaciones de Hokum: Menisco reescribe `~/.config/hokum/themes/menisco.kdl` cada vez que se cambia de tema. Al cambiar de tema, todo pasa al color nuevo con un fundido.
 
 ### La isla
 Muesca pegada al borde de arriba, con curvas continuas tipo *squircle*. La forma de la vista pequeña se elige en **Ajustes > Isla > Forma**: Clásica (de fábrica), Biselada, Octágono, Ola, Líquida, Recta o Píldora flotante. El cambio entre formas se anima, y al abrirse la isla pasa poco a poco de su forma a la de la vista grande, que se elige aparte en **Ajustes > Isla > Isla abierta**: Clásica (de fábrica), Recta u Octágono. La imagen de fondo y el tinte de la música siguen la forma elegida.
@@ -102,7 +102,7 @@ Una píldora en el centro de la pantalla, con el asistente dentro. Al abrirse no
 - **Clic derecho en el fondo:** el fondo actual y los dos siguientes (clic para ponerlo), accesos rápidos (siguiente fondo, escritorio flotante, No molestar, modo juego, bloquear), atajos a las secciones de Ajustes y un botón grande de Ajustes.
 - **Tres escritorios fijos** (`workspace "uno"`, `"dos"`, `"tres"` en la config de niri): existen aunque estén vacíos.
 - **Escritorio flotante** (`Super+Alt+F`): las ventanas de ese escritorio dejan la fila y flotan; las nuevas también. La isla lo avisa.
-- **Marco de pantalla** opcional (**Ajustes > Ventanas**): una orilla fina del color del tema alrededor de la pantalla, con la isla y los botones de las esquinas fundidos en ella.
+- **Marco de pantalla** opcional (**Ajustes > Ventanas y marco**): una orilla fina del color del tema alrededor de la pantalla, con la isla y los botones de las esquinas fundidos en ella. Al encenderlo brota de la isla y baja por los lados; al apagarlo se recoge igual.
 
 ### Vista general (`Super+O`)
 La isla, el dock y los botones se encogen y se desvanecen; detrás de los escritorios queda el fondo desenfocado, y arriba a la izquierda sale un minimapa con cada escritorio y sus ventanas (clic para ir a una).
@@ -123,21 +123,22 @@ La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve
 Después de cada actualización sale una ventanita centrada, encima de todo y siempre en el tema Ónix, con lo nuevo: primero en pequeño con las tres torres del logo, que se encienden por turnos hasta que la del centro sale con rebote; luego crece, el título salta letra por letra y al final entra lo demás en cascada. Sale una sola vez por versión; la lista está en `quickshell/isla/novedades.json` (al cambiar su `version`, vuelve a salir). A mano: `qs -p ~/.config/quickshell/isla ipc call novedades abrir`.
 
 ### Bandeja
-Píldora con los iconos de las apps en segundo plano. Va en el hueco que tenga en **Ajustes > Botones**. Clic derecho abre el menú de la app.
+Píldora con los iconos de las apps en segundo plano. Va en el sitio que tenga en **Ajustes > Botones de arriba** (también junto a la isla). Clic derecho abre el menú de la app.
 
-### Botones de las esquinas
-A la altura de la isla, en las dos esquinas de arriba. En **Ajustes > Botones** se eligen y se ordenan: Menisco (ajustes), barra lateral, bandeja, mini reproductor (carátula y pausa; con el cursor encima, título y controles), mini dock (lanzadores de las apps que usted elija), micrófono (rojo si está mudo), volumen (la rueda lo sube y lo baja), color, grabar (muestra el tiempo mientras graba), captura, No molestar, modo juego, vista general, escritorio flotante, bloquear y siguiente fondo. En la pestaña **Reproductor y dock** se elige la forma (redondeada o píldora), si el reproductor se tiñe con el color de la carátula (al lado o abajo) y qué apps lleva el mini dock. De fábrica: el logo de Menisco en una esquina, y la bandeja y la estrella de la barra lateral en la otra.
+### Botones de arriba
+A la altura de la isla. Cada botón tiene su sitio: una de las dos esquinas, o junto a la isla por la izquierda o por la derecha. Junto a la isla van en una píldora del color de la isla que se aparta cuando la isla crece. Al añadir uno cae desde arriba como una gota; al quitarlo sube y se cierra el hueco. En **Ajustes > Botones de arriba** se eligen, se ordenan y se cambian de sitio con los cuatro cuadritos de cada fila: Menisco (ajustes), barra lateral, bandeja, mini reproductor (carátula y pausa; con el cursor encima, título y controles), mini dock (lanzadores de las apps que usted elija), micrófono (rojo si está mudo), volumen (la rueda lo sube y lo baja), color, grabar (muestra el tiempo mientras graba), captura, No molestar, modo juego, vista general, escritorio flotante, bloquear y siguiente fondo. En las tarjetas **Mini reproductor** y **Mini dock** se elige la forma (redondeada o píldora), si el reproductor se tiñe con el color de la carátula (al lado o abajo) y qué apps lleva el mini dock. De fábrica: el logo de Menisco en una esquina, y la bandeja y la estrella de la barra lateral en la otra.
 
 ### Barra lateral (`Super+A`)
 Centro de control que entra por un lado de la pantalla: botones rápidos (Wi-Fi, Bluetooth, No molestar, Modo café y más), volumen, música, calendario y energía, con páginas propias para Bluetooth, Wi-Fi y sonido. También se abre con el botón de estrella de la esquina o acercando el cursor al borde.
 
 ### Ajustes (`Super+.`)
-Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar). Las páginas largas (Apariencia, Isla, Dock, Notificaciones y Asistente) se parten en dos pestañas arriba, para no tener que bajar tanto.
-- **Inicio:** buscador que lleva a cualquier ajuste y lo ilumina; fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
+Ventana flotante centrada con una sombra suave detrás. Se guardan en `~/.config/quickshell/isla/menisco.json`; lo que vive en niri lo escribe `menisco-niri.py` (y lo valida antes de guardar). El menú va en tres grupos (Aspecto, Partes de Menisco y Sistema) con el buscador siempre arriba: lleva a cualquier ajuste, aunque esté guardado, y lo ilumina. Cada sección es una sola página: arriba lo básico, y lo demás en tarjetas que se pliegan con un resumen de lo que guardan; las listas largas muestran lo más usado y el resto con «Mostrar más». Dock conserva sus dos pestañas.
+- **Inicio:** fondo de pantalla actual con el selector encima (lee `~/Imágenes/Wallpapers`; se cambia en `Ajustes.qml`); datos del equipo (memoria, gráfica, tiempo encendido, versión de Menisco), y accesos directos a lo que más se cambia.
 - También se abren con el botón del logo de Menisco, arriba a la izquierda (en la esquina contraria a la barra lateral).
-- **Apariencia:** **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tema de color, velocidad y rebote de las animaciones, tipografía, esquinas, espacio entre ventanas.
+- **Color y estilo:** tema de color, **perfiles** (guardan toda la apariencia —tema, dock, isla, botones, marco, ventanas y vidrio— y se aplican con un clic; clic derecho para renombrar, actualizar o borrar), tipografía, velocidad y rebote de las animaciones.
+- **Ventanas y marco:** marco de pantalla, esquinas, espacio entre ventanas y borde de la ventana activa.
 - **Pantallas**, **Liquid glass** y **Atajos** (se graban pulsando la combinación).
-- **Isla:** forma, imagen de fondo de Acciones, qué muestra, cómo se abre y en qué pestaña, y opciones de la pestaña Música.
+- **Isla:** qué muestra cada hueco (al cambiarlo, lo viejo se encoge y lo nuevo asoma apartando a los demás; «Fecha y hora» pone la hora y detrás la fecha en gris), reloj, forma, cómo se abre y en qué pestaña, y opciones de las pestañas Música y Acciones.
 - **Notificaciones:** No molestar (también automático en pantalla completa y al grabar), qué avisos salen en la isla, qué apps no avisan de la canción que suena, y lo de Hokum: posición, duración, cuántas a la vista y, por app, ocultarla o dejarla pasar aunque esté No molestar. Lo de Hokum lo escribe `menisco-hokum.py` en `~/.config/hokum/config.kdl` (lo valida con `hokum check` antes de guardar).
 - **Asistente:** sus gotas, carácter y el botón de luz.
 - **Barra lateral:** lado, alto, ancho, y una miniatura donde se reordenan las secciones arrastrándolas.

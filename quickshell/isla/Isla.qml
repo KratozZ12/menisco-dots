@@ -26,6 +26,9 @@ PanelWindow {
     id: win
     required property var raiz
     readonly property real hombro: 18                 // curva que la funde con el borde de arriba
+    // Media isla a la vista, hombros incluidos (Esquina.qml pone ahi los botones de junto a la isla).
+    // Medido en pantalla: arriba del todo los hombros se abren unas dos veces su radio.
+    readonly property real mitadVisible: forma.ancho / 2 + 2 * hombro
 
     anchors.top: true
     implicitWidth: 720
@@ -110,7 +113,8 @@ PanelWindow {
     // ponytail: con grabacion o temporizador a la derecha vuelve a 360 en vez de medir esa fila.
     readonly property var lados: ["izquierda", "centro", "derecha"]
     function anchoDe(lado) {
-        const tipo = Estilo.huecos[lado];
+        // El tipo que se ve, no el elegido: al quitar un widget la isla espera a que se encoja.
+        const tipo = minis.count === 3 ? minis.itemAt(lados.indexOf(lado)).tipo : Estilo.huecos[lado];
         if (tipo === "nada") return 0;
         if (tipo === "asistente") return 40;
         if (tipo === "hora" || tipo === "fecha") return hora.implicitWidth;
@@ -145,6 +149,7 @@ PanelWindow {
         Behavior on esquina { NumberAnimation { duration: Estilo.t(400) } }
         readonly property real x0: (win.width - ancho) / 2
         anchors { fill: parent; topMargin: Estilo.grosorMarco }   // sale del borde de arriba del marco
+        Behavior on anchors.topMargin { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.6) } }
         // 0 = la forma de la isla pequena, 1 = la de la vista grande (las dos en Ajustes > Isla). Al
         // abrirse se transforma poco a poco, al mismo ritmo que crece.
         property real aClasica: win.expandida ? 1 : 0
@@ -374,8 +379,11 @@ PanelWindow {
                     anchors.verticalCenterOffset: 1
                     opacity: win.expandida || (lado !== "" && !(lado === "derecha" && win.derechaOcupada)) ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
-                    text: (conFecha ? Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, "") + " · " : "")
-                        + Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
+                    // Con fecha: la hora primero y la fecha detras, en gris y mas fina.
+                    textFormat: conFecha ? Text.RichText : Text.PlainText
+                    text: Qt.formatTime(reloj.date, (Estilo.valor("reloj12") ? "h:mm" : "H:mm") + (Estilo.valor("segundos") ? ":ss" : "") + (Estilo.valor("reloj12") ? " AP" : ""))
+                        + (conFecha ? `&nbsp;&nbsp;<span style="color:${Estilo.texto2}; font-weight:500; font-size:15px">`
+                            + Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, "") + "</span>" : "")
                     color: Estilo.texto
                     font { family: Estilo.letra; weight: Font.DemiBold; pixelSize: conFecha ? 17 : 19; letterSpacing: -0.45 }
                     font.features: { "tnum": 1 }
@@ -389,7 +397,18 @@ PanelWindow {
                     delegate: Item {
                         id: mini
                         required property string modelData
-                        readonly property string tipo: Estilo.huecos[modelData]
+                        // tipo = lo que se ve; elegido = lo de Ajustes. Al cambiar, lo viejo se encoge, se
+                        // cambia y lo nuevo asoma con rebote (y la isla y la hora se apartan solas).
+                        readonly property string elegido: Estilo.huecos[modelData]
+                        property string tipo: elegido
+                        property real asoma: 1
+                        onElegidoChanged: if (!win.listo) tipo = elegido; else if (elegido !== tipo) cambioMini.restart()
+                        SequentialAnimation {
+                            id: cambioMini
+                            NumberAnimation { target: mini; property: "asoma"; to: 0; duration: mini.opacity > 0.01 ? Estilo.t(180) : 0; easing.type: Easing.InCubic }
+                            ScriptAction { script: mini.tipo = mini.elegido }
+                            NumberAnimation { target: mini; property: "asoma"; to: 1; duration: Estilo.t(520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(2.2) }
+                        }
                         readonly property bool deDatos: ["temperatura", "cpu", "volumen", "escritorios", "caratula", "clima", "red", "ram", "micro", "bateria"].includes(tipo)
                         // Micrófono solo si esta silenciado; batería solo si hay algo conectado que la informe.
                         // Batería solo si hay algo conectado que la informe; red y clima, cuando ya tienen dato.
@@ -401,8 +420,11 @@ PanelWindow {
                         opacity: deDatos && hay && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
                         visible: opacity > 0.01
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
+                        Behavior on x { enabled: win.listo; NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
                         Row {
                             id: contenidoMini
+                            scale: 0.3 + 0.7 * mini.asoma
+                            opacity: Math.min(1, mini.asoma * 1.5)
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 5
                             // Icono + numero: temperatura, CPU, volumen

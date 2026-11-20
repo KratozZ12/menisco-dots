@@ -1,27 +1,27 @@
 {
-  "version": "2026-11-19",
-  "fecha": "19 nov",
-  "seccion": "isla",
+  "version": "2026-11-20",
+  "fecha": "20 nov",
+  "seccion": "esquinas",
   "lista": [
     {
-      "icono": "notifications",
-      "titulo": "Avisos a la medida",
-      "texto": "Del tamaño de su isla, en una línea"
+      "icono": "tune",
+      "titulo": "Ajustes más fáciles",
+      "texto": "Menú en grupos y tarjetas plegables"
     },
     {
-      "icono": "border_top",
-      "titulo": "Botones nuevos arriba",
-      "texto": "Mini reproductor, mini dock y más"
+      "icono": "crop_free",
+      "titulo": "Botones junto a la isla",
+      "texto": "Cada botón elige su sitio"
     },
     {
-      "icono": "widgets",
-      "titulo": "Widgets nuevos en la isla",
-      "texto": "Reproductor, clima, red, RAM y más"
+      "icono": "calendar_today",
+      "titulo": "Reloj con fecha",
+      "texto": "La hora primero y la fecha en gris"
     },
     {
-      "icono": "crop_square",
-      "titulo": "Forma de la isla abierta",
-      "texto": "Elija una distinta a la pequeña"
+      "icono": "animation",
+      "titulo": "Cambios con animación",
+      "texto": "Color, marco, botones y widgets"
     }
   ]
 }

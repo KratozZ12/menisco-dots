@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -17,13 +18,26 @@ PanelWindow {
     color: "transparent"
     mask: Region {}
 
-    readonly property real g: Estilo.grosorMarco
+    // Al encender brota de la isla: sale del centro de arriba, corre por los dos lados y baja hasta
+    // juntarse abajo. Al apagar, el mismo camino al reves. Se dibuja con una mascara: dos trazos
+    // gruesos (uno por lado) que se alargan con dashOffset y solo dejan ver el marco donde pasan.
+    property bool encendido: false
+    property real avance: encendido ? 1 : 0
+    Behavior on avance { NumberAnimation { duration: Estilo.t(900); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
+    visible: avance > 0
+    readonly property bool animando: avance > 0 && avance < 1
+    readonly property real g: Estilo.anchoMarco   // grosorMarco ya es 0 mientras se apaga
     readonly property real r: Estilo.valor("esquinas") + g   // sigue la curva de las ventanas
     property color abajo: Estilo.colorMarcoAbajo
     Behavior on abajo { ColorAnimation { duration: Estilo.t(600) } }
 
     Shape {
+        id: dibujo
         anchors.fill: parent
+        // Quieto, sin mascara. Animando, pasa por la mascara como efecto de su propia capa (con una
+        // copia escondida aparte, al apagar la copia salia vacia y el marco se iba de golpe).
+        layer.enabled: marco.animando
+        layer.effect: MultiEffect { maskEnabled: true; maskSource: mascara }
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             // Fundido largo: negro arriba (con la isla) hasta la mitad, y desde ahi baja al color
@@ -44,6 +58,30 @@ PanelWindow {
                            `H${g + r}Q${g} ${h - g} ${g} ${h - g - r}V${g + r}Q${g} ${g} ${g + r} ${g}Z`;
                 }
             }
+        }
+    }
+
+    // Camino de la mascara: del centro de arriba hasta el centro de abajo, por un lado.
+    readonly property real largo: width / 2 + height + width / 2
+    readonly property real ancho: 80             // grosor del trazo; Qt mide el dash en grosores, no en px
+    Shape {
+        id: mascara
+        anchors.fill: parent
+        visible: false
+        layer.enabled: marco.animando
+        ShapePath {
+            strokeColor: "white"; fillColor: "transparent"; strokeWidth: marco.ancho; capStyle: ShapePath.FlatCap
+            strokeStyle: ShapePath.DashLine
+            dashPattern: [marco.largo / marco.ancho, marco.largo / marco.ancho]
+            dashOffset: marco.largo / marco.ancho * (1 - marco.avance)
+            PathSvg { path: `M${marco.width / 2} 0H0V${marco.height}H${marco.width / 2}` }
+        }
+        ShapePath {
+            strokeColor: "white"; fillColor: "transparent"; strokeWidth: marco.ancho; capStyle: ShapePath.FlatCap
+            strokeStyle: ShapePath.DashLine
+            dashPattern: [marco.largo / marco.ancho, marco.largo / marco.ancho]
+            dashOffset: marco.largo / marco.ancho * (1 - marco.avance)
+            PathSvg { path: `M${marco.width / 2} 0H${marco.width}V${marco.height}H${marco.width / 2}` }
         }
     }
 }

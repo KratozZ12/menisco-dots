@@ -11,18 +11,21 @@ import Quickshell.Services.SystemTray
 PanelWindow {
     id: bandeja
 
-    // Va en la esquina que la tenga en Ajustes > Esquinas, en su hueco: 10 de margen y
-    // 34 + 8 por cada boton que quede entre ella y el borde.
-    readonly property bool izquierda: Estilo.botones.izquierda.includes("bandeja")
-    readonly property var listaLado: izquierda ? Estilo.botones.izquierda : Estilo.botones.derecha
+    // Va en el sitio que la tenga en Ajustes > Botones de arriba, en su hueco. En una esquina:
+    // 10 de margen y 34 + 8 por cada boton que quede entre ella y el borde. Junto a la isla la
+    // ventana ocupa todo el ancho y la pildora se pone en la x que calcula Esquina.qml.
+    readonly property string zona: Estilo.zonaDe("bandeja")
+    readonly property bool junto: zona.endsWith("Isla")
+    readonly property bool izquierda: zona === "izquierda" || zona === "izquierdaIsla"
+    readonly property var listaLado: Estilo.botones[zona] || []
     readonly property int indice: listaLado.indexOf("bandeja")
     // Con botones anchos (mini reproductor, mini dock) cuenta lo que mide Esquina.qml de verdad.
     readonly property int separacion: Estilo.sepBandeja >= 0 ? Estilo.sepBandeja : 10 + 42 * (izquierda ? indice : listaLado.length - 1 - indice)
 
     visible: SystemTray.items.values.length > 0 && indice >= 0
-    anchors { top: true; right: !izquierda; left: izquierda }
-    // Sin margen arriba (niri no aplica uno que cambia antes de mostrarse): la pildora baja por dentro.
-    margins { right: separacion; left: separacion }
+    // Ocupa todo el ancho y la pildora se pone por dentro: cambiar de sitio no toca los anclajes
+    // ni los margenes de la ventana (niri no aplica bien los que cambian en marcha).
+    anchors { top: true; right: true; left: true }
     mask: Region { item: pastilla }
     // La oreja del marco (BotonBarra) se ensancha para guardarla.
     Binding { target: Estilo; property: "anchoBandeja"; value: bandeja.visible ? bandeja.implicitWidth : 0 }
@@ -35,7 +38,9 @@ PanelWindow {
 
     Rectangle {
         id: pastilla
-        anchors { fill: parent; topMargin: 4 + Estilo.grosorMarco }
+        x: bandeja.junto ? Estilo.xBandeja : bandeja.izquierda ? bandeja.separacion : bandeja.width - bandeja.separacion - width
+        y: 4 + Estilo.grosorMarco
+        width: fila.implicitWidth + 8; height: 34
         radius: height / 2
         color: Estilo.fondo
 

@@ -288,7 +288,11 @@ ShellRoot {
     Barra { id: barra; raiz: raiz; ajustes: ajustes }
     // Esquinas de arriba (Ajustes > Esquinas). Bandeja va despues: queda encima de su hueco.
     Esquina { raiz: raiz; ajustes: ajustes; lado: "izquierda" }
+    Esquina { raiz: raiz; ajustes: ajustes; lado: "izquierdaIsla" }
+    Esquina { raiz: raiz; ajustes: ajustes; lado: "derechaIsla" }
     Esquina { raiz: raiz; ajustes: ajustes; lado: "derecha" }
+    // La isla de una pantalla (los botones de junto a la isla siguen su ancho).
+    function islaEn(pantalla) { return islas.instances.find(i => i.screen === pantalla) ?? null }
     Bandeja {}
     BordeBarra { raiz: raiz }
 
@@ -419,7 +423,7 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens
-        Marco { required property var modelData; screen: modelData; visible: Estilo.valor("marco") && !raiz.modoJuego }
+        Marco { required property var modelData; screen: modelData; encendido: Estilo.valor("marco") && !raiz.modoJuego }
     }
 
     Variants {
@@ -431,6 +435,7 @@ ShellRoot {
     VolumenOsd {}
 
     Variants {
+        id: islas
         model: Quickshell.screens
         Isla { required property var modelData; screen: modelData; raiz: raizShell }
     }

@@ -155,11 +155,17 @@ def vidrio(js):
             edge-lighting {round(v['brillo'] / 100 * 1.5, 2)}
             saturation 1.3
         }}"""
+    # El dock lleva su propia optica: tinte neutro (saturacion 1.05, el fondo no lo colorea) y sin el
+    # filo brillante parejo de Lniri; su borde degradado lo dibuja Dock.qml. La forma y el radio los
+    # pone el propio dock (zona de desenfoque), asi siguen al tamano de los iconos.
+    optica_dock = (optica.replace("saturation 1.3", "saturation 1.05")
+                   .replace(f"edge-lighting {round(v['brillo'] / 100 * 1.5, 2)}", f"edge-lighting {round(v['brillo'] / 100 * 0.3, 2)}")
+                   .replace(f"glow-weight {f('brillo', 0.8)}", f"glow-weight {f('brillo', 0.25)}"))
     reglas = []
     if v.get("ventanas"):
         reglas.append(f"window-rule {{\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}")
     if v.get("dock"):
-        reglas.append(f'layer-rule {{\n    match namespace="^dock$"\n    geometry-corner-radius 22\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}')
+        reglas.append(f'layer-rule {{\n    match namespace="^dock$"\n    background-effect {{\n        blur true\n        xray true\n{optica_dock}\n    }}\n}}')
     if v.get("notificaciones"):
         reglas.append(f'layer-rule {{\n    match namespace="^hokum$"\n    background-effect {{\n        blur true\n        xray true\n{optica}\n    }}\n}}')
     texto = "// Generado por los ajustes de Menisco (menisco-niri.py vidrio). Se reescribe al cambiarlos.\n\n" + "\n\n".join(reglas) + "\n"

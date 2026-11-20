@@ -78,12 +78,12 @@ Se le habla dentro de la isla, en el mismo marco que las pestañas: «acomoda mi
 - Desde la terminal: `qs -p ~/.config/quickshell/isla ipc call gota_<monitor> preguntar "texto"` (también `abrir` y `cerrar`).
 
 ### Dock
-- Vidrio esmerilado en niri; *liquid glass* en Lniri.
-- Lupa al pasar el cursor, con rebote, y un punto debajo de las apps abiertas.
-- Las apps abiertas que no están ancladas aparecen solas y el dock crece con animación.
-- **Clic derecho:** Anclar al dock / Quitar del dock / Abrir / Cerrar. Las ancladas se guardan en `~/.config/quickshell/isla/dock.json`.
-- Botón de cuadrícula que abre el lanzador (se aclara al pasar el cursor; no usa la lupa).
-- **Material** (vidrio, sólido, ahumado, escarcha, tinte, contorno, Material You) y **forma** (redondeada, cápsula, biselada, octágono, ola, líquida, recta) en **Ajustes > Dock**. Sin vidrio y con el marco de pantalla encendido, el dock puede ir **pegado** al borde y fundirse con el marco.
+- La única pieza de vidrio de Menisco: esmerilado en niri, *liquid glass* en Lniri, solo dentro del cuerpo del dock (el propio dock le dice al compositor dónde va el vidrio y con qué radio). Tinte neutro (el fondo no lo colorea), filo de 1 px que brilla arriba y se apaga abajo, reflejo tenue y sombra suave.
+- Al pasar el cursor solo crece el ícono que está debajo, con su nombre encima. Las apps abiertas llevan un punto; la enfocada, una píldora del color del tema.
+- Las apps abiertas que no están fijadas aparecen tras un separador y se van al cerrarse.
+- **Clic derecho:** un solo menú para todas: Abrir, o Nueva ventana y la lista de ventanas si tiene varias; Fijar o Quitar del dock; y Cerrar si está abierta. Las fijadas se guardan en `~/.config/quickshell/isla/dock.json`.
+- Botón de cuadrícula que abre el lanzador.
+- En **Ajustes > Dock**: material (vidrio, ahumado, escarcha, tinte, sólido, contorno, Material You), posición (sin vidrio y con el marco encendido puede ir **pegado** al borde), forma, tamaño de íconos (40–64 px), aumento, ocultar, indicadores y apps sin fijar; en Avanzado, retraso al ocultar, clic en app abierta, nombre al pasar el cursor y monitor. «Ocultar: si una ventana lo toca» todavía se comporta como «Nunca».
 
 ### Lanzador (`Super+D` o el botón del dock)
 Una píldora en el centro de la pantalla, con el asistente dentro. Al abrirse no muestra nada más; al escribir, la misma píldora crece hacia abajo con los resultados, el primero en grande. A igualdad, salen primero las apps que más abre.

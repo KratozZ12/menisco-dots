@@ -1,27 +1,27 @@
 {
-  "version": "2026-11-20c",
+  "version": "2026-11-20d",
   "fecha": "20 nov",
-  "seccion": "apariencia",
+  "seccion": "dock",
   "lista": [
     {
-      "icono": "palette",
-      "titulo": "Doce temas",
-      "texto": "Seis nuevos, como Cempasúchil"
+      "icono": "dock_to_bottom",
+      "titulo": "Dock nuevo",
+      "texto": "Vidrio neutro y filo que brilla arriba"
     },
     {
-      "icono": "gradient",
-      "titulo": "Un segundo color",
-      "texto": "En el rayo y el halo de la Gota"
+      "icono": "ads_click",
+      "titulo": "Nombre al pasar",
+      "texto": "Solo crece el ícono que señalas"
     },
     {
-      "icono": "pin",
-      "titulo": "La ficha rueda",
-      "texto": "Número y nombre al cambiar"
+      "icono": "more_horiz",
+      "titulo": "Un solo menú",
+      "texto": "Nueva ventana, fijar y cerrar"
     },
     {
-      "icono": "expand_more",
-      "titulo": "Mostrar más",
-      "texto": "Ahora se despliega suave"
+      "icono": "tune",
+      "titulo": "Más ajustes",
+      "texto": "Tamaño, ocultar, indicadores y más"
     }
   ]
 }

@@ -313,9 +313,9 @@ layer-rule {
     place-within-backdrop true
 }
 // Dock de Quickshell: vidrio esmerilado (en Lniri, vidrio.kdl le suma el liquid glass).
+// Sin geometry-corner-radius: la forma y el radio los pide el propio dock (zona de desenfoque).
 layer-rule {
     match namespace="^dock$"
-    geometry-corner-radius 22
     background-effect {
         blur true
     }

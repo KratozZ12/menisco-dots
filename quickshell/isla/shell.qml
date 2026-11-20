@@ -427,7 +427,13 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        // Ajustes > Dock > Monitor: "" en todas, "principal" en la primera, o una por su nombre
+        // (si no esta conectada, vuelve a todas).
+        model: {
+            const m = Estilo.valor("dockMonitor"), l = Array.from(Quickshell.screens);
+            const una = m === "principal" ? l[0] : l.find(s => s.name === m);
+            return m && una ? [una] : l;
+        }
         Dock { required property var modelData; screen: modelData; shell: raiz; visible: !oculto }
     }
 

@@ -1072,12 +1072,15 @@ PanelWindow {
                     ["escarcha", "Escarcha", "Vidrio claro"], ["tinte", "Tinte", "Color del tema"],
                     ["solido", "Sólido", "Negro, como la isla"], ["contorno", "Contorno", "Solo el filo"], ["materialyou", "Material You", "Del color de tu fondo"]]
                 Desplazable {
-                    EncabezadoParte { grupo: "Partes de Menisco"; titulo: "Dock"; descripcion: "La única pieza de vidrio: qué material lleva, dónde va y qué forma tiene." }
+                    EncabezadoParte { grupo: "Partes de Menisco"; titulo: "Dock"; descripcion: "La pieza de vidrio de Menisco: qué material lleva, dónde va y cómo se comporta." }
                     Item { width: 1; height: 18 }
-                    // Vista previa: el fondo real con el dock encima, en el material elegido.
+                    // Vista previa: el fondo real con el dock encima, en el material, tamaño e indicadores elegidos.
                     Escenario {
                         height: 240
-                        MuestraDock { anchors { fill: parent; margins: 1 } radius: 17; material: paginaDock.material; icono: 44 }
+                        MuestraDock {
+                            anchors { fill: parent; margins: 1 } radius: 17
+                            material: paginaDock.material; icono: Estilo.valor("dockIcono"); indicadores: true
+                        }
                         Rectangle {
                             x: 16; y: 16
                             width: textoMaterial.implicitWidth + 26; height: 32; radius: 16
@@ -1085,7 +1088,8 @@ PanelWindow {
                             Text {
                                 id: textoMaterial
                                 anchors.centerIn: parent
-                                text: (paginaDock.materiales.find(m => m[0] === paginaDock.material) || ["", "Vidrio"])[1] + " · " + (paginaDock.conVidrio ? "con vidrio" : "sin vidrio")
+                                text: (paginaDock.materiales.find(m => m[0] === paginaDock.material) || ["", "Vidrio"])[1]
+                                    + " · " + Estilo.valor("dockIcono") + " px · aumento " + (Estilo.valor("dockAumento") ? "activado" : "apagado")
                                 color: "#ffffff"; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold }
                             }
                         }
@@ -1120,25 +1124,98 @@ PanelWindow {
                     Texto { text: "Ajuste fino"; topPadding: 20; bottomPadding: 6; font { pixelSize: 17; weight: Font.DemiBold } }
                     TablaAjustes {
                         FilaTabla {
-                            numero: 1; titulo: "Posición del dock"
+                            id: filaPosicion
+                            numero: 1; titulo: "Posición"
+                            que: "Flota sobre el escritorio o se pega al borde de la pantalla"
                             readonly property bool posible: Estilo.grosorMarco > 0 && !paginaDock.conVidrio
-                            que: posible ? "Pegado sale del borde de abajo del marco"
-                               : Estilo.grosorMarco > 0 ? "Pegado necesita un material sin vidrio" : "Pegado necesita el marco de pantalla (Ventanas y marco)"
-                            ControlSegmentos {
-                                grande: true
-                                opciones: ["Flotante", "Pegado al borde"]; claves: [false, true]
-                                apagadas: parent.parent.posible ? [] : [true]
-                                elegida: Estilo.dockPegado
-                                onElegir: c => Estilo.poner("dockPegado", c)
+                            height: posible ? 62 : 82
+                            Column {
+                                spacing: 6
+                                ControlSegmentos {
+                                    anchors.right: parent.right
+                                    grande: true
+                                    opciones: ["Flotante", "Pegado al borde"]; claves: [false, true]
+                                    apagadas: filaPosicion.posible ? [] : [true]
+                                    elegida: Estilo.dockPegado
+                                    onElegir: c => Estilo.poner("dockPegado", c)
+                                }
+                                Texto {
+                                    visible: !filaPosicion.posible
+                                    anchors.right: parent.right
+                                    text: Estilo.grosorMarco > 0 ? "Pegado necesita un material sin vidrio" : "Pegado necesita el marco de pantalla"
+                                    color: Estilo.texto2; font.pixelSize: 12
+                                }
                             }
                         }
                         FilaTabla {
                             numero: 2; titulo: "Forma"
                             atenuada: paginaDock.conVidrio
-                            que: paginaDock.conVidrio ? "Solo con material sin vidrio: el vidrio va en rectángulo" : "El contorno del dock"
+                            que: paginaDock.conVidrio ? "Solo sin vidrio: el vidrio va redondeado" : "El contorno del dock"
                             Desplegable {
                                 opciones: Estilo.formasDock
                                 elegida: Estilo.valor("dockForma"); onElegir: c => Estilo.poner("dockForma", c)
+                            }
+                        }
+                        FilaTabla {
+                            numero: 3; titulo: "Tamaño de íconos"; que: "De 40 a 64 px; el dock crece con ellos"
+                            ControlDeslizador { desde: 40; hasta: 64; valor: Estilo.valor("dockIcono"); unidad: " px"; onSoltado: v => Estilo.poner("dockIcono", Math.round(v)) }
+                        }
+                        FilaTabla {
+                            numero: 4; titulo: "Aumento"; que: "Agranda un poco el ícono que tiene el cursor"
+                            Llave { encendido: Estilo.valor("dockAumento"); onCambiar: v => Estilo.poner("dockAumento", v) }
+                        }
+                        FilaTabla {
+                            numero: 5; titulo: "Ocultar"; que: "Cuándo se esconde el dock"
+                            Desplegable {
+                                opciones: [["nunca", "Nunca"], ["siempre", "Siempre"], ["ventana", "Si una ventana lo toca"]]
+                                elegida: Estilo.valor("dockOcultar"); onElegir: c => Estilo.poner("dockOcultar", c)
+                            }
+                        }
+                        FilaTabla {
+                            numero: 6; titulo: "Indicadores"; que: "Cómo se marcan las apps abiertas"
+                            ControlSegmentos {
+                                grande: true
+                                opciones: ["Punto", "Píldora en la enfocada"]; claves: ["punto", "pildora"]
+                                elegida: Estilo.valor("dockIndicador"); onElegir: c => Estilo.poner("dockIndicador", c)
+                            }
+                        }
+                        FilaTabla {
+                            numero: 7; titulo: "Apps sin fijar"; que: "Muestra las apps abiertas que no están fijadas, tras un separador"
+                            Llave { encendido: Estilo.valor("dockSinFijar"); onCambiar: v => Estilo.poner("dockSinFijar", v) }
+                        }
+                    }
+                    Item {
+                        width: parent.width; height: 56
+                        Texto { anchors { left: parent.left; bottom: parent.bottom; bottomMargin: 10 } text: "Avanzado"; font { pixelSize: 17; weight: Font.DemiBold } }
+                        Texto { anchors { right: parent.right; bottom: parent.bottom; bottomMargin: 11 } text: "Para cuando quieras afinar más"; color: Estilo.texto2 }
+                    }
+                    Avanzado {
+                        FilaTabla {
+                            sinNumero: true; titulo: "Retraso al ocultar"; que: "Cuánto espera antes de esconderse"
+                            atenuada: Estilo.valor("dockOcultar") === "nunca"
+                            Desplegable {
+                                opciones: [[0, "Al instante"], [150, "150 ms"], [300, "300 ms"], [600, "600 ms"], [1000, "1 s"]]
+                                textoOtro: Estilo.valor("dockRetraso") + " ms"
+                                elegida: Estilo.valor("dockRetraso"); onElegir: c => Estilo.poner("dockRetraso", c)
+                            }
+                        }
+                        FilaTabla {
+                            sinNumero: true; titulo: "Clic en app abierta"; que: "Qué pasa al pulsar una app que ya está en pantalla"
+                            Desplegable {
+                                opciones: [["enfocar", "Enfocar"], ["siguiente", "Siguiente ventana"]]
+                                elegida: Estilo.valor("dockClic"); onElegir: c => Estilo.poner("dockClic", c)
+                            }
+                        }
+                        FilaTabla {
+                            sinNumero: true; titulo: "Nombre al pasar el cursor"; que: "Etiqueta encima del ícono"
+                            Llave { encendido: Estilo.valor("dockNombre"); onCambiar: v => Estilo.poner("dockNombre", v) }
+                        }
+                        FilaTabla {
+                            sinNumero: true; titulo: "Monitor"; que: "En qué pantalla aparece"
+                            Desplegable {
+                                opciones: [["", "Todas"], ["principal", "Principal"]].concat(Array.from(Quickshell.screens).map(p => [p.name, p.name]))
+                                textoOtro: Estilo.valor("dockMonitor")
+                                elegida: Estilo.valor("dockMonitor"); onElegir: c => Estilo.poner("dockMonitor", c)
                             }
                         }
                     }
@@ -3456,6 +3533,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         // Depende de un ajuste apagado: se ve al 40 % y no responde.
         property bool atenuada: false
         property bool resaltada: false      // fondo apenas mas claro (p. ej. un atajo que se esta grabando)
+        property bool sinNumero: false      // sin la columna "#" (filas del bloque Avanzado)
         Rectangle { anchors.fill: parent; color: Qt.alpha(Estilo.texto, 0.05); visible: ft.resaltada }
         opacity: atenuada ? 0.4 : 1
         enabled: !atenuada
@@ -3475,12 +3553,13 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
             }
         }
         Text {
+            visible: !ft.sinNumero
             x: 8; anchors.verticalCenter: parent.verticalCenter
             text: String(ft.numero).padStart(2, "0"); color: Estilo.texto2
             font { family: "JetBrains Mono"; pixelSize: 13 }
         }
         // Los titulos largos pasan a dos lineas en vez de montarse sobre "Que hace".
-        Texto { x: 62; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.3 - 72; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; text: ft.titulo; font { pixelSize: 15; weight: Font.DemiBold } }
+        Texto { x: ft.sinNumero ? 18 : 62; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.3 - x - 10; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; text: ft.titulo; font { pixelSize: 15; weight: Font.DemiBold } }
         Texto {
             x: parent.width * 0.3; anchors.verticalCenter: parent.verticalCenter
             width: ladoFt.x - x - 16; elide: Text.ElideRight
@@ -4950,67 +5029,129 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
     }
 
     // Acceso del Inicio: icono, titulo, valor actual y flecha. Lleva a un ajuste concreto.
-    // Un dock pequeno sobre el fondo de pantalla real, en el material dado. El vidrio se imita
-    // desenfocando el trozo de fondo que queda detras del dock.
+    // Un dock pequeno sobre el fondo de pantalla real, con el mismo dibujo que Dock.qml: relleno,
+    // reflejo, filo degradado y radio concentrico. El vidrio se imita desenfocando lo que queda
+    // detras. Con "manchas", un patron de prueba de colores en vez del fondo (las tarjetas de
+    // material: asi se nota la diferencia entre materiales). Con "indicadores", punto en las
+    // abiertas y pildora en la enfocada, como el ajuste elegido.
     component MuestraDock: ClippingRectangle {
         id: md
         property string material
         property int icono: 18
-        // Con rayas: un patron neutro de rayas diagonales, como un fondo de transparencia, en vez
-        // del fondo de pantalla (las tarjetas de material).
-        property bool rayas: false
-        color: rayas ? Estilo.hundido : "#3a3f4a"
-        Rayas { visible: md.rayas; anchors.fill: parent }
+        property bool manchas: false
+        property bool indicadores: false
+        color: manchas ? Estilo.hundido : "#3a3f4a"
+        Manchas { id: manchasMd; visible: md.manchas; anchors.fill: parent }
         Image {
             id: fondoMd
-            visible: !md.rayas
+            visible: !md.manchas
             anchors.fill: parent
             source: ventana.fondoActual ? "file://" + ventana.fondoActual : ""
             fillMode: Image.PreserveAspectCrop; sourceSize.width: 640; asynchronous: true
         }
         Item {
             id: dk
-            readonly property var asp: Estilo.aspectoDock(md.material, ventana.tonoMY, false)
-            readonly property real radio: height * (md.material === "materialyou" ? 0.36 : 0.32)
+            readonly property var asp: Estilo.aspectoDock(md.material, ventana.tonoMY)
+            readonly property bool vidrio: Estilo.dockConVidrio(md.material)
+            readonly property int relleno: Math.round(md.icono * 0.19)
+            readonly property int radio: Math.round(md.icono * 0.225) + relleno
+            readonly property int pie: Math.max(2, Math.round(md.icono * 0.125))
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: Math.round(md.icono * 0.45) }
-            width: filaIconos.width + md.icono * 0.75; height: Math.round(md.icono * 1.55)
+            width: filaIconos.width + relleno * 2 + 4; height: md.icono + relleno * 2 + pie
             ClippingRectangle {
                 anchors.fill: parent; radius: dk.radio; color: "transparent"
-                opacity: Estilo.dockConVidrio(md.material) ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(300) } }
+                visible: dk.vidrio
                 Image {
-                    visible: !md.rayas
+                    visible: !md.manchas
                     x: -dk.x; y: -dk.y; width: md.width; height: md.height
                     source: fondoMd.source; fillMode: Image.PreserveAspectCrop; sourceSize.width: 640; asynchronous: true
                     layer.enabled: true
-                    layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 32 }
+                    layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 32; saturation: 0.05 }
                 }
-                Rayas {
-                    visible: md.rayas
+                Manchas {
+                    visible: md.manchas
                     x: -dk.x; y: -dk.y; width: md.width; height: md.height
                     layer.enabled: true
-                    layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 16 }
+                    layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 24; saturation: 0.05 }
                 }
             }
             Rectangle {
                 anchors.fill: parent; radius: dk.radio
-                color: dk.asp[0]; border.color: dk.asp[1]; border.width: dk.asp[2]
-                Behavior on color { ColorAnimation { duration: Estilo.t(300) } }
-                Behavior on border.color { ColorAnimation { duration: Estilo.t(300) } }
+                color: dk.asp.relleno
+                Behavior on color { ColorAnimation { duration: Estilo.t(180) } }
+                gradient: dk.asp.reflejo > 0 ? reflejoMd : null
+                Gradient {
+                    id: reflejoMd
+                    GradientStop { position: 0; color: Qt.tint(dk.asp.relleno, Qt.rgba(1, 1, 1, dk.asp.reflejo)) }
+                    GradientStop { position: 0.4; color: dk.asp.relleno }
+                }
             }
-            Rectangle {   // brillo de arriba del Material You
-                anchors.fill: parent; radius: dk.radio
-                opacity: md.material === "materialyou" ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: Estilo.t(300) } }
-                gradient: Gradient { GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.13) } GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0) } }
+            Shape {
+                id: filoMd
+                anchors.fill: parent
+                preferredRendererType: Shape.CurveRenderer
+                function rect(x, y, w, h, r) {
+                    return `M${x + r} ${y} H${x + w - r} A${r} ${r} 0 0 1 ${x + w} ${y + r} V${y + h - r} A${r} ${r} 0 0 1 ${x + w - r} ${y + h} `
+                         + `H${x + r} A${r} ${r} 0 0 1 ${x} ${y + h - r} V${y + r} A${r} ${r} 0 0 1 ${x + r} ${y} Z`;
+                }
+                readonly property var f: dk.asp.filo || [0, 0, 0]
+                function tono(k) { return dk.asp.color !== undefined ? dk.asp.color : Qt.rgba(1, 1, 1, f[k]); }
+                ShapePath {
+                    strokeWidth: -1
+                    fillRule: ShapePath.OddEvenFill
+                    fillGradient: LinearGradient {
+                        y1: 0; y2: dk.height
+                        GradientStop { position: 0; color: filoMd.tono(0) }
+                        GradientStop { position: 0.35; color: filoMd.tono(1) }
+                        GradientStop { position: 0.7; color: filoMd.tono(1) }
+                        GradientStop { position: 1; color: filoMd.tono(2) }
+                    }
+                    PathSvg {
+                        readonly property real a: dk.asp.ancho
+                        path: filoMd.rect(0, 0, dk.width, dk.height, dk.radio)
+                            + " " + filoMd.rect(a, a, dk.width - 2 * a, dk.height - 2 * a, Math.max(0, dk.radio - a))
+                    }
+                }
             }
             Row {
                 id: filaIconos
-                anchors.centerIn: parent; spacing: Math.round(md.icono * 0.28)
+                x: dk.relleno + 2; y: dk.relleno
+                spacing: Math.round(md.icono * 0.22)
                 Repeater {
                     model: ventana.iconosDock.slice(0, 5)
-                    delegate: Image { required property string modelData; width: md.icono; height: md.icono; sourceSize: Qt.size(48, 48); source: ventana.iconoApp(modelData) }
+                    delegate: Image {
+                        required property string modelData
+                        required property int index
+                        width: md.icono; height: md.icono; sourceSize: Qt.size(64, 64); source: ventana.iconoApp(modelData)
+                        // Abiertas: la 1.ª (enfocada), la 2.ª y la ultima.
+                        Rectangle {
+                            readonly property bool pildora: index === 0 && Estilo.valor("dockIndicador") === "pildora"
+                            visible: md.indicadores && (index === 0 || index === 1 || index === 4)
+                            anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: Math.max(1, dk.pie / 2) }
+                            width: pildora ? 14 : 4; height: 4; radius: 2
+                            color: pildora ? Estilo.acento : Qt.rgba(1, 1, 1, 0.6)
+                            Behavior on width { NumberAnimation { duration: Estilo.t(180); easing.type: Easing.OutCubic } }
+                        }
+                    }
                 }
+            }
+        }
+    }
+    // Patron de prueba para las tarjetas de material: manchas de color sobre oscuro (no el fondo de
+    // pantalla, que se repetiria en todas las tarjetas).
+    component Manchas: Item {
+        clip: true
+        Rectangle { anchors.fill: parent; color: "#14151a" }
+        Repeater {
+            // Tres manchas que se juntan justo donde va el dock: asi cada material deja ver otra cosa.
+            model: [[0.18, 0.5, "#ff7a3d"], [0.82, 0.45, "#3d7bff"], [0.5, 1.0, "#5fcf5a"]]
+            Rectangle {
+                required property var modelData
+                width: parent.width * 0.5; height: width; radius: width / 2
+                x: parent.width * modelData[0] - width / 2; y: parent.height * modelData[1] - height / 2
+                color: modelData[2]
+                layer.enabled: true
+                layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 40 }
             }
         }
     }
@@ -5019,13 +5160,13 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         required property var modelData          // [clave, nombre, descripcion]
         readonly property bool elegido: Estilo.valor("dockMaterial") === modelData[0]
         height: 154; radius: 14
-        // Elegida: borde fino del acento y un fondo apenas mas claro (sin relleno de acento).
-        color: elegido ? Qt.tint(Estilo.tarjeta, Qt.alpha(Estilo.texto, 0.05)) : zonaTm.containsMouse ? Estilo.realce : Estilo.tarjeta
+        // Elegida: solo el borde del acento (1.5 px), sin relleno.
+        color: zonaTm.containsMouse && !elegido ? Estilo.realce : Estilo.tarjeta
         border.width: elegido ? 1.5 : 1; border.color: elegido ? Estilo.acento : Estilo.borde
         Behavior on color { ColorAnimation { duration: Estilo.t(160) } }
         scale: zonaTm.pressed ? 0.96 : 1
-        Behavior on scale { NumberAnimation { duration: Estilo.t(zonaTm.pressed ? 80 : 340); easing.type: zonaTm.pressed ? Easing.OutQuad : Easing.OutBack; easing.overshoot: Estilo.o(2) } }
-        MuestraDock { x: 6; y: 6; width: parent.width - 12; height: 72; radius: 10; material: tm.modelData[0]; icono: 13; rayas: true }
+        Behavior on scale { NumberAnimation { duration: Estilo.t(120); easing.type: Easing.OutCubic } }
+        MuestraDock { x: 6; y: 6; width: parent.width - 12; height: 72; radius: 10; material: tm.modelData[0]; icono: 14; manchas: true }
         Column {
             x: 11; y: 88; width: parent.width - 22; spacing: 2
             Texto { width: parent.width; text: tm.modelData[1]; font { pixelSize: 14; weight: Font.DemiBold } elide: Text.ElideRight }

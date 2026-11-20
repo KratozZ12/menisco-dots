@@ -21,7 +21,6 @@ window-rule {
 
 layer-rule {
     match namespace="^dock$"
-    geometry-corner-radius 22
     background-effect {
         blur true
         xray true
@@ -33,9 +32,9 @@ layer-rule {
             refraction-offset-strength 11.8
             edge-thickness 0.3
             fringing 0.95
-            glow-weight 0.28
-            edge-lighting 0.52
-            saturation 1.3
+            glow-weight 0.09
+            edge-lighting 0.1
+            saturation 1.05
         }
     }
 }

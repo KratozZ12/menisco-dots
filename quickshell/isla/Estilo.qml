@@ -27,6 +27,11 @@ Singleton {
         reaccionMusica: true,
         // Isla: como se abre y que avisos muestra (los avisos se ajustan en Notificaciones)
         dockMaterial: "vidrio", dockForma: "redondeada",   // vidrio | solido | ahumado | escarcha | tinte | contorno | materialyou
+        // Dock: tamano de iconos (40-64), aumento bajo el cursor, cuando se esconde (nunca | siempre |
+        // ventana), indicador (pildora | punto), apps abiertas sin fijar, retraso al esconderse (ms),
+        // clic en app abierta (enfocar | siguiente), nombre al pasar el cursor y monitor ("" = todos).
+        dockIcono: 48, dockAumento: true, dockOcultar: "nunca", dockIndicador: "pildora", dockSinFijar: true,
+        dockRetraso: 300, dockClic: "enfocar", dockNombre: true, dockMonitor: "",
         islaForma: "clasica", islaFormaAbierta: "clasica",
         reproductorForma: "redondeada", reproductorTinte: "nada", miniDockApps: [],   // botones de arriba
         islaImagen: "",   // imagen de fondo de la pestana Acciones ("" = ninguna)
@@ -202,8 +207,8 @@ Singleton {
                       activoBorde: "#00000000", acento: "#e6c68a", acento2: "#f5e9d0", sobreAcento: "#000000" },
         mercurio:    { nombre: "Mercurio", desc: "Plata líquida", fondo: "#050507", tarjeta: "#131418", hover: "#1b1c21", hundido: "#0b0c0f",
                       borde: "#1fe9ebef", linea: "#14e9ebef", texto: "#eef0f4", texto2: "#96989c", texto3: "#7e8084",
-                      apagado: "#23252c", activo: "#c9ced6", enActivo: "#000000", iconoActivo: "#000000",
-                      activoBorde: "#00000000", acento: "#c9ced6", acento2: "#8e96a3", sobreAcento: "#000000" },
+                      apagado: "#23252c", activo: "#dde3ea", enActivo: "#000000", iconoActivo: "#000000",
+                      activoBorde: "#00000000", acento: "#dde3ea", acento2: "#8e96a3", sobreAcento: "#000000" },
         tinta:       { nombre: "Tinta", desc: "Azul de pluma", fondo: "#04050a", tarjeta: "#0f1220", hover: "#15192c", hundido: "#090b14",
                       borde: "#1fbdcbfd", linea: "#14bdcbfd", texto: "#eef1fb", texto2: "#9598a3", texto3: "#7c7f8b",
                       apagado: "#1c2139", activo: "#5b7cfa", enActivo: "#000000", iconoActivo: "#000000",
@@ -525,17 +530,20 @@ tokens {
     readonly property bool dockPegado: valor("dockPegado") && grosorMarco > 0 && !dockConVidrio(valor("dockMaterial"))
     // Color al que baja el marco: el del dock pegado de Material You; en los demas, el negro de siempre.
     readonly property color colorMarcoAbajo: dockPegado && valor("dockMaterial") === "materialyou" ? tonoDock : fondo
-    // [relleno, filo, ancho del filo] de cada material
-    function aspectoDock(m, tono, encima) {
+    // Cada material: relleno, filo de 1 px (blanco con [arriba, lados, abajo] de opacidad, o un color
+    // fijo en "color"), ancho del filo y reflejo (blanco arriba que se apaga hacia el 40 % del alto).
+    // Los de vidrio llevan la misma estructura con otros valores; Solido, Contorno y Material You,
+    // sin reflejo.
+    function aspectoDock(m, tono) {
         return ({
-            vidrio:      [Qt.rgba(1, 1, 1, encima ? 0.06 : 0.03), Qt.rgba(1, 1, 1, 0.18), 1],
-            solido:      [fondo, borde, 1],
-            ahumado:     [Qt.rgba(0, 0, 0, 0.5), Qt.rgba(1, 1, 1, 0.1), 1],
-            escarcha:    [Qt.rgba(1, 1, 1, encima ? 0.26 : 0.22), Qt.rgba(1, 1, 1, 0.42), 1],
-            tinte:       [Qt.alpha(acento, encima ? 0.22 : 0.16), Qt.alpha(acento, 0.45), 1],
-            contorno:    [Qt.rgba(1, 1, 1, 0), Qt.rgba(1, 1, 1, 0.5), 1.5],
-            materialyou: [tono, Qt.alpha(Qt.hsla(tono.hslHue, 0.6, 0.85, 1), 0.18), 1]
-        })[m] || [Qt.rgba(1, 1, 1, 0.03), Qt.rgba(1, 1, 1, 0.18), 1];
+            vidrio:      { relleno: Qt.rgba(1, 1, 1, 0.08), filo: [0.5, 0.13, 0.05], ancho: 1, reflejo: 0.14 },
+            ahumado:     { relleno: Qt.rgba(0, 0, 0, 0.42), filo: [0.3, 0.09, 0.04], ancho: 1, reflejo: 0.08 },
+            escarcha:    { relleno: Qt.rgba(1, 1, 1, 0.22), filo: [0.6, 0.22, 0.1], ancho: 1, reflejo: 0.18 },
+            tinte:       { relleno: Qt.alpha(acento, 0.16), filo: [0.5, 0.13, 0.05], ancho: 1, reflejo: 0.12 },
+            solido:      { relleno: fondo, filo: [0.07, 0.07, 0.07], ancho: 1, reflejo: 0 },
+            contorno:    { relleno: Qt.rgba(1, 1, 1, 0), filo: [0.5, 0.5, 0.5], ancho: 1.5, reflejo: 0 },
+            materialyou: { relleno: tono, color: Qt.alpha(Qt.hsla(tono.hslHue, 0.6, 0.85, 1), 0.18), ancho: 1, reflejo: 0 }
+        })[m] || aspectoDock("vidrio", tono);
     }
 
     // ---- Aspecto ----

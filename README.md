@@ -120,7 +120,7 @@ La pantalla se congela y se elige qué capturar: **Zona** (se arrastra, se mueve
 `Super+Shift+/` abre una tabla de atajos propia, en cuatro grupos, que lee las teclas de la config de niri cada vez. `Super+Shift+E` abre un cuadro para salir de niri (`Enter` sale, `Esc` cancela); `Ctrl+Alt+Supr` sigue con el de niri. Los dos siguen el tema de color.
 
 ### Novedades
-Después de cada actualización sale una ventanita centrada, encima de todo y siempre en el tema Ónix, con lo nuevo: primero en pequeño con las tres torres del logo, que se encienden por turnos hasta que la del centro sale con rebote; luego crece, el título salta letra por letra y al final entra lo demás en cascada. Sale una sola vez por versión; la lista está en `quickshell/isla/novedades.json` (al cambiar su `version`, vuelve a salir). A mano: `qs -p ~/.config/quickshell/isla ipc call novedades abrir`.
+Después de cada actualización sale una ventanita centrada, encima de todo y siempre en el tema Ónix, con lo nuevo: primero en pequeño con las tres torres del logo, que se encienden por turnos hasta que la del centro sale con rebote; luego crece, el título salta letra por letra y al final entra lo demás en cascada. Sale una sola vez por versión; la lista está en `quickshell/isla/versiones.json`, que también alimenta la página **Menisco** de Ajustes (una por versión, con su foto, lo nuevo y una animación en bucle; las animaciones están en `quickshell/isla/assets/versiones/demos/`). Al cambiar la versión de la primera entrada, vuelve a salir. A mano: `qs -p ~/.config/quickshell/isla ipc call novedades abrir`.
 
 ### Bandeja
 Píldora con los iconos de las apps en segundo plano. Va en el sitio que tenga en **Ajustes > Botones de arriba** (también junto a la isla). Clic derecho abre el menú de la app.
@@ -240,6 +240,7 @@ El resto son los atajos de fábrica de niri.
 - [Quickshell](https://quickshell.org).
 - [Hokum](https://hokum.app), [cava](https://github.com/karlstav/cava), [awww](https://codeberg.org/LGFae/awww), [LRCLIB](https://lrclib.net).
 - Iconos: Material Symbols (Google) y WhiteSur.
+- Letra de la página Menisco: [Geist](https://vercel.com/font) (SIL OFL). El resto de fotos y fuentes, en [CREDITOS.md](CREDITOS.md).
 
 <p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/readme-separador-linea-oscuro.svg"><img alt="" src="assets/readme/readme-separador-linea-claro.svg" width="100%"></picture></p>
 

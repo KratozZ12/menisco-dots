@@ -1,0 +1,335 @@
+{
+  "_nota": "Fuente única de las actualizaciones de Menisco. La primera entrada es la versión actual. La usan Ajustes › Menisco y la ventana de Novedades. demo: dock | temas | temas-historicos | gota | isla | juego. demoReserva: texto que se muestra mientras esa demo no exista.",
+  "versiones": [
+    {
+      "id": "0.7",
+      "nombre": "Glacier",
+      "fecha": "2026-11-20",
+      "frase": "Llega Glass 2: el dock de vidrio, rehecho.",
+      "commits": [
+        "c02c59e",
+        "c02c59e"
+      ],
+      "tag": "v0.7-glacier",
+      "puntos": [
+        {
+          "icono": "dock",
+          "titulo": "Glass 2",
+          "texto": "Un vidrio neutro que ya no toma el color de tu fondo. Un brillo fino arriba que se apaga hacia abajo, y esquinas que siguen la forma de los íconos."
+        },
+        {
+          "icono": "cursor",
+          "titulo": "El nombre, al pasar el cursor",
+          "texto": "El ícono crece un poco y muestra el nombre de la app. Solo ese ícono; los demás se quedan quietos."
+        },
+        {
+          "icono": "menu",
+          "titulo": "Un solo menú para todas",
+          "texto": "El clic derecho ofrece siempre lo mismo y en el mismo orden: abrir o nueva ventana, fijar o quitar, y cerrar."
+        },
+        {
+          "icono": "punto",
+          "titulo": "Sabes cuál estás usando",
+          "texto": "Las apps abiertas llevan un punto; la que tienes enfocada, una píldora con el color de tu tema."
+        },
+        {
+          "icono": "ajustes",
+          "titulo": "Más ajustes del dock",
+          "texto": "Tamaño de íconos, aumento, indicadores y apps abiertas sin fijar, en su página de Ajustes."
+        }
+      ],
+      "proximamente": "Que el dock se esconda cuando una ventana lo toque. La opción ya está; el comportamiento llega en la siguiente.",
+      "foto": "assets/versiones/glacier.jpg",
+      "fotoDescripcion": "iceberg azul sobre agua en calma",
+      "anuncio": {
+        "antes": "Introducing",
+        "titulo": "Glass 2",
+        "texto": "El vidrio del dock, rehecho desde cero. Más claro, más tranquilo y fiel a lo que hay detrás.",
+        "demo": "dock-vidrio",
+        "demoArchivo": "07-glacier-dock",
+        "demoDescripcion": "El dock de vidrio sobre el fondo de Menisco: cada icono crece y muestra su nombre al pasar el puntero."
+      }
+    },
+    {
+      "id": "0.6",
+      "nombre": "Sea Level",
+      "fecha": "2026-11-20",
+      "frase": "Lo justo, en su sitio: Ajustes rehechos de arriba abajo.",
+      "commits": [
+        "283f9e4",
+        "50ee15a"
+      ],
+      "tag": "v0.6-sea-level",
+      "puntos": [
+        {
+          "icono": "ajustes",
+          "titulo": "Ajustes nuevos",
+          "texto": "Cada parte de Menisco en una página clara, con vista previa en vivo."
+        },
+        {
+          "icono": "color",
+          "titulo": "Doce temas",
+          "texto": "Llegan Mercurio, Tinta, Obsidiana, Agave, Pitahaya y Cempasúchil, cada uno con segundo color."
+        },
+        {
+          "icono": "contraste",
+          "titulo": "Ónix de verdad",
+          "texto": "Negro puro y textos más legibles en todos los temas."
+        },
+        {
+          "icono": "inicio",
+          "titulo": "Inicio",
+          "texto": "El saludo de la Gota, tu equipo en vivo y accesos a lo que más usas."
+        }
+      ],
+      "foto": "assets/versiones/sea-level.jpg",
+      "fotoDescripcion": "horizonte del mar en calma al atardecer, rosa y violeta",
+      "anuncio": {
+        "antes": "Todo en su sitio",
+        "titulo": "Ajustes",
+        "texto": "Cada parte de Menisco en una página clara, con vista previa en vivo. Y doce temas, cada uno con su segundo color.",
+        "demo": "temas",
+        "demoArchivo": "06-sealevel-temas",
+        "demoDescripcion": "La página Color y estilo recorre los doce temas con sus colores reales."
+      }
+    },
+    {
+      "id": "0.5",
+      "nombre": "Archipelago",
+      "fecha": "2026-11-19",
+      "frase": "La isla pequeña se rodea de botones y widgets.",
+      "commits": [
+        "5f91876",
+        "b3edd86"
+      ],
+      "tag": "v0.5-archipelago",
+      "puntos": [
+        {
+          "icono": "botones",
+          "titulo": "Botones de arriba",
+          "texto": "Mini reproductor, mini dock, micrófono, volumen, color y grabar."
+        },
+        {
+          "icono": "isla",
+          "titulo": "Widgets en la isla",
+          "texto": "Clima, red, RAM, micrófono y batería en la vista pequeña."
+        },
+        {
+          "icono": "musica",
+          "titulo": "Mini reproductor",
+          "texto": "Con anillo de progreso y el color de la carátula."
+        },
+        {
+          "icono": "novedades",
+          "titulo": "Novedades",
+          "texto": "Una ventana para saber qué cambió en cada actualización."
+        }
+      ],
+      "foto": "assets/versiones/archipelago.jpg",
+      "fotoDescripcion": "islas vistas desde el aire (imagen satelital) entre aguas turquesa",
+      "anuncio": {
+        "antes": "Alrededor de la isla",
+        "titulo": "Widgets",
+        "texto": "Clima, red, RAM, micrófono y batería en la isla pequeña, y botones en las esquinas: mini reproductor, mini dock, volumen y más.",
+        "demo": "widgets-isla",
+        "demoArchivo": "05-archipelago-widgets",
+        "demoDescripcion": "La isla pequeña cambia de widget: clima, memoria, carátula con su anillo, temperatura, procesador, escritorios y más."
+      }
+    },
+    {
+      "id": "0.4",
+      "nombre": "High Tide",
+      "fecha": "2026-11-14",
+      "frase": "El escritorio se completa.",
+      "commits": [
+        "cf50aec",
+        "cf50aec"
+      ],
+      "tag": "v0.4-high-tide",
+      "puntos": [
+        {
+          "icono": "escritorios",
+          "titulo": "Vista general",
+          "texto": "Tus escritorios en un minimapa, con el fondo borroso."
+        },
+        {
+          "icono": "candado",
+          "titulo": "Pantalla de bloqueo",
+          "texto": "Propia de Menisco, con vidrio."
+        },
+        {
+          "icono": "juego",
+          "titulo": "Modo juego real",
+          "texto": "Sin animaciones, sombras ni vidrio mientras juegas; todo vuelve al salir."
+        },
+        {
+          "icono": "menu",
+          "titulo": "Clic derecho en el escritorio",
+          "texto": "Fondos, accesos rápidos y atajos a Ajustes."
+        }
+      ],
+      "foto": "assets/versiones/high-tide.jpg",
+      "fotoDescripcion": "costa rocosa vista desde arriba con olas rompiendo",
+      "anuncio": {
+        "antes": "De un vistazo",
+        "titulo": "Vista general",
+        "texto": "Todos tus escritorios en un minimapa, sobre tu fondo desenfocado. Un clic y estás en la ventana que buscas. Además: pantalla de bloqueo propia y modo juego real.",
+        "demo": "vista-general",
+        "demoArchivo": "04-hightide-vista-general",
+        "demoDescripcion": "Se abre la vista general con el minimapa de tus escritorios, una ventana baja de escritorio y vuelve."
+      }
+    },
+    {
+      "id": "0.3",
+      "nombre": "Watercolor",
+      "fecha": "2026-11-07",
+      "frase": "Menisco se llena de color y la isla cambia de forma.",
+      "commits": [
+        "a70e978",
+        "a70e978"
+      ],
+      "tag": "v0.3-watercolor",
+      "puntos": [
+        {
+          "icono": "color",
+          "titulo": "Temas de color",
+          "texto": "Cinco temas sobre negro, también en las notificaciones."
+        },
+        {
+          "icono": "isla",
+          "titulo": "Formas de la isla",
+          "texto": "Siete formas para la isla pequeña, con cambio animado."
+        },
+        {
+          "icono": "captura",
+          "titulo": "Modo captura",
+          "texto": "Zona, ventana o pantalla, incluso con formas."
+        },
+        {
+          "icono": "buscar",
+          "titulo": "Lanzador nuevo",
+          "texto": "Una píldora al centro que crece con los resultados."
+        }
+      ],
+      "foto": "assets/versiones/watercolor.jpg",
+      "fotoDescripcion": "arcoíris sobre la bruma de una cascada y agua turquesa",
+      "anuncio": {
+        "antes": "Color sobre negro",
+        "titulo": "Temas",
+        "texto": "Cinco temas sobre negro y siete formas para la isla. Tu escritorio, con tu color.",
+        "demo": "formas-isla",
+        "demoArchivo": "03-watercolor-formas",
+        "demoDescripcion": "La isla pasa por sus siete formas: clásica, biselada, octágono, ola, líquida, recta y píldora."
+      },
+      "temasHistoricos": [
+        {
+          "nombre": "Ónix",
+          "acento": "#FFFFFF"
+        },
+        {
+          "nombre": "Champán",
+          "acento": "#D9B77E"
+        },
+        {
+          "nombre": "Medianoche",
+          "acento": "#8FB0FF"
+        },
+        {
+          "nombre": "Rubí",
+          "acento": "#E5484D"
+        },
+        {
+          "nombre": "Jade",
+          "acento": "#5FD4A8"
+        }
+      ]
+    },
+    {
+      "id": "0.2",
+      "nombre": "Brainstorm",
+      "fecha": "2026-11-01",
+      "frase": "La Gota empieza a pensar.",
+      "commits": [
+        "a1dedb3",
+        "d090aef"
+      ],
+      "tag": "v0.2-brainstorm",
+      "puntos": [
+        {
+          "icono": "gota",
+          "titulo": "Habla con la Gota",
+          "texto": "Te propone planes que puedes aplicar o deshacer."
+        },
+        {
+          "icono": "aviso",
+          "titulo": "Aviso de fallos",
+          "texto": "Si algo se rompe, la Gota te avisa y se ofrece a arreglarlo."
+        },
+        {
+          "icono": "logo",
+          "titulo": "Logo de Menisco",
+          "texto": "Estrena logo y un botón junto a la isla que abre los ajustes."
+        },
+        {
+          "icono": "rendimiento",
+          "titulo": "Isla más ligera",
+          "texto": "El visualizador gasta mucho menos."
+        }
+      ],
+      "foto": "assets/versiones/brainstorm.jpg",
+      "fotoDescripcion": "nubes de tormenta sobre un lago entre montañas, agua oscura",
+      "anuncio": {
+        "antes": "Ahora piensa",
+        "titulo": "Gota",
+        "texto": "Pregúntale desde la isla. Te propone planes que puedes aplicar o deshacer, y te avisa si algo se rompe.",
+        "demo": "gota-conversacion",
+        "demoArchivo": "02-brainstorm-gota",
+        "demoDescripcion": "Le pides algo a la Gota, piensa, te responde y te propone un plan con «Hazlo» y «Cancelar»."
+      }
+    },
+    {
+      "id": "0.1",
+      "nombre": "Headwater",
+      "subtitulo": "Menisco is the new Vino",
+      "fecha": "2026-10-30",
+      "frase": "Nace Menisco.",
+      "commits": [
+        "4488994",
+        "ae6a270"
+      ],
+      "tag": "v0.1-headwater",
+      "puntos": [
+        {
+          "icono": "isla",
+          "titulo": "Isla dinámica",
+          "texto": "Avisos, música con letra, acciones y rendimiento arriba."
+        },
+        {
+          "icono": "dock",
+          "titulo": "Dock de vidrio",
+          "texto": "Tus apps en una barra de vidrio, con menú de clic derecho."
+        },
+        {
+          "icono": "buscar",
+          "titulo": "Lanzador",
+          "texto": "Super+D busca apps, archivos, emojis, cuentas y en la web."
+        },
+        {
+          "icono": "ajustes",
+          "titulo": "Ajustes",
+          "texto": "Todo se cambia desde un solo sitio."
+        }
+      ],
+      "foto": "assets/versiones/headwater.jpg",
+      "fotoDescripcion": "agua blanca corriendo sobre escalones de roca con musgo",
+      "anuncio": {
+        "antes": "Introducing",
+        "titulo": "Menisco",
+        "texto": "Un escritorio propio para niri, tranquilo y hecho a mano. Isla, dock de vidrio, lanzador y ajustes, desde el primer día.",
+        "demo": "isla-abierta",
+        "demoArchivo": "01-headwater-isla",
+        "demoDescripcion": "La isla se abre para mostrar música con letra, acciones y rendimiento, y vuelve a cerrarse."
+      }
+    }
+  ]
+}

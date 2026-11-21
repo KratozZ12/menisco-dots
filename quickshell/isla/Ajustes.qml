@@ -10,6 +10,7 @@ import Quickshell.Wayland
 import Quickshell.Bluetooth
 import Quickshell.Services.Mpris
 import Quickshell.Widgets
+import Qt5Compat.GraphicalEffects as GE   // solo OpacityMask (su RadialGradient taparía el de QtQuick.Shapes)
 
 // Ventana de ajustes de los dots. Capa flotante centrada (niri no la acomoda).
 // Se abre y cierra con Super+. (IPC "ajustes toggle"); Escape la cierra.
@@ -34,6 +35,10 @@ PanelWindow {
     property bool cafe: false
     property int esquinas: 12
     property string seccion: "inicio"
+    // La ultima pagina que no era Menisco: "‹ Ajustes" y Esc vuelven a ella.
+    property string antesDeMenisco: "inicio"
+    onSeccionChanged: if (seccion !== "menisco") antesDeMenisco = seccion
+    function volverDeMenisco() { seccion = antesDeMenisco || "inicio"; }
 
     // Sigue mapeada mientras corre la animacion de cierre.
     visible: abierta || panel.opacity > 0.01
@@ -102,7 +107,7 @@ PanelWindow {
     function buscarAjustes(q) {
         q = sinAcentos(q.trim());
         if (!q) return [];
-        const secciones = lateral.secciones.filter(s => s.id !== "inicio" && sinAcentos(s.texto).includes(q))
+        const secciones = lateral.secciones.filter(s => s.id !== "inicio" && sinAcentos(s.texto + " " + (s.claves || "")).includes(q))
             .map(s => ({ titulo: s.texto, sub: "Sección", clave: s.id, fila: null }));
         const filas = indiceAjustes().filter(f => sinAcentos(f.titulo + " " + f.sub).includes(q));
         return secciones.concat(filas).slice(0, 6);
@@ -360,7 +365,11 @@ PanelWindow {
         Keys.onPressed: e => {
             if (ventana.capturando) { ventana.capturar(e); e.accepted = true; }
             else if (e.key === Qt.Key_Escape && ventana.conflicto) { ventana.conflicto = null; e.accepted = true; }
+            else if (e.key === Qt.Key_Escape && ventana.seccion === "menisco") { ventana.volverDeMenisco(); e.accepted = true; }
             else if (e.key === Qt.Key_Escape) { if (dialogoGota.abierto) dialogoGota.cerrar(); else ventana.cerrar(); e.accepted = true; }
+            // Menisco: las flechas cambian de version (izquierda = mas vieja).
+            else if (ventana.seccion === "menisco" && e.key === Qt.Key_Left) { paginaMenisco.ir(paginaMenisco.indice + 1); e.accepted = true; }
+            else if (ventana.seccion === "menisco" && e.key === Qt.Key_Right) { paginaMenisco.ir(paginaMenisco.indice - 1); e.accepted = true; }
         }
 
         // Luz de arriba: muy tenue (blanco al 7 % en Ónix, el color del tema en los demas). Quieta.
@@ -385,6 +394,16 @@ PanelWindow {
             width: 240
             z: 2    // los resultados del buscador se salen por encima del contenido
             anchors { top: parent.top; bottom: parent.bottom; left: parent.left; margins: 1 }
+            // En Menisco se desliza hacia fuera. Se mueve con una transformacion (no con su ancla), asi
+            // nada se vuelve a maquetar en cada cuadro: la pagina Menisco ya ocupa todo el ancho por
+            // su cuenta y se funde debajo.
+            readonly property bool fuera: ventana.seccion === "menisco"
+            transform: Translate {
+                x: lateral.fuera ? -lateral.width - 2 : 0
+                Behavior on x { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.InOutCubic } }
+            }
+            opacity: fuera ? 0 : 1
+            Behavior on opacity { NumberAnimation { duration: Estilo.t(300); easing.type: Easing.InOutCubic } }
             radius: 15
             color: Estilo.lateral
             Rectangle { width: 16; anchors { top: parent.top; bottom: parent.bottom; right: parent.right } color: parent.color }
@@ -407,7 +426,12 @@ PanelWindow {
                 { id: "notificaciones", texto: "Notificaciones", icono: "notifications", tono: "#94504c", archivo: "notif" },
                 { id: "asistente", texto: "Gota", icono: "water_drop", tono: "#467f52", archivo: "gota" },
                 { id: "pantallas", texto: "Pantallas", icono: "desktop_windows", tono: "#3d6399", archivo: "pantallas" },
-                { id: "atajos", texto: "Atajos", icono: "keyboard", tono: "#5a5e66", archivo: "atajos" }
+                { id: "atajos", texto: "Atajos", icono: "keyboard", tono: "#5a5e66", archivo: "atajos" },
+                // Al final, tras una linea: la version actual y la historia del proyecto.
+                // "claves": otras palabras con las que la encuentra el buscador.
+                { sep: true },
+                { id: "menisco", texto: "Menisco", icono: "info", tono: "#1c1c1f", archivo: "menisco",
+                  claves: "version actualizacion novedades acerca de historial licencia" }
             ]
             readonly property var secciones: menu.filter(m => m.id)
             readonly property int indice: menu.findIndex(s => s.id === ventana.seccion)
@@ -522,12 +546,14 @@ PanelWindow {
                         id: fila
                         required property var modelData
                         readonly property bool cab: !!modelData.cab
-                        readonly property bool elegida: !cab && ventana.seccion === modelData.id
+                        readonly property bool sep: !!modelData.sep      // linea que separa Menisco del resto
+                        readonly property bool elegida: !cab && !sep && ventana.seccion === modelData.id
 
                         width: parent.width
-                        height: cab ? 34 : 38
+                        height: sep ? 21 : cab ? 34 : 38
                         radius: 10
-                        color: !cab && !elegida && zona.containsMouse ? Qt.alpha(Estilo.realce, 0.6) : Estilo.nada
+                        color: !cab && !sep && !elegida && zona.containsMouse ? Qt.alpha(Estilo.realce, 0.6) : Estilo.nada
+                        Rectangle { visible: fila.sep; anchors.verticalCenter: parent.verticalCenter; x: 10; width: parent.width - 20; height: 1; color: Estilo.linea }
                         Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
 
                         Text {   // titulo de grupo
@@ -540,7 +566,7 @@ PanelWindow {
                         // elegida, la "activo" encima, con un fundido corto entre las dos.
                         Item {
                             id: cuadroIcono
-                            visible: !fila.cab
+                            visible: !fila.cab && !fila.sep
                             anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 9 }
                             width: 24; height: 24
                             readonly property string base: Qt.resolvedUrl("assets/iconos-ajustes/")
@@ -558,13 +584,13 @@ PanelWindow {
                             }
                         }
                         Text {
-                            visible: !fila.cab
+                            visible: !fila.cab && !fila.sep
                             anchors { verticalCenter: parent.verticalCenter; left: cuadroIcono.right; leftMargin: 11 }
                             text: modelData.texto || ""
                             color: Estilo.texto
                             font { family: Estilo.letra; pixelSize: 14; weight: fila.elegida ? Font.DemiBold : Font.Normal; letterSpacing: -0.1 }
                         }
-                        MouseArea { cursorShape: Qt.PointingHandCursor; id: zona; enabled: !fila.cab; anchors.fill: parent; hoverEnabled: true; onClicked: ventana.seccion = modelData.id }
+                        MouseArea { cursorShape: Qt.PointingHandCursor; id: zona; enabled: !fila.cab && !fila.sep; anchors.fill: parent; hoverEnabled: true; onClicked: ventana.seccion = modelData.id }
                     }
                 }
             }
@@ -1220,6 +1246,349 @@ PanelWindow {
                         }
                     }
                     Item { width: 1; height: 16 }
+                }
+            }
+
+            // ---------------- Menisco: una version por escenario ----------------
+            // Pagina inmersiva: la barra lateral se va (ver "lateral") y arriba quedan una cabecera fija
+            // y el Cauce, que navega entre las versiones (de la mas vieja a la izquierda a la actual a la
+            // derecha). Todo sale de versiones.json; la primera entrada es la actual. Sin la luz de la
+            // Gota. Letra Geist: Sans en la interfaz, Mono en los numeros, Serif en los nombres.
+            Pagina {
+                id: paginaMenisco
+                // Todo el ancho del panel, siempre (no depende de la barra lateral): al entrar y salir
+                // solo se funde, sin volver a maquetar ni a cargar la foto en cada cuadro.
+                x: 16 - contenido.x; y: 0
+                width: panel.width - 32; height: parent.height
+                clave: "menisco"; activa: ventana.seccion === clave
+                property var versiones: []
+                property int indice: 0                              // 0 = la actual
+                readonly property var v: versiones[indice] || ({})
+                readonly property var anuncio: v.anuncio || ({})
+                onActivaChanged: if (activa) { indice = 0; despMenisco.contentY = 0; fundido = 1; }
+                readonly property var meses: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+                function fechaLarga(iso) { const p = (iso || "").split("-"); return p.length === 3 ? parseInt(p[2]) + " de " + meses[parseInt(p[1]) - 1] + " de " + p[0] : ""; }
+                // Cambiar de version: el escenario se funde (la unica animacion) y vuelve arriba.
+                property real fundido: 1
+                property int destino: 0
+                function ir(i) {
+                    if (i < 0 || i >= versiones.length || i === indice) return;
+                    destino = i;
+                    cambioVersion.restart();
+                }
+                SequentialAnimation {
+                    id: cambioVersion
+                    NumberAnimation { target: paginaMenisco; property: "fundido"; to: 0; duration: Estilo.t(90); easing.type: Easing.InCubic }
+                    ScriptAction { script: { paginaMenisco.indice = paginaMenisco.destino; despMenisco.contentY = 0; } }
+                    NumberAnimation { target: paginaMenisco; property: "fundido"; to: 1; duration: Estilo.t(90); easing.type: Easing.OutCubic }
+                }
+                // Reserva de cada banner si falta su foto: un degradado oscuro con el tono de la version.
+                readonly property var reservas: ({
+                    "0.1": ["#0c1712", "#24402f"], "0.2": ["#111116", "#3a3a48"], "0.3": ["#170f1c", "#4a2c4f"],
+                    "0.4": ["#07121a", "#1d4a5c"], "0.5": ["#0a1719", "#2a5a55"], "0.6": ["#0d1520", "#3c5568"],
+                    "0.7": ["#0b1622", "#3c6585"]
+                })
+                // Opacidad del degradado oscuro sobre la parte izquierda de la foto: las fotos claras
+                // necesitan mas para que el texto blanco pase AA.
+                readonly property var sombras: ({ "0.7": 0.86, "0.6": 0.82, "0.3": 0.82, "0.5": 0.82 })
+                FileView {
+                    path: Qt.resolvedUrl("versiones.json")
+                    watchChanges: true; onFileChanged: reload()
+                    onLoaded: { try { paginaMenisco.versiones = JSON.parse(text()).versiones || []; } catch (e) {} }
+                }
+                // Fondo oficial para las demos: el primero de assets/fondos; sin ninguno, las manchas.
+
+                // ---- Cabecera fija ----
+                Item {
+                    id: cabeceraMenisco
+                    width: parent.width; height: 60
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: filaVolver.implicitWidth + 20; height: 34; radius: 10
+                        color: zVolver.containsMouse || activeFocus ? Estilo.realce : Estilo.nada
+                        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: ventana.volverDeMenisco()
+                        Keys.onSpacePressed: ventana.volverDeMenisco()
+                        Row {
+                            id: filaVolver
+                            anchors.centerIn: parent; spacing: 4
+                            Simbolo { anchors.verticalCenter: parent.verticalCenter; text: "chevron_left"; font.pixelSize: 20 }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Ajustes"; color: Estilo.texto
+                                font { family: Estilo.fuenteSans; pixelSize: 14; weight: Font.DemiBold }
+                                font.variableAxes: { "wght": 600 }
+                            }
+                        }
+                        MouseArea { id: zVolver; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ventana.volverDeMenisco() }
+                    }
+                    Row {
+                        anchors.centerIn: parent; spacing: 9
+                        LogoMenisco { tam: 17; marco: false; anchors.verticalCenter: parent.verticalCenter }
+                        PalabraMenisco { alto: 13; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                    BotonGeist {
+                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                        texto: "Ver en GitHub"
+                        onPulsado: Qt.openUrlExternally("https://github.com/KratozZ12/menisco-dots")
+                    }
+                }
+
+                // ---- El Cauce: las 7 versiones como paradas sobre una linea que se aviva a la derecha ----
+                Item {
+                    id: cauceMenisco
+                    y: 60; width: parent.width; height: 86
+                    readonly property int n: paginaMenisco.versiones.length
+                    readonly property real margen: 56
+                    readonly property real paso: n > 1 ? (width - 2 * margen) / (n - 1) : 0
+                    Rectangle {
+                        x: cauceMenisco.margen; y: 22; width: parent.width - 2 * cauceMenisco.margen; height: 2; radius: 1
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0; color: Qt.alpha(Estilo.texto, 0.08) }
+                            GradientStop { position: 1; color: Qt.alpha(Estilo.texto, 0.4) }
+                        }
+                    }
+                    Repeater {
+                        model: cauceMenisco.n
+                        delegate: Item {
+                            id: parada
+                            required property int index
+                            // A la izquierda la mas vieja: el indice de la version va al reves.
+                            readonly property int version: cauceMenisco.n - 1 - index
+                            readonly property var datos: paginaMenisco.versiones[version] || ({})
+                            readonly property bool activa: paginaMenisco.indice === version
+                            x: cauceMenisco.margen + index * cauceMenisco.paso - width / 2
+                            width: 130; height: parent.height
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: paginaMenisco.ir(version)
+                            Keys.onSpacePressed: paginaMenisco.ir(version)
+                            Rectangle {
+                                anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 4 }
+                                width: textosParada.width + 20; height: parent.height - 6; radius: 12
+                                color: (zParada.containsMouse || parada.activeFocus) && !parada.activa ? Estilo.realce : Estilo.nada
+                                Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                            }
+                            Rectangle {
+                                readonly property real d: parada.activa ? 16 : 10
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: 23 - d / 2
+                                width: d; height: d; radius: d / 2
+                                color: parada.activa ? Estilo.acento : Estilo.fondo
+                                border.width: parada.activa ? 0 : 1.5; border.color: Estilo.texto2
+                                Behavior on width { NumberAnimation { duration: Estilo.t(180); easing.type: Easing.OutCubic } }
+                            }
+                            Column {
+                                id: textosParada
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: 36; spacing: 1
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: parada.datos.id || ""; color: Estilo.texto3
+                                    font { family: Estilo.fuenteMono; pointSize: 8.625 }   // 11.5 px
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: parada.datos.nombre || ""
+                                    color: parada.activa || zParada.containsMouse ? Estilo.texto : Estilo.texto2
+                                    font { family: Estilo.fuenteSerif; pixelSize: parada.activa ? 20 : 16 }
+                                    Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+                                }
+                            }
+                            MouseArea { id: zParada; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: paginaMenisco.ir(parada.version) }
+                        }
+                    }
+                }
+
+                // ---- El escenario de la version elegida ----
+                Desplazable {
+                    id: despMenisco
+                    anchors.topMargin: 150
+                    opacity: paginaMenisco.fundido
+                    Item { width: 1; height: 14 }
+                    // 1. Banner: la foto (solo la de la version visible) bajo un degradado oscuro.
+                    ClippingRectangle {
+                        id: bannerMenisco
+                        width: parent.width; height: 400; radius: 24
+                        color: "transparent"
+                        readonly property var reserva: paginaMenisco.reservas[paginaMenisco.v.id] || ["#0b1622", "#3c6585"]
+                        Rectangle {
+                            anchors.fill: parent
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: bannerMenisco.reserva[0] }
+                                GradientStop { position: 1; color: bannerMenisco.reserva[1] }
+                            }
+                        }
+                        Image {
+                            anchors.fill: parent
+                            source: paginaMenisco.v.foto ? Qt.resolvedUrl(paginaMenisco.v.foto) : ""
+                            fillMode: Image.PreserveAspectCrop
+                            sourceSize.width: Math.round(bannerMenisco.width * 2)   // no decodificar de mas
+                            asynchronous: true
+                            cache: false            // al cambiar de version, la foto anterior se suelta
+                            // Aparece con un fundido cuando termina de cargar, no de golpe.
+                            opacity: status === Image.Ready ? 1 : 0
+                            visible: opacity > 0
+                            Behavior on opacity { NumberAnimation { duration: Estilo.t(220); easing.type: Easing.OutCubic } }
+                        }
+                        Rectangle {
+                            id: sombraBanner
+                            anchors.fill: parent
+                            readonly property real k: paginaMenisco.sombras[paginaMenisco.v.id] ?? 0.74
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, sombraBanner.k) }
+                                GradientStop { position: 0.6; color: Qt.rgba(0, 0, 0, sombraBanner.k * 0.45) }
+                                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.1) }
+                            }
+                        }
+                        Rectangle {   // y un poco abajo, donde va el texto
+                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+                            height: parent.height * 0.6
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
+                                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.45) }
+                            }
+                        }
+                        Text {
+                            x: 34; y: 30
+                            text: "MENISCO " + (paginaMenisco.v.id || "")
+                            color: Qt.rgba(1, 1, 1, 0.85)
+                            font { family: Estilo.fuenteSans; pixelSize: 12; weight: Font.DemiBold; letterSpacing: 2.4 }
+                            font.variableAxes: { "wght": 600 }
+                        }
+                        Column {
+                            x: 34; anchors { bottom: parent.bottom; bottomMargin: 30 }
+                            spacing: 4
+                            Text {
+                                text: paginaMenisco.v.nombre || ""
+                                color: "#f7f9fb"          // sobre la foto, blanco en cualquier tema
+                                font { family: Estilo.fuenteSerif; pixelSize: 132 }
+                            }
+                            Text {
+                                visible: !!paginaMenisco.v.subtitulo
+                                text: paginaMenisco.v.subtitulo || ""
+                                color: Qt.rgba(1, 1, 1, 0.85)
+                                font { family: Estilo.fuenteSerif; pixelSize: 22 }
+                            }
+                            Text {
+                                text: (paginaMenisco.v.frase || "").replace(/\.$/, "") + " · " + paginaMenisco.fechaLarga(paginaMenisco.v.fecha)
+                                color: Qt.rgba(1, 1, 1, 0.92)
+                                font { family: Estilo.fuenteSans; pixelSize: 16 }
+                            }
+                        }
+                        Rectangle { anchors.fill: parent; radius: 24; color: "transparent"; border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.06) }
+                    }
+
+                    // 2. Anuncio: el titulo plateado se ajusta a su largo.
+                    Column {
+                        width: parent.width
+                        topPadding: 60; spacing: 6
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: paginaMenisco.anuncio.antes || ""
+                            color: Estilo.texto2
+                            font { family: Estilo.fuenteSans; pixelSize: 21 }
+                        }
+                        Item {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: tituloAnuncio.implicitWidth; height: tituloAnuncio.implicitHeight
+                            Text {
+                                id: tituloAnuncio
+                                visible: false
+                                readonly property int largo: text.length
+                                text: paginaMenisco.anuncio.titulo || ""
+                                font { family: Estilo.fuenteSans; pixelSize: largo <= 7 ? 136 : largo <= 10 ? 112 : 92; weight: Font.ExtraBold; letterSpacing: -5 }
+                                font.variableAxes: { "wght": 800 }
+                            }
+                            Rectangle {
+                                id: plata
+                                anchors.fill: parent
+                                visible: false
+                                gradient: Gradient {
+                                    GradientStop { position: 0.15; color: "#ffffff" }
+                                    GradientStop { position: 0.45; color: "#e6eef4" }
+                                    GradientStop { position: 0.75; color: "#9fb5c8" }
+                                    GradientStop { position: 0.95; color: "#6f879c" }
+                                }
+                            }
+                            GE.OpacityMask { anchors.fill: parent; source: plata; maskSource: tituloAnuncio }
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.min(580, parent.width)
+                            text: paginaMenisco.anuncio.texto || ""
+                            color: Estilo.texto2; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                            lineHeight: 1.25
+                            font { family: Estilo.fuenteSans; pixelSize: 19 }
+                        }
+                    }
+
+                    // 3. Demo en vivo y "Lo nuevo", en dos columnas.
+                    Item { width: 1; height: 44 }
+                    Row {
+                        width: parent.width
+                        spacing: 44
+                        // Demo de la version: un video en bucle (solo imagen), ver DemoAnimada.qml.
+                        DemoAnimada {
+                            id: demoMenisco
+                            width: (parent.width - parent.spacing) * 0.52; height: 300
+                            archivo: paginaMenisco.anuncio.demoArchivo || ""
+                            descripcion: paginaMenisco.anuncio.demoDescripcion || ""
+                            activa: paginaMenisco.activa && ventana.abierta
+                        }
+                        Column {
+                            width: (parent.width - parent.spacing) * 0.48
+                            Text {
+                                bottomPadding: 22
+                                text: "Lo nuevo en " + (paginaMenisco.v.nombre || "")
+                                color: Estilo.texto
+                                font { family: Estilo.fuenteSans; pixelSize: 22; weight: Font.DemiBold }
+                                font.variableAxes: { "wght": 600 }
+                            }
+                            PuntosVersion { width: parent.width; puntos: paginaMenisco.v.puntos || []; proximamente: paginaMenisco.v.proximamente || "" }
+                        }
+                    }
+
+                    // 4. Pie: anterior, creditos y siguiente.
+                    Item { width: 1; height: 48 }
+                    Rectangle { width: parent.width; height: 1; color: Estilo.linea }
+                    Item {
+                        width: parent.width; height: 92
+                        readonly property var anterior: paginaMenisco.versiones[paginaMenisco.indice + 1]
+                        readonly property var siguiente: paginaMenisco.indice > 0 ? paginaMenisco.versiones[paginaMenisco.indice - 1] : null
+                        PasoVersion {
+                            visible: !!parent.anterior
+                            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                            rotulo: "‹ Anterior"; nombre: parent.anterior ? parent.anterior.nombre : ""
+                            onPulsado: paginaMenisco.ir(paginaMenisco.indice + 1)
+                        }
+                        Text {
+                            visible: !parent.anterior
+                            anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
+                            text: "Menisco is the new Vino"; color: Estilo.texto2
+                            font { family: Estilo.fuenteSerif; pixelSize: 22 }
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Hecho con niri, Quickshell, Lniri y Hokum · Licencia MIT"; color: Estilo.texto3
+                            font { family: Estilo.fuenteSans; pixelSize: 13 }
+                        }
+                        PasoVersion {
+                            visible: !!parent.siguiente
+                            derecha: true
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            rotulo: "Siguiente ›"; nombre: parent.siguiente ? parent.siguiente.nombre : ""
+                            onPulsado: paginaMenisco.ir(paginaMenisco.indice - 1)
+                        }
+                        Text {
+                            visible: !parent.siguiente
+                            anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                            text: "Estás en la versión actual"; color: Estilo.texto2
+                            font { family: Estilo.fuenteSans; pixelSize: 14 }
+                        }
+                    }
                 }
             }
 
@@ -5040,14 +5409,17 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         property int icono: 18
         property bool manchas: false
         property bool indicadores: false
+        property string fondo: ""              // imagen propia en vez del fondo de pantalla
+        property bool interactivo: false       // hover como el dock real (crece y dice su nombre); clics sin efecto
+        property int cuantas: 5
         color: manchas ? Estilo.hundido : "#3a3f4a"
         Manchas { id: manchasMd; visible: md.manchas; anchors.fill: parent }
         Image {
             id: fondoMd
             visible: !md.manchas
             anchors.fill: parent
-            source: ventana.fondoActual ? "file://" + ventana.fondoActual : ""
-            fillMode: Image.PreserveAspectCrop; sourceSize.width: 640; asynchronous: true
+            source: md.fondo || (ventana.fondoActual ? "file://" + ventana.fondoActual : "")
+            fillMode: Image.PreserveAspectCrop; sourceSize.width: Math.max(640, Math.round(md.width * 1.5)); asynchronous: true
         }
         Item {
             id: dk
@@ -5064,7 +5436,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                 Image {
                     visible: !md.manchas
                     x: -dk.x; y: -dk.y; width: md.width; height: md.height
-                    source: fondoMd.source; fillMode: Image.PreserveAspectCrop; sourceSize.width: 640; asynchronous: true
+                    source: fondoMd.source; fillMode: Image.PreserveAspectCrop; sourceSize.width: fondoMd.sourceSize.width; asynchronous: true
                     layer.enabled: true
                     layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 32; saturation: 0.05 }
                 }
@@ -5118,11 +5490,34 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                 x: dk.relleno + 2; y: dk.relleno
                 spacing: Math.round(md.icono * 0.22)
                 Repeater {
-                    model: ventana.iconosDock.slice(0, 5)
+                    model: ventana.iconosDock.slice(0, md.cuantas)
                     delegate: Image {
+                        id: iconoMd
                         required property string modelData
                         required property int index
-                        width: md.icono; height: md.icono; sourceSize: Qt.size(64, 64); source: ventana.iconoApp(modelData)
+                        width: md.icono; height: md.icono; sourceSize: Qt.size(80, 80); source: ventana.iconoApp(modelData)
+                        // Interactivo: como el dock real, solo este icono crece (x1.16) y sube 6 px.
+                        readonly property bool encima: md.interactivo && zonaMd.containsMouse
+                        transformOrigin: Item.Bottom
+                        scale: encima ? 1.16 : 1
+                        Behavior on scale { NumberAnimation { duration: Estilo.t(180); easing.type: Easing.OutCubic } }
+                        transform: Translate { y: iconoMd.encima ? -6 : 0; Behavior on y { NumberAnimation { duration: Estilo.t(180); easing.type: Easing.OutCubic } } }
+                        MouseArea { id: zonaMd; enabled: md.interactivo; anchors.fill: parent; hoverEnabled: true }
+                        Rectangle {   // nombre encima, como la etiqueta del dock
+                            visible: opacity > 0
+                            opacity: iconoMd.encima ? 1 : 0
+                            Behavior on opacity { NumberAnimation { duration: Estilo.t(180); easing.type: Easing.OutCubic } }
+                            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.top; bottomMargin: 10 }
+                            scale: 1 / iconoMd.scale
+                            width: nombreMd.implicitWidth + 22; height: 28; radius: 8
+                            color: Qt.alpha(Estilo.fondo, 0.86)
+                            Text {
+                                id: nombreMd
+                                anchors.centerIn: parent
+                                text: (DesktopEntries.applications.values.find(d => d.id === iconoMd.modelData) || { name: iconoMd.modelData }).name
+                                color: Estilo.texto; font { family: Estilo.letra; pointSize: 9.375; weight: Font.Medium }
+                            }
+                        }
                         // Abiertas: la 1.ª (enfocada), la 2.ª y la ultima.
                         Rectangle {
                             readonly property bool pildora: index === 0 && Estilo.valor("dockIndicador") === "pildora"
@@ -5137,6 +5532,106 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
             }
         }
     }
+    // Linea de tiempo de una version (Ajustes > Menisco): puntos unidos por una linea vertical.
+    // Normal: el primero relleno del acento y los demas huecos con su filo; chica (Cauce): mas
+    // pequena y discreta, puntos huecos grises. "proximamente": al final, punto gris hueco.
+    component PuntosVersion: Column {
+        id: pv
+        property var puntos: []
+        property string proximamente: ""
+        property bool chica: false
+        readonly property var filas: puntos.concat(proximamente ? [{ titulo: "Próximamente", texto: proximamente, gris: true }] : [])
+        Repeater {
+            model: pv.filas
+            delegate: Item {
+                id: filaPv
+                required property var modelData
+                required property int index
+                readonly property bool ultima: index === pv.filas.length - 1
+                readonly property real d: pv.chica ? 8 : 12
+                width: pv.width; height: textosPv.implicitHeight + (ultima ? 0 : (pv.chica ? 14 : 24))
+                Rectangle {   // tramo de linea hasta el siguiente punto
+                    visible: !filaPv.ultima
+                    x: filaPv.d / 2 - 0.5; y: filaPv.d + 6; width: 1; height: parent.height - filaPv.d - 4
+                    color: Estilo.borde
+                }
+                Rectangle {
+                    y: pv.chica ? 4 : 6
+                    width: filaPv.d; height: filaPv.d; radius: filaPv.d / 2
+                    readonly property bool relleno: !pv.chica && filaPv.index === 0 && !filaPv.modelData.gris
+                    readonly property color tono: pv.chica || filaPv.modelData.gris ? Estilo.texto3 : Estilo.acento
+                    color: relleno ? tono : "transparent"
+                    border.width: relleno ? 0 : (pv.chica ? 1.5 : 2); border.color: tono
+                }
+                Column {
+                    id: textosPv
+                    x: pv.chica ? 20 : 32; width: parent.width - x
+                    spacing: pv.chica ? 2 : 4
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        text: filaPv.modelData.titulo || ""
+                        color: filaPv.modelData.gris ? Estilo.texto3 : Estilo.texto
+                        font { family: Estilo.fuenteSans; pixelSize: pv.chica ? 14 : 18; weight: Font.DemiBold }
+                        font.variableAxes: { "wght": 600 }
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        text: filaPv.modelData.texto || ""
+                        color: Estilo.texto2; lineHeight: 1.2
+                        font { family: Estilo.fuenteSans; pixelSize: pv.chica ? 13 : 15 }
+                    }
+                }
+            }
+        }
+    }
+    // Pie de la pagina Menisco: "‹ Anterior" o "Siguiente ›" con el nombre de esa version.
+    component PasoVersion: Rectangle {
+        id: pasoV
+        property string rotulo
+        property string nombre
+        property bool derecha: false
+        signal pulsado()
+        width: colPaso.implicitWidth + 24; height: colPaso.implicitHeight + 16; radius: 12
+        color: zPaso.containsMouse || activeFocus ? Estilo.realce : Estilo.nada
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+        activeFocusOnTab: true
+        Keys.onReturnPressed: pulsado()
+        Keys.onSpacePressed: pulsado()
+        Column {
+            id: colPaso
+            anchors.centerIn: parent; spacing: 0
+            Text {
+                anchors.right: pasoV.derecha ? parent.right : undefined
+                text: pasoV.rotulo; color: Estilo.texto2
+                font { family: Estilo.fuenteSans; pixelSize: 12 }
+            }
+            Text {
+                anchors.right: pasoV.derecha ? parent.right : undefined
+                text: pasoV.nombre; color: Estilo.texto
+                font { family: Estilo.fuenteSerif; pixelSize: 28 }
+            }
+        }
+        MouseArea { id: zPaso; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pasoV.pulsado() }
+    }
+    // Boton de la pagina Menisco, en Geist. principal: relleno (Estilo.activo); si no, con filo.
+    component BotonGeist: Rectangle {
+        id: bg
+        property string texto
+        property bool principal: false
+        signal pulsado()
+        width: textoBg.implicitWidth + 30; height: 36; radius: 10
+        color: principal ? (zBg.containsMouse ? Estilo.aclarar(Estilo.activo) : Estilo.activo) : (zBg.containsMouse ? Estilo.realce : Estilo.nada)
+        border.width: principal ? 0 : 1; border.color: Estilo.borde
+        Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
+        Text {
+            id: textoBg
+            anchors.centerIn: parent
+            text: bg.texto; color: bg.principal ? Estilo.enActivo : Estilo.texto
+            font { family: Estilo.fuenteSans; pixelSize: 13; weight: Font.DemiBold }
+            font.variableAxes: { "wght": 600 }
+        }
+        MouseArea { id: zBg; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bg.pulsado() }
+    }
     // Patron de prueba para las tarjetas de material: manchas de color sobre oscuro (no el fondo de
     // pantalla, que se repetiria en todas las tarjetas).
     component Manchas: Item {
@@ -5144,10 +5639,16 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         Rectangle { anchors.fill: parent; color: "#14151a" }
         Repeater {
             // Tres manchas que se juntan justo donde va el dock: asi cada material deja ver otra cosa.
-            model: [[0.18, 0.5, "#ff7a3d"], [0.82, 0.45, "#3d7bff"], [0.5, 1.0, "#5fcf5a"]]
+            model: [[0.18, 0.5, "#ff7a3d"], [0.82, 0.45, "#3d7bff"], [0.5, 1.0, "#5fcf5a"], [0.45, 0.1, "#9b5cf0"]]
             Rectangle {
                 required property var modelData
-                width: parent.width * 0.5; height: width; radius: width / 2
+                // En tarjetas pequenas, la mitad del ancho; en grande (la demo de Menisco), mas
+                // contenidas y apagadas para que no griten.
+                readonly property bool grande: parent.height > 150
+                visible: grande || index < 3
+                required property int index
+                width: grande ? parent.height * 1.1 : parent.width * 0.5; height: width; radius: width / 2
+                opacity: grande ? 0.75 : 1
                 x: parent.width * modelData[0] - width / 2; y: parent.height * modelData[1] - height / 2
                 color: modelData[2]
                 layer.enabled: true

@@ -554,6 +554,15 @@ tokens {
     property real xBandeja: 0              // junto a la isla: x del hueco desde el borde izquierdo (Esquina.qml)
     property real anchoBandeja: 0          // lo escribe Bandeja.qml; la oreja del marco se ensancha
     readonly property string letra: valor("letra") === "Inter" ? "Inter Display" : "SF Pro Text"
+    // Geist (Vercel, OFL 1.1): la tipografia oficial de Menisco. Por ahora solo la usa la pagina
+    // Menisco de Ajustes. Sans para la interfaz, Mono para los numeros y Serif (un solo peso:
+    // Regular, no pedirle negrita) solo para los nombres de version.
+    FontLoader { id: geistSans; source: Qt.resolvedUrl("fuentes/Geist-Variable.ttf") }
+    FontLoader { id: geistMono; source: Qt.resolvedUrl("fuentes/GeistMono-Variable.ttf") }
+    FontLoader { id: geistSerif; source: Qt.resolvedUrl("fuentes/GeistSerif-Regular.ttf") }
+    readonly property string fuenteSans: geistSans.name
+    readonly property string fuenteMono: geistMono.name
+    readonly property string fuenteSerif: geistSerif.name
 
     // Bluetooth: al encender, primero se quita el bloqueo de rfkill (Plasma lo deja bloqueado al
     // apagarlo desde alli, y con el bloqueo BlueZ se niega a encender). Apagar no bloquea.

@@ -176,6 +176,17 @@ PanelWindow {
 
     // El vidrio, solo dentro del cuerpo (el aire de arriba y la sombra quedan fuera).
     BackgroundEffect.blurRegion: conVidrio ? regionVidrio : null
+    // Con la vista general, al terminar el fundido de Gelatina la ventana se quita del todo: si no,
+    // niri seguia pintando su vidrio sin nada encima (un rectangulo liso donde estaba el dock).
+    // Una region vacia o null no basta: niri desenfoca entonces la superficie entera.
+    // (la opacidad de contentItem no avisa de sus cambios: va con un temporizador del largo del fundido)
+    property bool quitado: false
+    visible: !quitado
+    Timer { id: quitar; interval: Estilo.t(170); onTriggered: dock.quitado = Estilo.vistaGeneral }
+    Connections {
+        target: Estilo
+        function onVistaGeneralChanged() { if (Estilo.vistaGeneral) quitar.restart(); else { quitar.stop(); dock.quitado = false; } }
+    }
     property Region regionVidrio: Region { item: fondo; radius: dock.radio }
     // Lo que recibe clics: el cuerpo, y el aire de arriba mientras el cursor esta en el dock
     // (para el icono que crece). Escondido, una franja de 3 px en el borde de abajo.

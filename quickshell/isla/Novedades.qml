@@ -4,8 +4,8 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 
-// Ventana de novedades: sale una vez despues de cada actualizacion (novedades.json cambia de
-// "version"), centrada en el monitor con foco y encima de todo, asi que las reglas de ventana
+// Ventana de novedades: sale una vez despues de cada actualizacion (la primera entrada de
+// versiones.json cambia de "id"), centrada en el monitor con foco y encima de todo, asi que las reglas de ventana
 // de niri no la tocan. Siempre en Onix, sea cual sea el tema. IPC: novedades abrir.
 PanelWindow {
     id: nov
@@ -31,14 +31,42 @@ PanelWindow {
     WlrLayershell.namespace: "novedades"
     WlrLayershell.keyboardFocus: abierta ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+    // versiones.json: fuente unica de las actualizaciones (tambien la lee Ajustes > Menisco). Aqui
+    // solo la primera, la actual: su id es la version y salen sus 4 primeros puntos.
+    // Los iconos de versiones.json son nombres genericos; aqui, su simbolo de Material.
+    readonly property var simbolos: ({
+        dock: "dock_to_bottom", cursor: "ads_click", menu: "more_horiz", punto: "radio_button_checked",
+        ajustes: "tune", color: "palette", contraste: "contrast", inicio: "home", botones: "grid_view",
+        isla: "pill", musica: "music_note", novedades: "new_releases", candado: "lock",
+        escritorios: "view_carousel", juego: "sports_esports", captura: "screenshot_region", buscar: "search",
+        gota: "water_drop", aviso: "warning", logo: "deployed_code", rendimiento: "speed"
+    })
+    function fechaCorta(iso) {
+        const m = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+        const p = (iso || "").split("-");
+        return p.length === 3 ? parseInt(p[2]) + " " + m[parseInt(p[1]) - 1] : "";
+    }
     FileView {
-        path: Qt.resolvedUrl("novedades.json")
-        onLoaded: { try { nov.info = JSON.parse(text()); } catch (e) {} }
+        path: Qt.resolvedUrl("versiones.json")
+        onLoaded: {
+            let v;
+            try { v = JSON.parse(text()).versiones[0]; } catch (e) { return; }
+            if (!v) return;
+            nov.info = { version: v.id, fecha: nov.fechaCorta(v.fecha), seccion: "menisco",
+                         lista: (v.puntos || []).slice(0, 4).map(p => ({ icono: nov.simbolos[p.icono] || "auto_awesome", titulo: p.titulo, texto: p.texto })) };
+        }
     }
     // Da tiempo a que Estilo lea menisco.json antes de comparar.
+    // La ultima vista se guardaba con el formato de novedades.json (una fecha con letra): la que
+    // ya presentaba el dock nuevo ("2026-11-20d") equivale a la 0.7 y no vuelve a salir; con
+    // cualquier anterior, la 0.7 sale una vez.
     Timer {
         running: true; interval: 3000
-        onTriggered: if (nov.info.version && Estilo.valor("novedadesVista") !== nov.info.version) nov.abrir()
+        onTriggered: {
+            let vista = Estilo.valor("novedadesVista");
+            if (vista === "2026-11-20d") { vista = "0.7"; Estilo.poner("novedadesVista", vista); }
+            if (nov.info.version && vista !== nov.info.version) nov.abrir();
+        }
     }
 
     Process {
@@ -193,7 +221,8 @@ PanelWindow {
                     id: fila
                     required property var modelData
                     required property int index
-                    width: columna.width; height: 52; radius: 14
+                    // Los textos de versiones.json son mas largos: pasan a varias lineas y la fila crece.
+                    width: columna.width; height: Math.max(52, textosFila.implicitHeight + 18); radius: 14
                     color: nov.c.tarjeta
                     Entrada { objetivo: fila; retraso: fila.index * 80 }
                     Rectangle {
@@ -209,9 +238,10 @@ PanelWindow {
                         }
                     }
                     Column {
-                        x: 56; anchors.verticalCenter: parent.verticalCenter; spacing: 1
-                        Texto { text: modelData.titulo; font.weight: Font.DemiBold }
-                        Texto { text: modelData.texto; font.pixelSize: 12; color: nov.c.texto2 }
+                        id: textosFila
+                        x: 56; width: parent.width - 68; anchors.verticalCenter: parent.verticalCenter; spacing: 1
+                        Texto { width: parent.width; text: modelData.titulo; font.weight: Font.DemiBold; wrapMode: Text.WordWrap }
+                        Texto { width: parent.width; text: modelData.texto; font.pixelSize: 12; color: nov.c.texto2; wrapMode: Text.WordWrap }
                     }
                 }
             }

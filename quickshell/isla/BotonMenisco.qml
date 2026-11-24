@@ -30,7 +30,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "boton-menisco"
-    Gelatina { objetivo: boton.contentItem; origenY: 0 }   // se va con la vista general
+    Gelatina { objetivo: boton.contentItem; origenY: 0; ventana: boton }   // se va con la vista general
 
     Rectangle {
         id: fondo

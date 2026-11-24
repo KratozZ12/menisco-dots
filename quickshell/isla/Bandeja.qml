@@ -34,7 +34,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.namespace: "bandeja"
-    Gelatina { objetivo: bandeja.contentItem; origenY: 0 }   // se va con la vista general
+    Gelatina { objetivo: bandeja.contentItem; origenY: 0; ventana: bandeja }   // se va con la vista general
 
     Rectangle {
         id: pastilla

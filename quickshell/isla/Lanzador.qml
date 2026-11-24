@@ -483,6 +483,7 @@ PanelWindow {
                 color: t.rojo ? Estilo.peligro : t.claro ? Estilo.enActivo : Estilo.texto
                 font.pixelSize: t.grande ? (t.tipo === "calc" ? 28 : 17) : 13
                 font.weight: t.grande ? Font.DemiBold : Font.Normal
+                font.family: t.tipo === "calc" ? Estilo.fuenteMono : Estilo.letra
                 font.features: { "tnum": 1 }
             }
             Texto {
@@ -539,6 +540,7 @@ PanelWindow {
                 width: Math.min(200, implicitWidth); elide: Text.ElideMiddle
                 text: t.tipo === "archivo" ? t.datos.sub : lanz.etiquetas[t.tipo] || ""
                 color: t.claro ? Qt.alpha(Estilo.enActivo, 0.7) : Estilo.texto3; font.pixelSize: 11
+                font.family: t.tipo === "archivo" ? Estilo.fuenteMono : Estilo.letra
             }
         }
 
@@ -550,7 +552,7 @@ PanelWindow {
         property bool tenue
         width: tt.implicitWidth + 12; height: 20; radius: 6
         color: Estilo.hundido; border.width: 1; border.color: Estilo.borde
-        Texto { id: tt; anchors.centerIn: parent; text: parent.texto; font.pixelSize: 10; color: parent.tenue ? Estilo.texto2 : Estilo.texto }
+        Texto { id: tt; anchors.centerIn: parent; text: parent.texto; font.pixelSize: 10; font.family: Estilo.fuenteMono; color: parent.tenue ? Estilo.texto2 : Estilo.texto }
     }
     component Texto: Text {
         color: Estilo.texto

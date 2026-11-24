@@ -31,7 +31,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore   // la isla ya reserva esta franja
     color: "transparent"
     WlrLayershell.namespace: "boton-barra"
-    Gelatina { objetivo: boton.contentItem; origenY: 0 }   // se va con la vista general
+    Gelatina { objetivo: boton.contentItem; origenY: 0; ventana: boton }   // se va con la vista general
 
     Rectangle {
         id: fondo

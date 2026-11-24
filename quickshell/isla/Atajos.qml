@@ -146,7 +146,7 @@ PanelWindow {
             radius: 6
             color: Estilo.hundido
             border.width: 1; border.color: Estilo.borde
-            Texto { id: t; anchors.centerIn: parent; text: parent.parent.texto; font.pixelSize: 11; color: Estilo.texto }
+            Texto { id: t; anchors.centerIn: parent; text: parent.parent.texto; font.pixelSize: 11; font.family: Estilo.fuenteMono; color: Estilo.texto }
         }
     }
     component Texto: Text {

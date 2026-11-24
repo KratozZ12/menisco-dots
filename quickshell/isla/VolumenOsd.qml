@@ -103,7 +103,7 @@ PanelWindow {
             text: osd.mudo ? "" : Math.round(osd.visto * 100)
             color: osd.visto * capsula.width > x + width * 0.5 ? Estilo.sobreAcento : Estilo.texto
             Behavior on color { ColorAnimation { duration: Estilo.t(320); easing.type: Easing.InOutCubic } }
-            font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
+            font { family: Estilo.fuenteMono; pixelSize: 13; weight: Font.DemiBold; letterSpacing: -0.08 }
             font.features: { "tnum": 1 }
         }
     }

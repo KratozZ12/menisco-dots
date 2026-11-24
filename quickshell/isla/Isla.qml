@@ -1,4 +1,4 @@
-// Tipografia: SF Pro (Estilo.letra). Iconos: Material Symbols Rounded.
+// Tipografia: Geist (Estilo.letra, fuenteMono para los datos). Iconos: Material Symbols Rounded.
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Effects
@@ -103,7 +103,7 @@ PanelWindow {
     Timer { id: reanudar; interval: 450; onTriggered: if (!win.expandida && !win.aviso) win.siguienteAviso() }
 
     // Tamano de la forma segun lo que muestra
-    readonly property var tamano: expandida ? [620, 344, 36]
+    readonly property var tamano: expandida ? [620, conGota ? 344 : 46 + cn.total + 21, 36]
         : !aviso ? [anchoPequena, 42, 20]
         : [anchoPequena, 42, 20]   // avisos: del mismo tamaño que la isla pequeña, con solo lo esencial
 
@@ -241,7 +241,8 @@ PanelWindow {
                 Rectangle {
                     id: tinteMusica
                     anchors.fill: parent
-                    opacity: win.expandida && win.pestana === "musica" && win.musica && Estilo.valor("musicaTinte") ? 1 : 0
+                    opacity: win.expandida && !win.conGota && win.musica && Estilo.valor("musicaTinte") ? (fondoAcciones.ruta ? 0.55 : 1) : 0
+                    z: 1   // encima de la imagen de fondo: con imagen, el color del disco la tine mas suave
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(400) } }
                     gradient: Gradient {
@@ -258,7 +259,7 @@ PanelWindow {
                     id: fondoAcciones
                     anchors.fill: parent
                     readonly property string ruta: Estilo.valor("islaImagen")
-                    opacity: win.expandida && win.pestana === "acciones" && ruta ? 1 : 0
+                    opacity: win.expandida && !win.conGota && ruta ? 1 : 0
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(400); easing.type: Easing.OutCubic } }
                     Image {
@@ -338,41 +339,13 @@ PanelWindow {
                     }
                 }
 
-                // Con la isla abierta la hora es un boton: abre y cierra el calendario.
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: hora.implicitWidth + (win.expandida ? 40 : 0); height: 28; radius: 14
-                    color: zonaHora.containsMouse || win.calendario ? Estilo.realce : Estilo.nada
-                    opacity: win.expandida ? 1 : 0
-                    Behavior on color { ColorAnimation { duration: Estilo.t(140) } }
-                    Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
-                    Simbolo {
-                        anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-                        text: "expand_more"; font.pixelSize: 16; color: Estilo.texto2
-                        rotation: win.calendario ? 180 : 0
-                        Behavior on rotation { NumberAnimation { duration: Estilo.t(320); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
-                    }
-                    MouseArea {
-                        id: zonaHora
-                        anchors.fill: parent
-                        enabled: win.expandida
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        // Sin fijar, el clic solo la fija (la hora queda justo donde uno pulsa para fijar la isla).
-                        onClicked: {
-                            if (!win.fijada) { win.fijada = true; return; }
-                            win.calendario = !win.calendario;
-                            if (win.calendario) win.conGota = false;
-                        }
-                    }
-                }
                 Text {
                     id: hora
                     // Pequena: en el hueco elegido (con fecha si asi se pidio). Abierta: siempre al centro.
                     readonly property string lado: Estilo.ladoDe("hora")
                     readonly property bool conFecha: !win.expandida && Estilo.huecos.centro === "fecha"
                     anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: win.expandida ? -9 : win.empacar ? win.xEmpacado(lado, parent.width) + implicitWidth / 2 - parent.width / 2
+                    anchors.horizontalCenterOffset: win.expandida ? 0 : win.empacar ? win.xEmpacado(lado, parent.width) + implicitWidth / 2 - parent.width / 2
                         : lado === "izquierda" ? -(parent.width / 2 - 18 - implicitWidth / 2)
                         : lado === "derecha" ? parent.width / 2 - 18 - implicitWidth / 2 : 0
                     Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: Estilo.t(200) } }
@@ -385,8 +358,17 @@ PanelWindow {
                         + (conFecha ? `&nbsp;&nbsp;<span style="color:${Estilo.texto2}; font-weight:500; font-size:15px">`
                             + Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, "") + "</span>" : "")
                     color: Estilo.texto
-                    font { family: Estilo.letra; weight: Font.DemiBold; pixelSize: conFecha ? 17 : 19; letterSpacing: -0.45 }
+                    font { family: Estilo.fuenteMono; weight: Font.DemiBold; pixelSize: conFecha ? 17 : 19; letterSpacing: -0.45 }
                     font.features: { "tnum": 1 }
+                }
+                // Abierta, tocar la hora abre la barra lateral (ahi vive el calendario). Sin fijar, el
+                // primer clic solo fija la isla.
+                MouseArea {
+                    anchors.centerIn: hora
+                    width: hora.implicitWidth + 24; height: 28
+                    enabled: win.expandida
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { if (!win.fijada) { win.fijada = true; return; } win.raiz.barraAbierta = true; }
                 }
 
                 // Miniwidgets de datos (Ajustes > Isla > Isla pequena), uno por hueco. El del centro
@@ -417,7 +399,7 @@ PanelWindow {
                         width: contenidoMini.implicitWidth; height: 28
                         anchors.verticalCenter: parent.verticalCenter
                         x: win.empacar ? win.xEmpacado(modelData, parent.width) : modelData === "centro" ? (parent.width - width) / 2 : modelData === "izquierda" ? 18 : parent.width - 18 - width
-                        opacity: deDatos && hay && !(modelData === "derecha" && win.derechaOcupada) && !(modelData === "centro" && win.expandida) ? 1 : 0
+                        opacity: deDatos && hay && !(modelData === "derecha" && win.derechaOcupada) && !win.expandida ? 1 : 0
                         visible: opacity > 0.01
                         Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
                         Behavior on x { enabled: win.listo; NumberAnimation { duration: Estilo.t(420); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
@@ -442,7 +424,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.pixelSize: 14
                                 font.weight: Font.DemiBold
-                                font.features: { "tnum": 1 }
+                                font.family: Estilo.fuenteMono; font.features: { "tnum": 1 }
                                 color: mini.tipo === "micro" ? Estilo.peligro : Estilo.texto
                                 text: ({ temperatura: win.temperatura + "°", cpu: win.usoCpu + "%", clima: win.clima.temp, red: win.red,
                                          ram: win.usoRam + "%", micro: "Mudo", bateria: win.bateriaExterna ? win.bateriaExterna.pct + "%" : "" })[mini.tipo]
@@ -498,7 +480,7 @@ PanelWindow {
                             Texto {
                                 visible: miniRepro.visible
                                 anchors.verticalCenter: parent.verticalCenter
-                                font.pixelSize: 13; font.weight: Font.DemiBold; font.features: { "tnum": 1 }
+                                font.pixelSize: 13; font.weight: Font.DemiBold; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 }
                                 color: win.musica && win.musica.isPlaying ? Estilo.texto : Estilo.texto2
                                 text: win.musica ? win.mmss(win.musica.position).replace(/^0(?=\d:)/, "") : ""
                             }
@@ -508,7 +490,7 @@ PanelWindow {
 
                 // Derecha: grabacion > temporizador > visualizador
                 Row {
-                    visible: win.raiz.grabando
+                    visible: win.raiz.grabando && !win.expandida
                     anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
                     spacing: 6
                     Rectangle {
@@ -517,28 +499,28 @@ PanelWindow {
                             NumberAnimation { to: 0.3; duration: 700; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine } }
                     }
-                    Texto { text: win.mmss(win.raiz.segundosGrabando); font.weight: Font.DemiBold }
+                    Texto { text: win.mmss(win.raiz.segundosGrabando); font.weight: Font.DemiBold; font.family: Estilo.fuenteMono }
                 }
                 Row {
                     visible: !win.raiz.grabando && win.raiz.temporizadorRestante > 0
                     anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
                     spacing: 6
                     Simbolo { text: "timer"; color: "#ff9f0a"; font.pixelSize: 17; anchors.verticalCenter: parent.verticalCenter }
-                    Texto { text: win.mmss(win.raiz.temporizadorRestante); color: "#ff9f0a"; font.weight: Font.DemiBold }
+                    Texto { text: win.mmss(win.raiz.temporizadorRestante); color: "#ff9f0a"; font.weight: Font.DemiBold; font.family: Estilo.fuenteMono }
                 }
                 Row {   // cronometro (desde el lanzador), en el mismo sitio; el temporizador tiene prioridad
                     visible: !win.raiz.grabando && win.raiz.temporizadorRestante <= 0 && win.raiz.cronometroInicio > 0
                     anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
                     spacing: 6
                     Simbolo { text: "timer_play"; color: Estilo.tono("cronometro"); font.pixelSize: 17; anchors.verticalCenter: parent.verticalCenter }
-                    Texto { text: win.mmss(win.raiz.cronometroSegundos); color: Estilo.tono("cronometro"); font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
+                    Texto { text: win.mmss(win.raiz.cronometroSegundos); color: Estilo.tono("cronometro"); font.weight: Font.DemiBold; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 } }
                 }
                 Visualizador {
                     id: visIsla
                     // En la pestana Musica se esconde: ahi ya se ve lo que suena.
                     readonly property string lado: Estilo.ladoDe("visualizador")
                     visible: opacity > 0.01 && lado !== "" && !Estilo.juego && !(lado === "derecha" && win.derechaOcupada)
-                    opacity: win.expandida && ((win.pestana === "musica" && Estilo.valor("ocultarVisualizador")) || lado === "centro") ? 0 : 1
+                    opacity: win.expandida ? 0 : 1
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
                     x: win.empacar ? win.xEmpacado(lado, parent.width) : lado === "centro" ? (parent.width - width) / 2 : lado === "izquierda" ? 18 : parent.width - 18 - width
                     anchors.verticalCenter: parent.verticalCenter
@@ -565,56 +547,26 @@ PanelWindow {
                 id: cuerpo
                 x: 18; y: 46
                 width: parent.width - 36; height: 286
-                opacity: win.expandida && forma.alto > 200 ? 1 : 0
+                opacity: win.expandida && forma.alto > 100 ? 1 : 0
                 visible: opacity > 0.01
                 Behavior on opacity { NumberAnimation { duration: Estilo.t(win.expandida ? 260 : 120) } }
 
-                // El boton solo sale en Acciones; en Musica y Rendimiento la pagina ocupa todo el ancho.
-                readonly property bool conBoton: !win.calendario && (win.conGota || (win.pestana === "acciones" && Estilo.valor("botEnPaginas")))
-                BotonAsistente {
-                    id: botonAsistente
-                    y: 2
-                    height: 276
-                    emocion: asistenteIsla.emocion
-                    onPulsado: { win.conGota = !win.conGota; win.fijada = win.conGota; }
-                    opacity: cuerpo.conBoton ? 1 : 0
-                    visible: opacity > 0.01
-                    Behavior on opacity { NumberAnimation { duration: Estilo.t(cuerpo.conBoton ? 320 : 180) } }
-                }
-                Connections { target: win; function onExpandidaChanged() { if (win.expandida) botonAsistente.aparecer(); } }
-
+                // La charla ocupa todo el ancho (el boton grande de la Gota ya no existe; BotonAsistente.qml queda sin uso).
                 PaginaGota {
-                    x: botonAsistente.width + 18
-                    width: cuerpo.width - x; height: cuerpo.height
+                    width: cuerpo.width; height: cuerpo.height
                     activa: win.conGota
                 }
 
-                Column {
+                // Isla expandida: una sola superficie (musica si suena, acciones, la Gota). Las pestanas
+                // Musica/Acciones/Rendimiento y el calendario ya no se montan: sus componentes siguen
+                // abajo, sin uso, para la barra lateral.
+                CuerpoNuevo {
+                    id: cn
                     width: cuerpo.width
-                    spacing: 10
-                    opacity: win.conGota || win.calendario ? 0 : 1
+                    opacity: win.conGota ? 0 : 1
                     visible: opacity > 0.01
                     Behavior on opacity { NumberAnimation { duration: Estilo.t(win.conGota ? 140 : 260) } }
-
-                    Selector {
-                        x: botonAsistente.width + 18
-                        width: 330
-                        opciones: [["music_note", "Música", "musica"], ["bolt", "Acciones", "acciones"], ["speed", "Rendimiento", "rendimiento"]]
-                        elegida: win.pestana
-                        onElegir: c => win.pestana = c
-                    }
-
-                    Item {
-                        x: cuerpo.conBoton ? botonAsistente.width + 18 : 0
-                        width: parent.width - x; height: 240
-                        Behavior on x { NumberAnimation { duration: Estilo.t(460); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
-                        PaginaMusica { anchors.fill: parent; activa: win.pestana === "musica" }
-                        PaginaAcciones { anchors.fill: parent; activa: win.pestana === "acciones" }
-                        PaginaRendimiento { anchors.fill: parent; activa: win.pestana === "rendimiento" }
-                    }
                 }
-
-                PaginaCalendario { anchors.fill: parent; activa: win.calendario }
             }
         }
     }
@@ -922,6 +874,7 @@ PanelWindow {
             horizontalAlignment: Text.AlignHCenter
             text: al.angosta && al.textoCorto ? al.textoCorto : al.texto; color: al.tinta; elide: Text.ElideRight
             font.weight: Font.DemiBold; font.pixelSize: al.angosta ? 13 : 14
+            font.family: /^\d/.test(text) ? Estilo.fuenteMono : Estilo.letra   // cifras (bateria) en Geist Mono
         }
     }
     component IconoAviso: Simbolo { anchors.centerIn: parent; font.pixelSize: 20 }
@@ -1075,7 +1028,7 @@ PanelWindow {
             Column {
                 anchors.centerIn: parent
                 spacing: 2
-                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.hoy.getDate(); font.pixelSize: 56; font.weight: Font.Light; font.features: { "tnum": 1 } }
+                Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.hoy.getDate(); font.pixelSize: 56; font.weight: Font.Normal; font.letterSpacing: -2.24; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 } }
                 Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.nombre(pc.hoy, "dddd"); font.pixelSize: 15; font.weight: Font.DemiBold }
                 Texto { anchors.horizontalCenter: parent.horizontalCenter; text: pc.nombre(pc.hoy, "MMMM"); color: Estilo.texto2; font.pixelSize: 12 }
             }
@@ -1102,7 +1055,7 @@ PanelWindow {
                 Repeater {
                     model: pc.lunes ? ["L", "M", "X", "J", "V", "S", "D"] : ["D", "L", "M", "X", "J", "V", "S"]
                     Texto { required property string modelData; required property int index; width: rejillaMes.width / 7; height: 24; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                            text: modelData; color: (pc.lunes ? index >= 5 : index === 0 || index === 6) ? Estilo.texto3 : Estilo.texto2; font.pixelSize: 11; font.weight: Font.Bold }
+                            text: modelData; color: (pc.lunes ? index >= 5 : index === 0 || index === 6) ? Estilo.texto3 : Estilo.texto2; font.pixelSize: 11; font.weight: Font.DemiBold }
                 }
                 // 42 casillas fijas: el modelo no cambia al pasar de mes, solo lo que dice cada una.
                 Repeater {
@@ -1117,7 +1070,7 @@ PanelWindow {
                         Rectangle { anchors.centerIn: parent; width: 30; height: 30; radius: 15; color: Estilo.texto; visible: parent.esHoy }
                         Texto {
                             anchors.centerIn: parent; visible: parent.valido; text: parent.dia
-                            font.pixelSize: 13; font.features: { "tnum": 1 }
+                            font.pixelSize: 13; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 }
                             font.weight: parent.esHoy ? Font.DemiBold : Font.Normal
                             color: parent.esHoy ? Estilo.fondo : parent.finde ? Estilo.texto2 : Estilo.texto
                         }
@@ -1142,6 +1095,294 @@ PanelWindow {
         Texto { id: etiqueta; anchors.centerIn: parent; visible: !!bm.texto; text: bm.texto; font.pixelSize: 12; font.weight: Font.DemiBold }
         MouseArea { id: zonaBm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (!bm.apagado) bm.pulsado() }
     }
+    // ---------------- Isla expandida nueva ----------------
+    // De arriba abajo: musica (solo si suena) con su letra, raya, cuatro acciones y la fila de la Gota.
+    // Medidas en px; `total` es lo que mide todo desde el borde de la hora (la forma suma 46 + 21).
+    component CuerpoNuevo: Item {
+        id: cn
+        readonly property var r: win.musica
+        readonly property bool hayMusica: !!r
+        readonly property bool hayLetra: hayMusica && letra.length > 0 && Estilo.valor("musicaLetra")
+        // Lo que ocupa lo de arriba de las acciones (musica + letra + raya), y donde quedan las filas.
+        readonly property real extra: hayMusica ? 151 + (hayLetra ? 60 : 0) : 0
+        readonly property real total: 4 + extra + 64 + 46
+        // Las filas de abajo suben y bajan al mismo ritmo que la forma (misma curva), sin rebotar al encogerse.
+        property real ea: extra
+        Behavior on ea { NumberAnimation { id: animEa; duration: Estilo.t(560); easing.type: Easing.BezierSpline; easing.bezierCurve: animEa.targetValue < cn.ea ? Estilo.curvaIos : Estilo.curvaRebote } }
+        implicitHeight: total
+
+        // Posicion fresca mientras se ve (la letra la necesita al cuarto de segundo).
+        Timer { interval: 250; repeat: true; running: win.expandida && cn.r && cn.r.isPlaying; onTriggered: cn.r.positionChanged() }
+
+        // ---- Letra sincronizada: letra.sh prueba LRCLIB y, si no esta, NetEase ----
+        property var letra: []                  // [[segundos, linea], ...]
+        property string letraDe: ""
+        readonly property string cancion: r && r.trackTitle ? r.trackTitle + "|" + (r.trackArtist || "") : ""
+        readonly property int lineaActual: {
+            let i = -1;
+            const pos = r ? r.position + 0.3 : 0;
+            for (let k = 0; k < letra.length && letra[k][0] <= pos; k++) i = k;
+            return i;
+        }
+        readonly property string fuentes: Estilo.valor("musicaLetra") + "|" + Estilo.valor("letraNetease")
+        onFuentesChanged: { letraDe = ""; letra = []; buscarLetra(); }
+        function buscarLetra() {
+            if (!win.expandida || !Estilo.valor("musicaLetra") || !cancion || cancion === letraDe || buscador.running) return;
+            letraDe = cancion; letra = [];
+            buscador.command = [Estilo.carpeta + "/letra.sh", r.trackTitle, r.trackArtist || "", String(Math.round(r.length || 0)), Estilo.valor("letraNetease") ? "1" : "0"];
+            buscador.running = true;
+        }
+        onCancionChanged: buscarLetra()
+        Connections { target: win; function onExpandidaChanged() { cn.buscarLetra(); } }
+        Process {
+            id: buscador
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    let lrc = "";
+                    try { lrc = JSON.parse(text).syncedLyrics || ""; } catch (e) {}
+                    const out = [];
+                    for (const l of lrc.split("\n")) {
+                        const m = l.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+                        if (!m || !m[3]) continue;
+                        if (/^\[.*\]$/.test(m[3]) || (out.length === 0 && /\s[:：]\s/.test(m[3]))) continue;
+                        out.push([Number(m[1]) * 60 + Number(m[2]), m[3]]);
+                    }
+                    cn.letra = out;
+                }
+            }
+            onExited: if (cn.cancion !== cn.letraDe) cn.buscarLetra()
+        }
+
+        // Color: niri deja elegir un punto con el mouse e imprime el color.
+        Process {
+            id: tomarColor
+            command: ["niri", "msg", "pick-color"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    const m = text.match(/#[0-9a-fA-F]{6}/);
+                    if (!m) return;
+                    Quickshell.execDetached(["wl-copy", m[0]]);
+                    win.avisar({ tipo: "color", hex: m[0].toUpperCase(), ms: 3000 });
+                }
+            }
+        }
+        function hacer(cmd) { Quickshell.execDetached(cmd); }
+
+        // ---------- Musica ----------
+        Item {
+            id: bloqueMusica
+            y: 8; width: parent.width; height: 116
+            opacity: cn.hayMusica ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Estilo.t(180) } }
+
+            // Un clic en la caratula lleva a la ventana de la app que suena.
+            ClippingRectangle {
+                id: caratula
+                width: 116; height: 116; radius: 14; color: Estilo.tarjeta
+                Simbolo { anchors.centerIn: parent; text: "music_note"; font.pixelSize: 34; color: Estilo.texto3; visible: !cn.r || !cn.r.trackArtUrl }
+                Image { anchors.fill: parent; source: cn.r ? cn.r.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; sourceSize: Qt.size(240, 240) }
+                MouseArea {
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: Quickshell.execDetached(["sh", "-c",
+                        "id=$(niri msg -j windows | jq -r --arg k \"$1\" '[.[] | select(.app_id | ascii_downcase | contains($k))][0].id // empty'); " +
+                        "[ -n \"$id\" ] && niri msg action focus-window --id \"$id\"", "sh", cn.r ? (cn.r.identity || "").toLowerCase() : ""])
+                }
+            }
+
+            Item {
+                x: caratula.width + 18; width: parent.width - x; height: parent.height
+                Column {
+                    width: parent.width
+                    Texto { width: parent.width; text: cn.r ? (cn.r.trackTitle || cn.r.identity) : ""; font.weight: Font.DemiBold; font.pixelSize: 17; elide: Text.ElideRight }
+                    Texto { width: parent.width; topPadding: 3; text: cn.r ? [cn.r.trackArtist, cn.r.identity].filter(s => s).join(" · ") : ""; color: Estilo.texto2; font.pixelSize: 13; elide: Text.ElideRight }
+                }
+                // Barra, tiempos y controles pegados al borde de abajo de la caratula
+                Column {
+                    width: parent.width
+                    anchors.bottom: parent.bottom
+                    Item {
+                        id: barraTiempo
+                        width: parent.width; height: 14
+                        readonly property real largo: cn.r && cn.r.length > 0 ? cn.r.length : 0
+                        property real arrastre: -1
+                        readonly property real fraccion: arrastre >= 0 ? arrastre : largo > 0 ? Math.min(1, cn.r.position / largo) : 0
+                        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 3; radius: 1.5; color: Estilo.linea }
+                        Rectangle { anchors.verticalCenter: parent.verticalCenter; width: parent.width * barraTiempo.fraccion; height: 3; radius: 1.5; color: Estilo.acento }
+                        MouseArea {
+                            id: zonaBarra
+                            cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent; anchors.margins: -4
+                            enabled: cn.r && cn.r.canSeek && barraTiempo.largo > 0
+                            function mover(m) { barraTiempo.arrastre = Math.max(0, Math.min(1, (m.x - 4) / barraTiempo.width)); }
+                            onPressed: m => mover(m)
+                            onPositionChanged: m => { if (pressed) mover(m); }
+                            onReleased: { cn.r.position = barraTiempo.arrastre * barraTiempo.largo; barraTiempo.arrastre = -1; }
+                        }
+                    }
+                    Item {
+                        width: parent.width; height: 16
+                        Texto { text: cn.r ? win.mmss(barraTiempo.fraccion * barraTiempo.largo) : ""; color: Estilo.texto3; font.pixelSize: 11; font.family: Estilo.fuenteMono }
+                        Texto { anchors.right: parent.right; text: barraTiempo.largo > 0 ? win.mmss(barraTiempo.largo) : ""; color: Estilo.texto3; font.pixelSize: 11; font.family: Estilo.fuenteMono }
+                    }
+                    Item {
+                        width: parent.width; height: 44
+                        Row {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 14
+                            BotonCtl { icono: "shuffle"; tam: 32; tenue: true; activo: !!(cn.r && cn.r.shuffle); anchors.verticalCenter: parent.verticalCenter
+                                       onPulsado: if (cn.r && cn.r.shuffleSupported) cn.r.shuffle = !cn.r.shuffle }
+                            BotonCtl { icono: "skip_previous"; tam: 40; anchors.verticalCenter: parent.verticalCenter; onPulsado: cn.r.previous() }
+                            BotonCtl { icono: cn.r && cn.r.isPlaying ? "pause" : "play_arrow"; tam: 42; lleno: true; anchors.verticalCenter: parent.verticalCenter; onPulsado: cn.r.togglePlaying() }
+                            BotonCtl { icono: "skip_next"; tam: 40; anchors.verticalCenter: parent.verticalCenter; onPulsado: cn.r.next() }
+                            BotonCtl { icono: "repeat"; tam: 32; tenue: true; activo: !!(cn.r && cn.r.loopState !== MprisLoopState.None); anchors.verticalCenter: parent.verticalCenter
+                                       onPulsado: if (cn.r && cn.r.loopSupported) cn.r.loopState = cn.r.loopState === MprisLoopState.None ? MprisLoopState.Playlist : MprisLoopState.None }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------- Letra, al estilo de Apple Music ----------
+        // La que suena en blanco, la anterior apagada arriba y la siguiente esperando abajo (fuera del
+        // recorte). Al cambiar, cada linea sube a su sitio con su propio retraso: el bloque se mueve
+        // como una ola en vez de saltar entero.
+        Item {
+            id: zonaLetra
+            y: 136; width: parent.width; height: 48
+            clip: true
+            opacity: cn.hayLetra ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Estilo.t(180) } }
+            readonly property real paso: 24
+            Repeater {
+                model: cn.letra.length
+                delegate: Texto {
+                    id: linea
+                    required property int index
+                    readonly property int distancia: index - cn.lineaActual
+                    visible: distancia >= -2 && distancia <= 2
+                    width: zonaLetra.width
+                    elide: Text.ElideRight
+                    text: cn.letra[index][1]
+                    font.pixelSize: 16; font.weight: Font.DemiBold
+                    y: (distancia + 1) * zonaLetra.paso
+                    color: distancia === 0 ? Estilo.texto : Estilo.texto3
+                    opacity: distancia === 0 ? 1 : distancia === -1 ? 0.7 : distancia === 1 ? 0.4 : 0
+                    scale: distancia === 0 ? 1 : 0.86
+                    transformOrigin: Item.Left
+                    Behavior on y { NumberAnimation { duration: Estilo.t(620 + Math.max(0, linea.distancia) * 70); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaRebote } }
+                    Behavior on opacity { NumberAnimation { duration: Estilo.t(420) } }
+                    Behavior on scale { NumberAnimation { duration: Estilo.t(520); easing.type: Easing.OutBack; easing.overshoot: Estilo.o(1.4) } }
+                    Behavior on color { ColorAnimation { duration: Estilo.t(420) } }
+                }
+            }
+        }
+
+        // ---------- Raya (solo con musica) ----------
+        Rectangle {
+            y: 4 + cn.ea - 17; width: parent.width; height: 1; color: Estilo.linea
+            opacity: cn.hayMusica ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Estilo.t(180) } }
+        }
+
+        // ---------- Acciones ----------
+        Row {
+            y: 4 + cn.ea
+            width: parent.width
+            spacing: 8
+            readonly property real an: (width - 3 * spacing) / 4
+            BotonAccion { width: parent.an; icono: "screenshot_region"; texto: "Zona"
+                          onPulsado: { win.fijada = false; win.encima = false; cn.hacer(["sh", "-c", "sleep 0.5; qs -p '" + Estilo.carpeta + "' ipc call captura abrir zona"]); } }
+            BotonAccion { width: parent.an; icono: "fullscreen"; texto: "Pantalla"
+                          onPulsado: { win.fijada = false; win.encima = false; cn.hacer(["sh", "-c", "sleep 0.6; niri msg action screenshot-screen"]); } }
+            BotonAccion { width: parent.an; icono: "radio_button_checked"; punto: win.raiz.grabando
+                          texto: win.raiz.grabando ? win.mmss(win.raiz.segundosGrabando) : "Grabar"
+                          onPulsado: { if (!win.raiz.grabando) { win.fijada = false; win.encima = false; } win.raiz.alternarGrabacion(); } }
+            BotonAccion { width: parent.an; icono: "colorize"; texto: "Color"
+                          onPulsado: { win.fijada = false; win.encima = false; tomarColor.running = true; } }
+        }
+
+        // ---------- Fila de la Gota: abre la conversacion ----------
+        Rectangle {
+            id: filaGota
+            y: 4 + cn.ea + 64
+            width: parent.width; height: 46; radius: 23
+            color: zonaGota.containsMouse ? Estilo.realce : Estilo.hundido
+            border.width: 1; border.color: Estilo.linea
+            Behavior on color { ColorAnimation { duration: Estilo.t(180) } }
+            Item {
+                x: 11; anchors.verticalCenter: parent.verticalCenter
+                width: 34; height: 34
+                // Halo pequeno: la unica luz de la isla.
+                Rectangle {
+                    anchors.centerIn: parent; width: 38; height: 38; radius: 19
+                    color: Qt.alpha(Estilo.acento, 0.22)
+                    layer.enabled: true
+                    layer.effect: MultiEffect { blurEnabled: true; blur: 1; blurMax: 20; autoPaddingEnabled: true }
+                }
+                Rectangle { anchors.fill: parent; radius: 17; color: Estilo.hundido; border.width: 1; border.color: Estilo.linea }
+                Asistente {
+                    anchors.centerIn: parent; width: 40; height: 40
+                    fondoNegro: true
+                    emocion: asistenteIsla.emocion
+                    visible: filaGota.visible && win.expandida
+                }
+            }
+            Texto { x: 58; anchors.verticalCenter: parent.verticalCenter; text: "Pregúntale a la Gota…"; font.pixelSize: 15; color: Estilo.texto3 }
+            MouseArea {
+                id: zonaGota
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: { win.conGota = true; win.fijada = true; }
+            }
+        }
+    }
+    component BotonAccion: Rectangle {
+        id: ba
+        property string icono
+        property string texto
+        property bool punto: false          // grabando: punto rojo en vez del icono
+        signal pulsado()
+        height: 48; radius: 14
+        color: za.containsMouse ? Estilo.realce : Estilo.tarjeta
+        Behavior on color { ColorAnimation { duration: Estilo.t(180) } }
+        scale: za.pressed ? 0.96 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(za.pressed ? 80 : 180) } }
+        Row {
+            anchors.centerIn: parent
+            spacing: 8
+            Simbolo { visible: !ba.punto; text: ba.icono; font.pixelSize: 19; color: Estilo.texto2; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle { visible: ba.punto; width: 9; height: 9; radius: 4.5; color: Estilo.peligro; anchors.verticalCenter: parent.verticalCenter }
+            Texto { text: ba.texto; font.pixelSize: 14; color: Estilo.texto2; font.family: ba.punto ? Estilo.fuenteMono : Estilo.letra; anchors.verticalCenter: parent.verticalCenter }
+        }
+        MouseArea { id: za; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ba.pulsado() }
+    }
+    component BotonCtl: Item {
+        id: bc
+        property string icono
+        property real tam: 40
+        property bool tenue: false          // aleatorio y repetir: texto terciario...
+        property bool activo: false         // ...y acento cuando estan encendidos
+        property bool lleno: false          // play/pausa: circulo de acento
+        signal pulsado()
+        width: tam; height: tam
+        scale: zc.pressed ? 0.88 : 1
+        Behavior on scale { NumberAnimation { duration: Estilo.t(zc.pressed ? 80 : 180) } }
+        Rectangle {
+            anchors.fill: parent; radius: width / 2
+            color: bc.lleno ? Estilo.acento : zc.containsMouse ? Estilo.realce : Estilo.nada
+            Behavior on color { ColorAnimation { duration: Estilo.t(180) } }
+        }
+        Simbolo {
+            anchors.centerIn: parent
+            text: bc.icono
+            font.pixelSize: bc.lleno ? 26 : bc.tenue ? 20 : 24
+            color: bc.lleno ? Estilo.sobreAcento : bc.activo ? Estilo.acento : bc.tenue ? Estilo.texto3 : Estilo.texto
+        }
+        MouseArea { id: zc; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: bc.pulsado() }
+    }
+
     component PaginaMusica: Item {
         id: pm
         property bool activa
@@ -1291,8 +1532,8 @@ PanelWindow {
                 }
                 Item {
                     width: parent.width; height: 16
-                    Texto { text: pm.r ? win.mmss(barraTiempo.fraccion * barraTiempo.largo) : ""; color: "#88ffffff"; font.pixelSize: 10 }
-                    Texto { anchors.right: parent.right; text: barraTiempo.largo > 0 ? win.mmss(barraTiempo.largo) : ""; color: "#88ffffff"; font.pixelSize: 10 }
+                    Texto { text: pm.r ? win.mmss(barraTiempo.fraccion * barraTiempo.largo) : ""; color: "#88ffffff"; font.pixelSize: 10; font.family: Estilo.fuenteMono }
+                    Texto { anchors.right: parent.right; text: barraTiempo.largo > 0 ? win.mmss(barraTiempo.largo) : ""; color: "#88ffffff"; font.pixelSize: 10; font.family: Estilo.fuenteMono }
                 }
 
                 // Controles a la izquierda; volumen de la app y salida a la derecha
@@ -1367,7 +1608,7 @@ PanelWindow {
                     width: zonaLetra.width
                     elide: Text.ElideRight
                     text: pm.letra[index][1]
-                    font.pixelSize: 15; font.weight: Font.Bold
+                    font.pixelSize: 15; font.weight: Font.DemiBold
                     y: (distancia + 1) * zonaLetra.paso
                     opacity: distancia === 0 ? 1 : distancia === 1 ? 0.38 : distancia === -1 ? 0.22 : distancia === 2 ? 0.16 : 0
                     scale: distancia === 0 ? 1 : 0.94
@@ -1463,7 +1704,7 @@ PanelWindow {
                         x: 12; anchors.verticalCenter: parent.verticalCenter
                         spacing: 6
                         Simbolo { text: tempo.corriendo ? "timer_off" : "timer"; font.pixelSize: 19; anchors.verticalCenter: parent.verticalCenter }
-                        Texto { visible: tempo.corriendo; text: win.mmss(win.raiz.temporizadorRestante); font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                        Texto { visible: tempo.corriendo; text: win.mmss(win.raiz.temporizadorRestante); font.pixelSize: 12; font.weight: Font.DemiBold; font.family: Estilo.fuenteMono; anchors.verticalCenter: parent.verticalCenter }
                         Repeater {
                             model: tempo.corriendo ? [["Cancelar", 0]] : [["1", 60], ["5", 300], ["10", 600], ["25", 1500]]
                             delegate: Rectangle {
@@ -1724,7 +1965,7 @@ PanelWindow {
                                 gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: "#9a9a9a" } GradientStop { position: 1; color: "#ffffff" } }
                             }
                         }
-                        Texto { anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: modelData[1].toFixed(1) + " %"; color: Estilo.texto2; font.pixelSize: 12; font.features: { "tnum": 1 } }
+                        Texto { anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter } text: modelData[1].toFixed(1) + " %"; color: Estilo.texto2; font.pixelSize: 12; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 } }
                         MouseArea { id: zonaP; anchors.fill: parent; hoverEnabled: true }
                     }
                 }
@@ -1767,7 +2008,12 @@ PanelWindow {
         Item {
             id: cabGota
             width: parent.width; height: 26
-            Texto { text: Estilo.gota.nombre; font { pixelSize: 15; weight: Font.DemiBold } anchors.verticalCenter: parent.verticalCenter }
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+                BotonCtl { icono: "chevron_left"; tam: 28; tenue: true; anchors.verticalCenter: parent.verticalCenter; onPulsado: win.conGota = false }
+                Texto { text: Estilo.gota.nombre; font { pixelSize: 15; weight: Font.DemiBold } anchors.verticalCenter: parent.verticalCenter }
+            }
             Row {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 spacing: 6
@@ -2052,8 +2298,8 @@ PanelWindow {
         }
         Column {
             anchors.centerIn: parent
-            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.visto.toFixed(1); font.pixelSize: 24; font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.etiqueta; color: Estilo.texto2; font.pixelSize: 10 }
+            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.visto.toFixed(1); font.pixelSize: 24; font.weight: Font.DemiBold; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 } }
+            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: med.etiqueta; color: Estilo.texto2; font.pixelSize: 9; font.family: Estilo.fuenteMono }
         }
     }
     // Tarjeta con mini grafica en vivo
@@ -2072,8 +2318,8 @@ PanelWindow {
             Simbolo { text: tar.icono; font.pixelSize: 13; color: Estilo.texto2; anchors.verticalCenter: parent.verticalCenter }
             Texto { text: tar.titulo; color: Estilo.texto2; font.pixelSize: 11 } }
         Row { x: 10; y: 24; spacing: 3
-            Texto { text: tar.valor; font.pixelSize: 17; font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-            Texto { text: tar.unidad; color: Estilo.texto3; font.pixelSize: 10; anchors.baseline: parent.children[0].baseline } }
+            Texto { text: tar.valor; font.pixelSize: 17; font.weight: Font.DemiBold; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 } }
+            Texto { text: tar.unidad; color: Estilo.texto3; font.pixelSize: 10; font.family: Estilo.fuenteMono; anchors.baseline: parent.children[0].baseline } }
         Canvas {
             id: graf
             x: 10; y: 50; width: parent.width - 20; height: 20

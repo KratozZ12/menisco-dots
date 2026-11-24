@@ -125,7 +125,7 @@ Variants {
                                 verticalAlignment: Text.AlignVCenter
                                 text: fila.f ? fila.f.idx : ""
                                 color: fila.f && fila.f.activo ? Estilo.texto : Estilo.texto3
-                                font { family: Estilo.letra; pixelSize: 12; weight: Font.DemiBold }
+                                font { family: Estilo.fuenteMono; pixelSize: 12; weight: Font.DemiBold }
                                 font.features: { "tnum": 1 }
                             }
                             // Escritorio vacio: solo la palabra, sin cuadro.

@@ -43,7 +43,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore                 // la isla ya reserva esta franja
     color: "transparent"
     WlrLayershell.namespace: "esquina"
-    Gelatina { objetivo: esq.contentItem; origenY: 0 }  // se va con la vista general
+    Gelatina { objetivo: esq.contentItem; origenY: 0; ventana: esq }  // se va con la vista general
 
     Oreja {
         id: oreja
@@ -445,7 +445,7 @@ PanelWindow {
                 Text {
                     id: tiempoGrab
                     text: String(Math.floor(esq.raiz.segundosGrabando / 60)).padStart(2, "0") + ":" + String(esq.raiz.segundosGrabando % 60).padStart(2, "0")
-                    color: Estilo.texto; font { family: Estilo.letra; pixelSize: 13; weight: Font.DemiBold } font.features: { "tnum": 1 }
+                    color: Estilo.texto; font { family: Estilo.fuenteMono; pixelSize: 13; weight: Font.DemiBold } font.features: { "tnum": 1 }
                 }
             }
 

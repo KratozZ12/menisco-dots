@@ -1,4 +1,4 @@
-// Tipografia: SF Pro Text con los grosores, tamanos y tracking de la guia de Apple (macOS).
+// Tipografia: Geist (Estilo.letra; Geist Mono para los datos). Grosores 400, 500 y 600.
 // Movimiento: curva de las hojas de iOS (0.32, 0.72, 0, 1) para entrar, InCubic corto para salir.
 import QtQuick
 import QtQuick.Shapes
@@ -675,12 +675,12 @@ PanelWindow {
                                 x: 16; y: 16; spacing: 2
                                 Repeater {
                                     model: ["MENISCO", "APARIENCIA"]
-                                    Text { required property string modelData; text: modelData; color: "#1c1c1e"; font { family: "JetBrains Mono"; pixelSize: 11; letterSpacing: 0.6 } }
+                                    Text { required property string modelData; text: modelData; color: "#1c1c1e"; font { family: Estilo.fuenteMono; pixelSize: 11; letterSpacing: 0.6 } }
                                 }
                                 // El nombre del tema entra por abajo y el anterior se va por arriba.
                                 Rodillo {
                                     valor: (Estilo.temas[Estilo.valor("tema")] || Estilo.temas.onix).nombre.toUpperCase()
-                                    color: "#1c1c1e"; fuente.family: "JetBrains Mono"; fuente.pixelSize: 11; fuente.letterSpacing: 0.6
+                                    color: "#1c1c1e"; fuente.family: Estilo.fuenteMono; fuente.pixelSize: 11; fuente.letterSpacing: 0.6
                                 }
                             }
                             Rectangle {
@@ -698,7 +698,7 @@ PanelWindow {
                                         required property int index
                                         valor: String(ficha.numero).padStart(2, "0")[index]
                                         sentido: index === 0 ? 1 : -1; centrar: true
-                                        color: "#111113"; fuente.family: Estilo.letra; fuente.pixelSize: 58; fuente.weight: Font.Bold
+                                        color: "#111113"; fuente.family: Estilo.letra; fuente.pixelSize: 58; fuente.weight: Font.DemiBold
                                     }
                                 }
                             }
@@ -782,14 +782,7 @@ PanelWindow {
                         }
                     }
                     FilaTabla {
-                        numero: 2; titulo: "Letra"; que: "La misma letra en todo el shell"
-                        Desplegable {
-                            opciones: [["SF Pro", "SF Pro"], ["Inter", "Inter"]]
-                            elegida: Estilo.valor("letra"); onElegir: c => Estilo.poner("letra", c)
-                        }
-                    }
-                    FilaTabla {
-                        numero: 3; titulo: "Movimiento"
+                        numero: 2; titulo: "Movimiento"
                         // Tres maneras de moverse; cada una pone la velocidad y el rebote de siempre.
                         readonly property var modos: ({ calmado: ["normal", "nada"], normal: ["normal", "suave"], vivo: ["rapida", "mucho"] })
                         readonly property string modo: Object.keys(modos).find(k => modos[k][0] === Estilo.valor("velocidad") && modos[k][1] === Estilo.valor("rebote")) ?? "personalizado"
@@ -803,7 +796,7 @@ PanelWindow {
                         }
                     }
                     FilaTabla {
-                        numero: 4; titulo: "Seguir al fondo"
+                        numero: 3; titulo: "Seguir al fondo"
                         readonly property bool conFondo: Estilo.valor("tema") === "delfondo"
                         que: conFondo ? "Si cambias de fondo, el color cambia con él" : "Solo con el color Del fondo"
                         Llave {
@@ -1499,7 +1492,7 @@ PanelWindow {
                                 visible: false
                                 readonly property int largo: text.length
                                 text: paginaMenisco.anuncio.titulo || ""
-                                font { family: Estilo.fuenteSans; pixelSize: largo <= 7 ? 136 : largo <= 10 ? 112 : 92; weight: Font.ExtraBold; letterSpacing: -5 }
+                                font { family: Estilo.fuenteSans; pixelSize: largo <= 7 ? 136 : largo <= 10 ? 112 : 92; weight: Font.DemiBold; letterSpacing: -5 }
                                 font.variableAxes: { "wght": 800 }
                             }
                             Rectangle {
@@ -1833,7 +1826,7 @@ PanelWindow {
                                         anchors.centerIn: parent
                                         text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm")
                                             + (hueco.tipo === "fecha" ? "  " + Qt.locale("es_MX").toString(reloj.date, "ddd d").replace(/\./g, "") : "")
-                                        font { pixelSize: 24; weight: Font.DemiBold; letterSpacing: -0.4 }
+                                        font { family: Estilo.fuenteMono; pixelSize: 24; weight: Font.DemiBold; letterSpacing: -0.4 }
                                         font.features: { "tnum": 1 }
                                     }
                                     Behavior on border.color { ColorAnimation { duration: Estilo.t(160) } }
@@ -2405,7 +2398,7 @@ PanelWindow {
                             anchors.horizontalCenter: undefined
                             x: casaGota.cx - width / 2; y: casaGota.cy + 112
                             spacing: 3
-                            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: Estilo.gota.nombre; font { pixelSize: 22; weight: Font.Bold } }
+                            Texto { anchors.horizontalCenter: parent.horizontalCenter; text: Estilo.gota.nombre; font { pixelSize: 22; weight: Font.DemiBold } }
                             Texto {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: ((casaGota.caras.find(c => c[1] === paginaBot.prueba) || ["Normal"])[0]) + " · personalidad " + (Estilo.valor("personalidad") || "normal")
@@ -2903,7 +2896,7 @@ PanelWindow {
                 anchors.fill: parent
                 clave: "barra"; activa: ventana.seccion === clave
                 Desplazable {
-                    EncabezadoParte { grupo: "Partes de Menisco"; titulo: "Barra lateral"; descripcion: "El panel que sale de un lado, con botones rápidos, sonido y calendario." }
+                    EncabezadoParte { grupo: "Partes de Menisco"; titulo: "Barra lateral"; descripcion: "El panel que sale de un lado, con botones rápidos, niveles, equipo, calendario y reproductor." }
                     Item { width: 1; height: 18 }
                     // Vista previa: el panel en miniatura (lado, altura y ancho reales) con sus bloques
                     // arrastrables, y a la derecha que secciones se ven.
@@ -3016,9 +3009,9 @@ PanelWindow {
                             Row { x: 14; y: 12; spacing: 5; Repeater { model: 3; Rectangle { width: 8; height: 8; radius: 4; color: "#66ffffff" } } }
                             Column {
                                 x: 16; y: 34; spacing: 4
-                                Text { text: "~ $ ls"; color: "#ffffff"; font { family: "JetBrains Mono"; pixelSize: 13 } }
-                                Text { text: "Descargas  Imágenes  Música"; color: "#d9ffffff"; font { family: "JetBrains Mono"; pixelSize: 13 } }
-                                Text { text: "~ $ _"; color: "#ffffff"; font { family: "JetBrains Mono"; pixelSize: 13 } }
+                                Text { text: "~ $ ls"; color: "#ffffff"; font { family: Estilo.fuenteMono; pixelSize: 13 } }
+                                Text { text: "Descargas  Imágenes  Música"; color: "#d9ffffff"; font { family: Estilo.fuenteMono; pixelSize: 13 } }
+                                Text { text: "~ $ _"; color: "#ffffff"; font { family: Estilo.fuenteMono; pixelSize: 13 } }
                             }
                         }
                         PiezaVidrio {
@@ -3183,7 +3176,7 @@ PanelWindow {
                         Column {
                             x: 82; anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 4
                             spacing: 2
-                            Texto { text: paginaInicio.saludo + (paginaInicio.nombre ? ", " + paginaInicio.nombre : ""); font { pixelSize: 30; weight: Font.Bold; letterSpacing: -0.6 } }
+                            Texto { text: paginaInicio.saludo + (paginaInicio.nombre ? ", " + paginaInicio.nombre : ""); font { pixelSize: 30; weight: Font.DemiBold; letterSpacing: -0.6 } }
                             Texto { text: "Todo está en su sitio."; color: Estilo.texto2; font.pixelSize: 15 }
                         }
                         Column {
@@ -3192,7 +3185,7 @@ PanelWindow {
                             Texto {
                                 anchors.right: parent.right
                                 text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm")
-                                font { pixelSize: 40; weight: Font.Bold; letterSpacing: -1 }
+                                font { family: Estilo.fuenteMono; pixelSize: 40; weight: Font.DemiBold; letterSpacing: -1.6 }
                                 font.features: { "tnum": 1 }
                             }
                             Texto {
@@ -3241,7 +3234,7 @@ PanelWindow {
                                     Text { text: "Fondo actual"; color: "#ffffff"; font { family: Estilo.letra; pixelSize: 16; weight: Font.DemiBold } }
                                     TextoCambiante {
                                         text: ventana.fondoActual ? ventana.fondoActual.split("/").pop().replace(/\.[^.]+$/, "") : "Sin fondo"
-                                        color: "#e6e6e6"; font { family: "JetBrains Mono"; pixelSize: 12 }
+                                        color: "#e6e6e6"; font { family: Estilo.fuenteMono; pixelSize: 12 }
                                     }
                                 }
                                 Rectangle {
@@ -3369,7 +3362,7 @@ PanelWindow {
                                         TextoCambiante {
                                             anchors.right: parent.right; y: 6
                                             text: paginaInicio.equipo[modelData[1]]
-                                            color: parent.alto ? "#e5a54b" : Estilo.texto; font { family: Estilo.letra; pixelSize: 14; weight: Font.DemiBold }
+                                            color: parent.alto ? "#e5a54b" : Estilo.texto; font { family: Estilo.fuenteMono; pixelSize: 14; weight: Font.DemiBold }
                                         }
                                         Rectangle {
                                             y: 31; width: parent.width; height: 4; radius: 2; color: Estilo.apagado
@@ -3397,7 +3390,7 @@ PanelWindow {
                                                 width: parent.width - 8; elide: Text.ElideRight
                                                 text: paginaInicio.equipo[modelData[1]]
                                                 color: Estilo.texto
-                                                font { family: modelData[1] === "version" ? "JetBrains Mono" : Estilo.letra; pixelSize: 14; weight: Font.DemiBold }
+                                                font { family: Estilo.fuenteMono; pixelSize: 14; weight: Font.DemiBold }
                                             }
                                         }
                                     }
@@ -3488,7 +3481,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                                     Texto {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm")
-                                        font { pixelSize: 22; weight: Font.DemiBold; letterSpacing: -0.4 }
+                                        font { family: Estilo.fuenteMono; pixelSize: 22; weight: Font.DemiBold; letterSpacing: -0.4 }
                                         font.features: { "tnum": 1 }
                                     }
                                     Texto {
@@ -3925,7 +3918,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
             visible: !ft.sinNumero
             x: 8; anchors.verticalCenter: parent.verticalCenter
             text: String(ft.numero).padStart(2, "0"); color: Estilo.texto2
-            font { family: "JetBrains Mono"; pixelSize: 13 }
+            font { family: Estilo.fuenteMono; pixelSize: 13 }
         }
         // Los titulos largos pasan a dos lineas en vez de montarse sobre "Que hace".
         Texto { x: ft.sinNumero ? 18 : 62; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.3 - x - 10; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; text: ft.titulo; font { pixelSize: 15; weight: Font.DemiBold } }
@@ -4120,7 +4113,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
             id: islaPB
             anchors.horizontalCenter: parent.horizontalCenter
             ancho: 92; alto: 36; esquina: 16; hombro: 12
-            Texto { anchors.centerIn: parent; text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font { pixelSize: 13; weight: Font.DemiBold } }
+            Texto { anchors.centerIn: parent; text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font { family: Estilo.fuenteMono; pixelSize: 13; weight: Font.DemiBold } }
         }
         Repeater {
             model: Estilo.zonasBotones
@@ -4231,7 +4224,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         Texto { text: ep.grupo; color: Estilo.texto2; font.pixelSize: 13 }
         Item {
             width: parent.width; height: tituloEp.height
-            Texto { id: tituloEp; text: ep.titulo; font { pixelSize: 30; weight: Font.Bold; letterSpacing: -0.6 } }
+            Texto { id: tituloEp; text: ep.titulo; font { pixelSize: 30; weight: Font.DemiBold; letterSpacing: -0.6 } }
             Rectangle {
                 visible: ep.textoBoton !== ""
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -4526,7 +4519,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
     }
     component Encabezado: Texto {
         color: Estilo.texto2
-        font { pixelSize: 13; weight: Font.Bold }
+        font { pixelSize: 13; weight: Font.DemiBold }
         topPadding: 14; bottomPadding: 8
     }
     component Desplazable: Flickable {
@@ -4660,7 +4653,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         property string descripcion
         width: parent ? parent.width : 0
         topPadding: 14; bottomPadding: 2; spacing: 3
-        Texto { text: cabecera.titulo; font { pixelSize: 20; weight: Font.Bold; letterSpacing: -0.3 } }
+        Texto { text: cabecera.titulo; font { pixelSize: 20; weight: Font.DemiBold; letterSpacing: -0.3 } }
         Texto { text: cabecera.descripcion; color: Estilo.texto2; width: parent.width; wrapMode: Text.WordWrap }
     }
     component Fila: Item {
@@ -4827,7 +4820,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                 onReleased: cd.soltado(cd.vivo)
             }
         }
-        Texto { width: 48; horizontalAlignment: Text.AlignRight; text: Math.round(cd.vivo) + cd.unidad; color: Estilo.texto2; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+        Texto { width: 48; horizontalAlignment: Text.AlignRight; text: Math.round(cd.vivo) + cd.unidad; color: Estilo.texto2; font { family: Estilo.fuenteMono; pixelSize: 13 } anchors.verticalCenter: parent.verticalCenter }
     }
     // Editor de secciones de la barra lateral: a la izquierda una miniatura de la barra con
     // un bloque por seccion, que se reordenan arrastrandolos (los demas le hacen hueco); a la
@@ -4839,26 +4832,32 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
     component EditorSecciones: Row {
         id: ed
         spacing: 32
-        readonly property var ids: ["rapidos", "sonido", "musica", "calendario", "energia"]
-        readonly property var nombres: ({ rapidos: "Botones rápidos", sonido: "Sonido", musica: "Reproduciendo", calendario: "Calendario", energia: "Energía" })
-        readonly property var iconos: ({ rapidos: "grid_view", sonido: "volume_up", musica: "music_note", calendario: "calendar_today", energia: "power_settings_new" })
-        readonly property var altos: ({ rapidos: 72, sonido: 50, musica: 48, calendario: 122, energia: 44 })
+        readonly property var ids: ["rapidos", "niveles", "equipo", "calendario", "energia", "musica"]
+        readonly property var nombres: ({ rapidos: "Botones rápidos", niveles: "Niveles", equipo: "Equipo", calendario: "Calendario", energia: "Energía", musica: "Reproduciendo" })
+        readonly property var iconos: ({ rapidos: "grid_view", niveles: "volume_up", equipo: "monitor", calendario: "calendar_today", energia: "power_settings_new", musica: "music_note" })
+        // Alto de cada bloque en la miniatura: la mitad del real (la barra mide 372 px; la miniatura, la mitad).
+        readonly property var altos: ({ rapidos: 68, niveles: 98, energia: 34, musica: 58,
+            equipo: ({ anillos: 52, barras: 50, historial: 76, doble: 44 })[Estilo.barra.equipoDiseno] || 50,
+            calendario: ({ semana: 142, progreso: 146, tira: 66 })[Estilo.barra.calendarioDiseno] || 142 })
         readonly property var guardadas: Estilo.barra.secciones
+        readonly property bool energiaFila: Estilo.barra.energia.estilo === "fila"
         // Orden en vivo: mientras se arrastra cambia aqui; al soltar se guarda en los ajustes.
         property var orden: guardadas.map(s => s.id)
         onGuardadasChanged: orden = guardadas.map(s => s.id)
         property string levantado: ""          // bloque que se esta moviendo
         readonly property bool tiembla: levantado !== "" && !Estilo.juego && Estilo.valor("rebote") !== "nada"
+        // activa = el interruptor; enPanel = lo que de verdad se dibuja (Energia con boton no ocupa sitio).
         function activa(id) { const s = guardadas.find(x => x.id === id); return s ? s.ver : false; }
-        readonly property int arriba: 34        // alto del encabezado del panel
+        function enPanel(id) { return activa(id) && (id !== "energia" || energiaFila); }
+        readonly property int arriba: 48        // alto del encabezado del panel
         function yDe(id) {
             let y = arriba;
-            for (const k of orden) { if (k === id) return y; if (activa(k)) y += altos[k] + 6; }
+            for (const k of orden) { if (k === id) return y; if (enPanel(k)) y += altos[k] + 6; }
             return y;
         }
-        readonly property real altoMini: { let y = arriba; for (const k of orden) if (activa(k)) y += altos[k] + 6; return y + 4; }
+        readonly property real altoMini: { let y = arriba; for (const k of orden) if (enPanel(k)) y += altos[k] + 6; return y + 4; }
         function guardar() { Estilo.ponerBarra("secciones", orden.map(id => ({ id: id, ver: activa(id) }))); }
-        // Estado de los botones rapidos (los encendidos van en blanco).
+        // Estado de los botones rapidos (los encendidos llevan borde de acento).
         function rapidoEncendido(c) {
             return ({ red: true, bt: !!(Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled), dnd: Estilo.noMolestar,
                       cafe: ventana.cafe, isla: !!(ventana.raiz && ventana.raiz.islaVisible), vidrio: ventana.vidrio })[c] || false;
@@ -4870,7 +4869,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
         // ---- Pantalla en miniatura ----
         ClippingRectangle {
             id: pantallaMini
-            width: 400; height: 440; radius: 14
+            width: 400; height: 580; radius: 14
             color: "#000000"
             border.width: 1; border.color: Estilo.linea
             Image {
@@ -4883,7 +4882,7 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
             Rectangle {
                 id: mini
                 readonly property real anchoVivo: typeof ctlAnchoBarra !== "undefined" ? ctlAnchoBarra.vivo : Estilo.barra.ancho
-                width: 186 + (anchoVivo - 300) / 120 * 50
+                width: anchoVivo * 0.5
                 height: Math.min(ed.altoMini, pantallaMini.height - 36)
                 x: Estilo.barra.lado === "izquierda" ? 12 : pantallaMini.width - width - 12
                 y: Estilo.barra.altura === "arriba" ? 26 : Estilo.barra.altura === "abajo" ? pantallaMini.height - height - 12 : (pantallaMini.height - height) / 2 + 6
@@ -4891,10 +4890,21 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                 Behavior on y { NumberAnimation { duration: Estilo.t(340); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
                 Behavior on width { NumberAnimation { duration: Estilo.t(200) } }
                 Behavior on height { NumberAnimation { duration: Estilo.t(340); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
-                radius: 16; color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
-                // Encabezado: hora y fecha
-                Texto { x: 12; y: 9; text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm AP" : "H:mm"); font { pixelSize: 14; weight: Font.Bold } }
-                Texto { anchors { right: parent.right; rightMargin: 12 } y: 12; text: Qt.locale("es_MX").toString(reloj.date, "ddd d MMM").replace(/\./g, ""); color: Estilo.texto2; font.pixelSize: 10 }
+                radius: 11; color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
+                // Encabezado: el dia en grande, dia de la semana y mes, y los botones de Ajustes (y Energia).
+                Text { id: diaMini; x: 10; y: 6; text: reloj.date.getDate(); color: Estilo.texto; font { family: Estilo.fuenteSans; pixelSize: 27; weight: Font.Medium } }
+                Column {
+                    anchors { left: diaMini.right; leftMargin: 6; verticalCenter: diaMini.verticalCenter }
+                    Text { text: Qt.locale("es_MX").toString(reloj.date, "dddd"); color: Estilo.texto; font { family: Estilo.fuenteSans; pixelSize: 8; weight: Font.DemiBold } }
+                    Text { text: Qt.locale("es_MX").toString(reloj.date, "MMMM yyyy"); color: Estilo.texto2; font { family: Estilo.fuenteSans; pixelSize: 7 } }
+                }
+                Row {
+                    anchors { right: parent.right; rightMargin: 8; top: parent.top; topMargin: 9 }
+                    spacing: 4
+                    Rectangle { width: 20; height: 20; radius: 6; color: Estilo.tarjeta; Simbolo { anchors.centerIn: parent; text: "tune"; font.pixelSize: 11; color: Estilo.texto } }
+                    Rectangle { visible: Estilo.barra.energia.estilo !== "fila" && ed.activa("energia"); width: 20; height: 20; radius: 6; color: Estilo.tarjeta
+                        Simbolo { anchors.centerIn: parent; text: "power_settings_new"; font.pixelSize: 11; color: Estilo.texto } }
+                }
 
                 Repeater {
                     model: ed.ids
@@ -4902,11 +4912,13 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                         id: bloque
                         required property string modelData
                         required property int index
-                        readonly property bool activo: ed.activa(modelData)
+                        readonly property bool activo: ed.enPanel(modelData)
                         readonly property bool alzado: ed.levantado === modelData
+                        // Botones rapidos y energia son varias tarjetas sueltas; los demas, una sola.
+                        readonly property bool suelto: modelData === "rapidos" || modelData === "energia"
                         x: 8; width: mini.width - 16; height: ed.altos[modelData]
-                        radius: 11; color: Estilo.tarjeta
-                        border.width: alzado ? 1.5 : 1; border.color: alzado ? Estilo.acento : Estilo.linea
+                        radius: 9; color: suelto ? "transparent" : Estilo.tarjeta
+                        border.width: alzado ? 1.5 : suelto ? 0 : 1; border.color: alzado ? Estilo.acento : Estilo.linea
                         y: ed.yDe(modelData)
                         Behavior on y { enabled: !bloque.alzado; NumberAnimation { duration: Estilo.t(300); easing.type: Easing.BezierSpline; easing.bezierCurve: Estilo.curvaIos } }
                         opacity: activo ? 1 : 0
@@ -4933,112 +4945,240 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                             Behavior on opacity { NumberAnimation { duration: Estilo.t(200) } }
                         }
 
-                        // Botones rapidos: los cuatro primeros elegidos, encendidos en blanco
+                        // Botones rapidos: los cuatro primeros elegidos; el encendido lleva borde de acento y cuadro de acento
                         Grid {
                             visible: bloque.modelData === "rapidos"
-                            anchors { fill: parent; margins: 6 } columns: 2; spacing: 5
+                            anchors.fill: parent; columns: 2; spacing: 4
                             Repeater {
                                 model: Estilo.barra.rapidos.slice(0, 4)
                                 Rectangle {
+                                    id: celdaMini
                                     required property string modelData
                                     readonly property bool encendido: ed.rapidoEncendido(modelData)
-                                    width: (parent.width - 5) / 2; height: (parent.height - 5) / 2; radius: 8
-                                    color: encendido ? "#f2f2f3" : Estilo.hover
-                                    Row {
-                                        x: 7; anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                                        Simbolo { anchors.verticalCenter: parent.verticalCenter; text: (ed.rapidosInfo[parent.parent.modelData] || ["help"])[0]; font.pixelSize: 11; color: parent.parent.encendido ? "#000000" : Estilo.texto }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: (ed.rapidosInfo[parent.parent.modelData] || ["", ""])[1]; color: parent.parent.encendido ? "#000000" : Estilo.texto; font { family: Estilo.letra; pixelSize: 9; weight: Font.DemiBold } }
-                                    }
-                                }
-                            }
-                        }
-                        // Sonido: volumen y microfono
-                        Column {
-                            visible: bloque.modelData === "sonido"
-                            anchors { fill: parent; margins: 9 } spacing: 10
-                            Repeater {
-                                model: [["volume_up", 0.55], ["mic", 0.75]]
-                                Row {
-                                    required property var modelData
-                                    spacing: 6
-                                    Simbolo { anchors.verticalCenter: parent.verticalCenter; text: parent.modelData[0]; font.pixelSize: 11; color: Estilo.texto2 }
+                                    width: (parent.width - 4) / 2; height: (parent.height - 4) / 2; radius: 8; color: Estilo.tarjeta
+                                    border.width: encendido ? 1 : 0; border.color: Estilo.acento
                                     Rectangle {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: bloque.width - 40; height: 5; radius: 2.5; color: Estilo.apagado
-                                        Rectangle { width: parent.width * parent.parent.modelData[1]; height: parent.height; radius: 2.5; color: Estilo.texto }
+                                        id: cuadroMini
+                                        x: 6; anchors.verticalCenter: parent.verticalCenter
+                                        width: 16; height: 16; radius: 5; color: celdaMini.encendido ? Estilo.acento : Estilo.hundido
+                                        Simbolo { anchors.centerIn: parent; text: (ed.rapidosInfo[celdaMini.modelData] || ["help"])[0]; font.pixelSize: 10; color: celdaMini.encendido ? Estilo.sobreAcento : Estilo.texto2 }
+                                    }
+                                    Text { anchors { left: cuadroMini.right; leftMargin: 5; right: parent.right; rightMargin: 3; verticalCenter: parent.verticalCenter } elide: Text.ElideRight
+                                           text: (ed.rapidosInfo[celdaMini.modelData] || ["", ""])[1]; color: Estilo.texto; font { family: Estilo.fuenteSans; pixelSize: 8; weight: Font.DemiBold } }
+                                }
+                            }
+                        }
+                        // Niveles: tres columnas con menisco (volumen, microfono, brillo) y la salida de sonido.
+                        // Los valores son de muestra: la miniatura no lee el sistema.
+                        Column {
+                            visible: bloque.modelData === "niveles"
+                            anchors { fill: parent; margins: 6 } spacing: 6
+                            Row {
+                                id: columnasMini
+                                width: parent.width; spacing: 4
+                                Repeater {
+                                    model: [0.8, 0.5, 0.7]
+                                    ClippingRectangle {
+                                        id: colMini
+                                        required property real modelData
+                                        width: (columnasMini.width - 8) / 3; height: 60; radius: 6; color: Estilo.hundido
+                                        readonly property real pct: modelData * 100
+                                        readonly property real nivel: height - modelData * height
+                                        readonly property real c: Math.min(6, pct * 0.5, (100 - pct) * 0.5 + 1.5) * 0.5
+                                        Shape {
+                                            width: colMini.width; height: colMini.height
+                                            preferredRendererType: Shape.CurveRenderer
+                                            ShapePath {
+                                                fillColor: Estilo.acento; strokeWidth: -1
+                                                PathSvg { path: "M 0," + (colMini.nivel - colMini.c) + " C " + (colMini.width * 0.22) + "," + (colMini.nivel + 0.55 * colMini.c) + " " + (colMini.width * 0.78) + "," + (colMini.nivel + 0.55 * colMini.c)
+                                                                + " " + colMini.width + "," + (colMini.nivel - colMini.c) + " L " + colMini.width + "," + colMini.height + " L 0," + colMini.height + " Z" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Row {
+                                spacing: 5
+                                Simbolo { anchors.verticalCenter: parent.verticalCenter; text: "headphones"; font.pixelSize: 10; color: Estilo.texto2 }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Sale por"; color: Estilo.texto2; font { family: Estilo.fuenteSans; pixelSize: 8 } }
+                                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 40; height: 4; radius: 2; color: Estilo.texto3 }
+                            }
+                        }
+                        // Equipo: el diseno elegido, en pequeno (la miniatura no mide nada: valores de muestra)
+                        Item {
+                            id: equipoMini
+                            visible: bloque.modelData === "equipo"
+                            anchors.fill: parent
+                            readonly property string dis: Estilo.barra.equipoDiseno
+                            // anillos
+                            Row {
+                                visible: equipoMini.dis === "anillos"
+                                anchors.fill: parent
+                                Repeater {
+                                    model: [["CPU", 0.05], ["RAM", 0.5], ["GPU", 0.34]]
+                                    Item {
+                                        id: anilloMini
+                                        required property var modelData
+                                        width: parent.width / 3; height: parent.height
+                                        Shape {
+                                            width: 28; height: 28; anchors.centerIn: parent
+                                            preferredRendererType: Shape.CurveRenderer
+                                            ShapePath { strokeColor: Estilo.hundido; strokeWidth: 3; fillColor: "transparent"; PathAngleArc { centerX: 14; centerY: 14; radiusX: 11; radiusY: 11; startAngle: 0; sweepAngle: 360 } }
+                                            ShapePath { strokeColor: Estilo.acento; strokeWidth: 3; fillColor: "transparent"; capStyle: ShapePath.RoundCap
+                                                        PathAngleArc { centerX: 14; centerY: 14; radiusX: 11; radiusY: 11; startAngle: -90; sweepAngle: 360 * anilloMini.modelData[1] } }
+                                        }
+                                        Text { anchors.centerIn: parent; text: anilloMini.modelData[0]; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
+                                    }
+                                }
+                            }
+                            // barras
+                            Column {
+                                visible: equipoMini.dis === "barras"
+                                anchors { fill: parent; leftMargin: 8; rightMargin: 8 } spacing: 0
+                                Repeater {
+                                    model: [["CPU", 0.05], ["RAM", 0.5], ["GPU", 0.34]]
+                                    Item {
+                                        required property var modelData
+                                        width: parent.width; height: parent.height / 3
+                                        Text { id: etBarraMini; anchors.verticalCenter: parent.verticalCenter; text: modelData[0]; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
+                                        Rectangle {
+                                            anchors { left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 24; verticalCenter: parent.verticalCenter }
+                                            height: 3; radius: 1.5; color: Estilo.hundido
+                                            Rectangle { height: parent.height; radius: 1.5; color: Estilo.acento; width: parent.width * parent.parent.modelData[1] }
+                                        }
+                                        Rectangle { anchors { right: parent.right; verticalCenter: parent.verticalCenter } width: 16; height: 3; radius: 1.5; color: Estilo.texto2; opacity: 0.6 }
+                                    }
+                                }
+                            }
+                            // historial
+                            Item {
+                                visible: equipoMini.dis === "historial"
+                                anchors { fill: parent; margins: 8 }
+                                Text { text: "CPU"; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
+                                Rectangle { anchors.right: parent.right; width: 22; height: 6; radius: 3; color: Estilo.texto; opacity: 0.8 }
+                                Shape {
+                                    y: 12; width: parent.width; height: 24
+                                    preferredRendererType: Shape.CurveRenderer
+                                    ShapePath {
+                                        strokeColor: Estilo.acento; strokeWidth: 1; fillColor: "transparent"; joinStyle: ShapePath.RoundJoin
+                                        PathPolyline { path: [Qt.point(0, 18), Qt.point(18, 16), Qt.point(36, 19), Qt.point(54, 8), Qt.point(72, 14), Qt.point(90, 18), Qt.point(108, 12), Qt.point(126, 17), Qt.point(144, 15)] }
+                                    }
+                                }
+                                Row {
+                                    anchors { bottom: parent.bottom } spacing: 40
+                                    Repeater { model: ["RAM", "GPU"]; Text { required property string modelData; text: modelData; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } } }
+                                }
+                            }
+                            // doble dato
+                            Row {
+                                visible: equipoMini.dis === "doble"
+                                anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                                Repeater {
+                                    model: ["CPU", "RAM", "GPU"]
+                                    Column {
+                                        required property string modelData
+                                        width: parent.width / 3; anchors.verticalCenter: parent.verticalCenter; spacing: 2
+                                        Text { text: modelData; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
+                                        Rectangle { width: 20; height: 4; radius: 2; color: Estilo.texto; opacity: 0.8 }
+                                        Rectangle { width: 28; height: 3; radius: 1.5; color: Estilo.texto2; opacity: 0.5 }
                                     }
                                 }
                             }
                         }
-                        // Reproduciendo: caratula, titulo, artista y play
+                        // Reproduciendo: caratula, titulo, artista, pausa y progreso
                         Item {
                             visible: bloque.modelData === "musica"
-                            anchors { fill: parent; margins: 7 }
+                            anchors { fill: parent; margins: 6 }
                             ClippingRectangle {
                                 id: caratulaMini
-                                width: 34; height: 34; radius: 7; color: Estilo.hover
-                                anchors.verticalCenter: parent.verticalCenter
-                                Simbolo { anchors.centerIn: parent; visible: !imagenCaratula.source.toString(); text: "music_note"; font.pixelSize: 15; color: Estilo.texto2 }
+                                width: 26; height: 26; radius: 6; color: Estilo.hundido
+                                Simbolo { anchors.centerIn: parent; visible: !imagenCaratula.source.toString(); text: "music_note"; font.pixelSize: 13; color: Estilo.texto2 }
                                 Image { id: imagenCaratula; anchors.fill: parent; fillMode: Image.PreserveAspectCrop; asynchronous: true; source: ed.musica ? ed.musica.trackArtUrl || "" : ""; sourceSize: Qt.size(64, 64) }
                             }
                             Column {
-                                anchors { left: caratulaMini.right; leftMargin: 8; right: playMini.left; rightMargin: 6; verticalCenter: parent.verticalCenter }
-                                Text { width: parent.width; elide: Text.ElideRight; text: ed.musica && ed.musica.trackTitle ? ed.musica.trackTitle : "Nada sonando"; color: Estilo.texto; font { family: Estilo.letra; pixelSize: 10; weight: Font.DemiBold } }
-                                Text { width: parent.width; elide: Text.ElideRight; text: ed.musica ? ed.musica.trackArtist || "" : ""; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 9 } }
+                                anchors { left: caratulaMini.right; leftMargin: 6; right: playMini.left; rightMargin: 6; verticalCenter: caratulaMini.verticalCenter }
+                                Text { width: parent.width; elide: Text.ElideRight; text: ed.musica && ed.musica.trackTitle ? ed.musica.trackTitle : "Nada sonando"; color: Estilo.texto; font { family: Estilo.fuenteSans; pixelSize: 8; weight: Font.DemiBold } }
+                                Text { width: parent.width; elide: Text.ElideRight; text: ed.musica ? ed.musica.trackArtist || "" : ""; color: Estilo.texto2; font { family: Estilo.fuenteSans; pixelSize: 7 } }
                             }
                             Rectangle {
                                 id: playMini
-                                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                                width: 22; height: 22; radius: 11; color: "#f2f2f3"
-                                Simbolo { anchors.centerIn: parent; text: ed.musica && ed.musica.isPlaying ? "pause" : "play_arrow"; font.pixelSize: 13; color: "#000000" }
+                                anchors { right: parent.right; verticalCenter: caratulaMini.verticalCenter }
+                                width: 18; height: 18; radius: 9; color: Estilo.acento
+                                Simbolo { anchors.centerIn: parent; text: ed.musica && ed.musica.isPlaying ? "pause" : "play_arrow"; font.pixelSize: 11; color: Estilo.sobreAcento }
                             }
+                            Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 2 } height: 2; radius: 1; color: Estilo.hundido }
                         }
-                        // Calendario: el mes de hoy, con la semana como en los ajustes
+                        // Calendario: el mes de hoy, con la semana como en los ajustes; hoy lleva borde de acento
                         Item {
                             visible: bloque.modelData === "calendario"
-                            anchors { fill: parent; margins: 8 }
+                            anchors { fill: parent; margins: 7 }
                             readonly property date hoy: reloj.date
                             readonly property bool lunes: Estilo.barra.semanaLunes
                             readonly property int desfase: { const d = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getDay(); return lunes ? (d + 6) % 7 : d; }
                             readonly property int dias: new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
-                            Text { text: Qt.locale("es_MX").toString(parent.hoy, "MMMM").replace(/^./, c => c.toUpperCase()); color: Estilo.texto; font { family: Estilo.letra; pixelSize: 10; weight: Font.DemiBold } }
+                            readonly property string dis: Estilo.barra.calendarioDiseno
+                            Text { text: Qt.locale("es_MX").toString(parent.hoy, "MMMM yyyy"); color: Estilo.texto; font { family: Estilo.fuenteSans; pixelSize: 9; weight: Font.DemiBold } }
+                            // progreso: barra de avance del mes
+                            Rectangle { visible: parent.dis === "progreso"; y: 14; width: parent.width; height: 2; radius: 1; color: Estilo.hundido
+                                        Rectangle { height: parent.height; radius: 1; color: Estilo.acento; width: parent.width * parent.parent.hoy.getDate() / parent.parent.dias } }
+                            // semana: la fila de hoy resaltada
+                            Rectangle { visible: parent.dis === "semana"; x: -2; width: parent.width + 4; height: 16; radius: 5; color: Estilo.hundido
+                                        y: 26 + Math.floor((parent.desfase + parent.hoy.getDate() - 1) / 7) * 16 }
+                            // tira: la semana de hoy en grande
+                            Row {
+                                visible: parent.dis === "tira"
+                                y: 17; width: parent.width; spacing: 2
+                                Repeater {
+                                    model: 7
+                                    Rectangle {
+                                        required property int index
+                                        width: (parent.width - 12) / 7; height: 34; radius: 7; color: "transparent"
+                                        border.width: index === ((new Date().getDay() + 6) % 7) ? 1 : 0; border.color: Estilo.acento
+                                        Column {
+                                            anchors.centerIn: parent; spacing: 3
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: ["L", "M", "M", "J", "V", "S", "D"][index]; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
+                                            Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 9; height: 4; radius: 2; color: Estilo.texto2; opacity: 0.7 }
+                                        }
+                                    }
+                                }
+                            }
                             Grid {
-                                y: 16; width: parent.width; columns: 7
+                                visible: parent.dis !== "tira"
+                                y: parent.dis === "progreso" ? 21 : 15; width: parent.width; columns: 7
                                 readonly property real celda: width / 7
                                 Repeater {
                                     model: parent.parent.lunes ? ["L", "M", "M", "J", "V", "S", "D"] : ["D", "L", "M", "M", "J", "V", "S"]
-                                    Text { required property string modelData; width: parent.celda; horizontalAlignment: Text.AlignHCenter; text: modelData; color: Estilo.texto2; font { family: Estilo.letra; pixelSize: 7 } }
+                                    Text { required property string modelData; width: parent.celda; height: 11; horizontalAlignment: Text.AlignHCenter; text: modelData; color: Estilo.texto3; font { family: Estilo.fuenteSans; pixelSize: 6 } }
                                 }
                                 Repeater {
-                                    model: 42
+                                    model: parent.parent.desfase + parent.parent.dias
                                     Item {
                                         required property int index
                                         readonly property int dia: index - parent.parent.desfase + 1
                                         readonly property bool hoy: dia === parent.parent.hoy.getDate()
-                                        width: parent.celda; height: 13
-                                        visible: dia >= 1 && dia <= parent.parent.dias || index < 35
-                                        Rectangle { anchors.centerIn: parent; width: 16; height: 11; radius: 5.5; color: "#f2f2f3"; visible: parent.hoy }
+                                        width: parent.celda; height: 16
+                                        Rectangle { anchors.centerIn: parent; width: 18; height: 14; radius: 5; color: "transparent"; border.width: 1; border.color: Estilo.acento; visible: parent.hoy }
                                         Text {
                                             anchors.centerIn: parent
-                                            visible: parent.dia >= 1 && parent.dia <= parent.parent.parent.dias
-                                            text: parent.dia; color: parent.hoy ? "#000000" : Estilo.texto2
-                                            font { family: Estilo.letra; pixelSize: 7; weight: parent.hoy ? Font.Bold : Font.Normal }
+                                            visible: parent.dia >= 1
+                                            text: parent.dia; color: parent.hoy ? Estilo.texto : Estilo.texto2
+                                            font { family: Estilo.fuenteMono; pixelSize: 7 }
                                         }
                                     }
                                 }
                             }
                         }
-                        // Energia: bloquear, suspender, reiniciar y apagar
+                        // Energia en fila: bloquear, salir, reiniciar y apagar (solo con el estilo "fila")
                         Row {
                             visible: bloque.modelData === "energia"
-                            anchors.centerIn: parent; spacing: 14
+                            anchors.fill: parent; spacing: 4
                             Repeater {
-                                model: ["lock", "bedtime", "restart_alt", "power_settings_new"]
+                                model: ["lock", "logout", "restart_alt", "power_settings_new"]
                                 Rectangle {
                                     required property string modelData
                                     required property int index
-                                    width: 26; height: 26; radius: 13; color: index === 3 ? Estilo.peligro : Estilo.hover
-                                    Simbolo { anchors.centerIn: parent; text: parent.modelData; font.pixelSize: 13; color: parent.index === 3 ? "#ffffff" : Estilo.texto }
+                                    width: (parent.width - 12) / 4; height: parent.height; radius: 8; color: Estilo.tarjeta
+                                    Simbolo { anchors.centerIn: parent; text: parent.modelData; font.pixelSize: 12; color: parent.index === 3 ? Estilo.peligro : Estilo.texto }
                                 }
                             }
                         }
@@ -5060,8 +5200,8 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                             // alto llega a cualquier puesto y, al cruzarse, no se vuelven a cambiar enseguida.
                             onPositionChanged: if (bloque.alzado) {
                                 const arribaB = bloque.y, abajoB = bloque.y + bloque.height;
-                                const vis = ed.orden.filter(k => ed.activa(k));
-                                const ocultas = ed.orden.filter(k => !ed.activa(k));
+                                const vis = ed.orden.filter(k => ed.enPanel(k));
+                                const ocultas = ed.orden.filter(k => !ed.enPanel(k));
                                 const actual = vis.indexOf(bloque.modelData);
                                 const resto = vis.filter(k => k !== bloque.modelData);
                                 let idx = actual, y = ed.arriba;
@@ -5101,21 +5241,80 @@ echo "ver $(git -C "$HOME/menisco-dots" log -1 --format=%h 2>/dev/null)"`]
                     Repeater {
                         model: ed.orden
                         delegate: Item {
+                            id: filaSec
                             required property string modelData
                             required property int index
-                            width: listaSecciones.width; height: 56
+                            width: listaSecciones.width
+                            height: modelData === "energia" ? 56 + energiaOpc.implicitHeight + 16
+                                  : modelData === "equipo" ? 56 + equipoOpc.implicitHeight + 16
+                                  : modelData === "calendario" ? 56 + calendarioOpc.implicitHeight + 16 : 56
                             Rectangle { visible: parent.index > 0; width: parent.width; height: 1; color: Estilo.linea }
-                            Simbolo { x: 14; anchors.verticalCenter: parent.verticalCenter; text: "drag_indicator"; color: Estilo.texto3; font.pixelSize: 16 }
+                            Simbolo { x: 14; y: 28 - height / 2; text: "drag_indicator"; color: Estilo.texto3; font.pixelSize: 16 }
                             Rectangle {
-                                x: 40; anchors.verticalCenter: parent.verticalCenter
+                                x: 40; y: 13
                                 width: 30; height: 30; radius: 8; color: Estilo.hover
-                                Simbolo { anchors.centerIn: parent; text: ed.iconos[parent.parent.modelData]; font.pixelSize: 16 }
+                                Simbolo { anchors.centerIn: parent; text: ed.iconos[filaSec.modelData] || ""; font.pixelSize: 16 }
                             }
-                            Texto { x: 84; anchors.verticalCenter: parent.verticalCenter; text: ed.nombres[parent.modelData]; font.pixelSize: 15 }
+                            Texto { x: 84; y: 28 - height / 2; text: ed.nombres[filaSec.modelData] || ""; font.pixelSize: 15 }
                             Llave {
-                                anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
-                                encendido: ed.activa(parent.modelData)
-                                onCambiar: v => Estilo.ponerBarra("secciones", ed.orden.map(id => ({ id: id, ver: id === parent.modelData ? v : ed.activa(id) })))
+                                x: parent.width - width - 14; y: 15
+                                encendido: ed.activa(filaSec.modelData)
+                                onCambiar: v => Estilo.ponerBarra("secciones", ed.orden.map(id => ({ id: id, ver: id === filaSec.modelData ? v : ed.activa(id) })))
+                            }
+                            // Solo Equipo: el diseno de la tarjeta.
+                            Column {
+                                id: equipoOpc
+                                visible: filaSec.modelData === "equipo"
+                                x: 40; y: 56; width: parent.width - 54
+                                spacing: 8
+                                opacity: ed.activa("equipo") ? 1 : 0.45
+                                ControlSegmentos {
+                                    opciones: ["Anillos", "Barras", "Historial", "Doble dato"]; claves: ["anillos", "barras", "historial", "doble"]
+                                    elegida: Estilo.barra.equipoDiseno
+                                    onElegir: c => Estilo.ponerBarra("equipoDiseno", c)
+                                }
+                                Texto {
+                                    width: parent.width; wrapMode: Text.Wrap; color: Estilo.texto2; font.pixelSize: 13
+                                    text: ({ anillos: "Tres anillos que se llenan: CPU, RAM y GPU.", barras: "Etiqueta, barra y número. La más fácil de leer.",
+                                             historial: "CPU en grande con su último minuto; RAM y GPU debajo.", doble: "Cada columna suma un dato: temperatura, porcentaje o uso." })[Estilo.barra.equipoDiseno] || ""
+                                }
+                            }
+                            // Solo Calendario: el diseno de la tarjeta.
+                            Column {
+                                id: calendarioOpc
+                                visible: filaSec.modelData === "calendario"
+                                x: 40; y: 56; width: parent.width - 54
+                                spacing: 8
+                                opacity: ed.activa("calendario") ? 1 : 0.45
+                                ControlSegmentos {
+                                    opciones: ["Semana", "Progreso", "Tira"]; claves: ["semana", "progreso", "tira"]
+                                    elegida: Estilo.barra.calendarioDiseno
+                                    onElegir: c => Estilo.ponerBarra("calendarioDiseno", c)
+                                }
+                                Texto {
+                                    width: parent.width; wrapMode: Text.Wrap; color: Estilo.texto2; font.pixelSize: 13
+                                    text: ({ semana: "Semana de hoy resaltada, números de semana y cambio de mes.", progreso: "Barra de avance del mes y días pasados atenuados.",
+                                             tira: "Solo la semana de hoy; se despliega para ver el mes." })[Estilo.barra.calendarioDiseno] || ""
+                                }
+                            }
+                            // Solo Energia: como se muestra (un boton arriba o una fila de botones).
+                            Column {
+                                id: energiaOpc
+                                visible: filaSec.modelData === "energia"
+                                x: 40; y: 56; width: parent.width - 54
+                                spacing: 8
+                                opacity: ed.activa("energia") ? 1 : 0.45
+                                ControlSegmentos {
+                                    grande: true
+                                    opciones: ["Un botón arriba", "Fila de botones"]; claves: ["boton", "fila"]
+                                    elegida: Estilo.barra.energia.estilo
+                                    onElegir: c => Estilo.ponerBarra("energia", { estilo: c })
+                                }
+                                Texto {
+                                    width: parent.width; wrapMode: Text.Wrap; color: Estilo.texto2; font.pixelSize: 13
+                                    text: Estilo.barra.energia.estilo === "fila" ? "Una fila de cuatro botones en la barra, que se arrastra como los demás bloques."
+                                                                                  : "Un botón junto a Ajustes que abre Bloquear, Salir, Reiniciar y Apagar."
+                                }
                             }
                         }
                     }

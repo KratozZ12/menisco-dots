@@ -175,7 +175,7 @@ PanelWindow {
     Gelatina { objetivo: dock.contentItem; origenY: 1 }   // se va con la vista general
 
     // El vidrio, solo dentro del cuerpo (el aire de arriba y la sombra quedan fuera).
-    BackgroundEffect.blurRegion: conVidrio ? regionVidrio : null
+    BackgroundEffect.blurRegion: conVidrio ? (alterna ? regionVidrioB : regionVidrio) : null
     // Con la vista general, al terminar el fundido de Gelatina la ventana se quita del todo: si no,
     // niri seguia pintando su vidrio sin nada encima (un rectangulo liso donde estaba el dock).
     // Una region vacia o null no basta: niri desenfoca entonces la superficie entera.
@@ -188,6 +188,14 @@ PanelWindow {
         function onVistaGeneralChanged() { if (Estilo.vistaGeneral) quitar.restart(); else { quitar.stop(); dock.quitado = false; } }
     }
     property Region regionVidrio: Region { item: fondo; radius: dock.radio }
+    // Quickshell mide la zona una vez: si fondo aun no tenia su tamaño (o estaba encogido por la
+    // vista general), niri desenfoca la superficie entera. Un segundo Region igual, alternado
+    // cuando cambia el tamaño, obliga a medirla de nuevo.
+    property Region regionVidrioB: Region { item: fondo; radius: dock.radio }
+    property bool alterna: false
+    Timer { id: remedir; interval: 450; running: true; onTriggered: dock.alterna = !dock.alterna }
+    Connections { target: fondo; function onWidthChanged() { remedir.restart(); } function onHeightChanged() { remedir.restart(); } }
+    Connections { target: Estilo; function onVistaGeneralChanged() { if (!Estilo.vistaGeneral) remedir.restart(); } }
     // Lo que recibe clics: el cuerpo, y el aire de arriba mientras el cursor esta en el dock
     // (para el icono que crece). Escondido, una franja de 3 px en el borde de abajo.
     property Region sinNada: Region {}

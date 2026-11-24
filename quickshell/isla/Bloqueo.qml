@@ -214,7 +214,7 @@ Scope {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatTime(reloj.date, Estilo.valor("reloj12") ? "h:mm" : "H:mm")
                     color: "#ffffff"
-                    font { family: "SF Pro Display"; pixelSize: 128; weight: Font.Light; letterSpacing: -3; features: { "tnum": 1 } }
+                    font { family: Estilo.fuenteMono; pixelSize: 128; weight: Font.Normal; letterSpacing: -5; features: { "tnum": 1 } }
                 }
             }
 
@@ -464,7 +464,7 @@ Scope {
                     elide: Text.ElideRight
                     text: mu.letra[index][1]
                     color: "#ffffff"
-                    font { family: Estilo.letra; pixelSize: 28; weight: Font.Bold }
+                    font { family: Estilo.letra; pixelSize: 28; weight: Font.DemiBold }
                     y: zonaLetra.height / 2 - height / 2 + distancia * zonaLetra.paso
                     opacity: distancia === 0 ? 1 : Math.abs(distancia) === 1 ? 0.35 : 0.15
                     scale: distancia === 0 ? 1 : 0.86
@@ -479,7 +479,7 @@ Scope {
                 anchors.centerIn: parent
                 width: parent.width
                 spacing: 6
-                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: mu.r ? mu.r.trackTitle : ""; color: "#ffffff"; font { family: Estilo.letra; pixelSize: 28; weight: Font.Bold } }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: mu.r ? mu.r.trackTitle : ""; color: "#ffffff"; font { family: Estilo.letra; pixelSize: 28; weight: Font.DemiBold } }
                 Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: mu.r ? mu.r.trackArtist || "" : ""; color: "#ffffff"; opacity: 0.6; font { family: Estilo.letra; pixelSize: 18 } }
             }
         }

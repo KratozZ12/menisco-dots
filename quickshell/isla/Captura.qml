@@ -269,7 +269,7 @@ PanelWindow {
             x: 0; y: abajo ? parent.height + 8 : -height - 8
             width: medida.implicitWidth + 16; height: 22; radius: 8
             color: Estilo.fondo; border.width: 1; border.color: Estilo.borde
-            Texto { id: medida; anchors.centerIn: parent; font.pixelSize: 11; font.features: { "tnum": 1 }
+            Texto { id: medida; anchors.centerIn: parent; font.pixelSize: 11; font.family: Estilo.fuenteMono; font.features: { "tnum": 1 }
                 text: Math.round(cap.sw * cap.escala) + " × " + Math.round(cap.sh * cap.escala) }
         }
     }

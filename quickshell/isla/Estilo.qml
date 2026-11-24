@@ -52,14 +52,31 @@ Singleton {
         botSub: "Pregúntame",
         botLuz: true, botChispas: true, botEnPaginas: true, succion: true,
         vidrio: { refraccion: 70, aberracion: 95, desenfoque: 20, brillo: 35, dock: true, ventanas: true, notificaciones: false },
-        barra: { lado: "derecha", altura: "centro", ancho: 340, boton: true, borde: false, clicFuera: true,
-                 secciones: [{ id: "rapidos", ver: true }, { id: "sonido", ver: true }, { id: "musica", ver: true },
-                             { id: "calendario", ver: true }, { id: "energia", ver: true }],
+        barra: { lado: "derecha", altura: "centro", ancho: 372, boton: true, borde: false, clicFuera: true,
+                 secciones: [{ id: "rapidos", ver: true }, { id: "niveles", ver: true }, { id: "equipo", ver: true }, { id: "calendario", ver: true },
+                             { id: "energia", ver: true }, { id: "musica", ver: true }],
+                 energia: { estilo: "boton" }, equipoDiseno: "barras", calendarioDiseno: "semana",
                  rapidos: ["red", "bt", "dnd", "cafe"], semanaLunes: true }
     })
     function valor(clave) { return datos[clave] !== undefined ? datos[clave] : porDefecto[clave]; }
     // Ajustes de la barra lateral, con los que falten tomados de porDefecto.
-    readonly property var barra: Object.assign({}, porDefecto.barra, datos.barra || {})
+    // Migraciones al leer (el archivo viejo no se toca hasta que se cambie algo): "sonido" pasa a
+    // "niveles" con su mismo orden y estado; "equipo" entra justo despues; la energia estilo fila
+    // se conserva si ya estaba encendida y, si no existia, es un boton junto a Ajustes.
+    readonly property var barra: {
+        const d = datos.barra || {};
+        const b = Object.assign({}, porDefecto.barra, d);
+        const s = (d.secciones || porDefecto.barra.secciones).map(x => x.id === "sonido" ? { id: "niveles", ver: x.ver } : x);
+        if (!s.some(x => x.id === "equipo")) {
+            const i = s.findIndex(x => x.id === "niveles");
+            s.splice(i < 0 ? s.length : i + 1, 0, { id: "equipo", ver: true });
+        }
+        for (const x of porDefecto.barra.secciones) if (!s.some(y => y.id === x.id)) s.push(x);
+        b.secciones = s;
+        b.energia = { estilo: d.energia && d.energia.estilo ? d.energia.estilo
+                      : (d.secciones || []).some(x => x.id === "energia" && x.ver) ? "fila" : "boton" };
+        return b;
+    }
     readonly property var gotas: valor("gotas")
     readonly property int gotaActiva: Math.min(valor("gotaActiva"), gotas.length - 1)
     readonly property var gota: gotas[gotaActiva] || porDefecto.gotas[0]
@@ -553,16 +570,22 @@ tokens {
     property real sepBandeja: -1           // lo escribe Esquina.qml: distancia del borde al hueco de la bandeja
     property real xBandeja: 0              // junto a la isla: x del hueco desde el borde izquierdo (Esquina.qml)
     property real anchoBandeja: 0          // lo escribe Bandeja.qml; la oreja del marco se ensancha
-    readonly property string letra: valor("letra") === "Inter" ? "Inter Display" : "SF Pro Text"
-    // Geist (Vercel, OFL 1.1): la tipografia oficial de Menisco. Por ahora solo la usa la pagina
-    // Menisco de Ajustes. Sans para la interfaz, Mono para los numeros y Serif (un solo peso:
-    // Regular, no pedirle negrita) solo para los nombres de version.
-    FontLoader { id: geistSans; source: Qt.resolvedUrl("fuentes/Geist-Variable.ttf") }
-    FontLoader { id: geistMono; source: Qt.resolvedUrl("fuentes/GeistMono-Variable.ttf") }
+    // Tipografia: Geist (Vercel, OFL 1.1) en todo el shell. Instancias estaticas (400, 500 y 600; Qt las
+    // junta bajo una sola familia y el peso elige el archivo). Sans para la interfaz, Mono para los datos
+    // (horas, porcentajes, tamanos, temperaturas, atajos) y Serif (un solo peso: Regular) solo para los
+    // nombres de version de la pagina Menisco. La palabra MENISCO del logo usa Archivo (Novedades.qml).
+    // Si una fuente no carga, su nombre queda vacio y Qt usa una fuente del sistema: el texto nunca se pierde.
+    // El ajuste "letra" (SF Pro | Inter) sigue guardado pero ya no se lee.
+    FontLoader { id: geistSans; source: Qt.resolvedUrl("fuentes/Geist-Regular.ttf") }
+    FontLoader { source: Qt.resolvedUrl("fuentes/Geist-Medium.ttf") }
+    FontLoader { source: Qt.resolvedUrl("fuentes/Geist-SemiBold.ttf") }
+    FontLoader { id: geistMono; source: Qt.resolvedUrl("fuentes/GeistMono-Regular.ttf") }
+    FontLoader { source: Qt.resolvedUrl("fuentes/GeistMono-Medium.ttf") }
     FontLoader { id: geistSerif; source: Qt.resolvedUrl("fuentes/GeistSerif-Regular.ttf") }
-    readonly property string fuenteSans: geistSans.name
-    readonly property string fuenteMono: geistMono.name
-    readonly property string fuenteSerif: geistSerif.name
+    readonly property string fuenteSans: geistSans.name || "sans-serif"
+    readonly property string fuenteMono: geistMono.name || "monospace"
+    readonly property string fuenteSerif: geistSerif.name || "serif"
+    readonly property string letra: fuenteSans
 
     // Bluetooth: al encender, primero se quita el bloqueo de rfkill (Plasma lo deja bloqueado al
     // apagarlo desde alli, y con el bloqueo BlueZ se niega a encender). Apagar no bloquea.
